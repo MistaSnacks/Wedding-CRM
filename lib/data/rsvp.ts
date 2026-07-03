@@ -91,12 +91,17 @@ export async function submit(
   return data as { status: string };
 }
 
-export async function deadlinePassed(scope: WeddingScope): Promise<boolean> {
+export async function getDeadline(scope: WeddingScope): Promise<string | null> {
   const { data } = await scope.db
     .from("weddings")
     .select("rsvp_deadline")
     .eq("id", scope.weddingId)
     .single();
-  if (!data?.rsvp_deadline) return false;
-  return new Date(data.rsvp_deadline).getTime() < Date.now();
+  return data?.rsvp_deadline ?? null;
+}
+
+export async function deadlinePassed(scope: WeddingScope): Promise<boolean> {
+  const deadline = await getDeadline(scope);
+  if (!deadline) return false;
+  return new Date(deadline).getTime() < Date.now();
 }
