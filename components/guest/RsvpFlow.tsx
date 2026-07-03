@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { saveRsvp, rememberLocale } from "@/app/(guest)/rsvp/h/[token]/actions";
@@ -546,10 +546,10 @@ function Petals() {
 
 function LocaleSaver({ token }: { token: string }) {
   const locale = useLocale();
-  const [saved, setSaved] = useState<string | null>(null);
-  if (saved !== locale) {
-    setSaved(locale);
+  // Server actions may not run during render — persist the language
+  // preference as an effect after mount / locale change.
+  useEffect(() => {
     void rememberLocale(token, locale);
-  }
+  }, [token, locale]);
   return null;
 }
