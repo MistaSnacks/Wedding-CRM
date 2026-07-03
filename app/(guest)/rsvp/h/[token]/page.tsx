@@ -4,7 +4,6 @@ import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import * as rsvp from "@/lib/data/rsvp";
 import * as seating from "@/lib/data/seating";
-import { createGuestSession } from "@/lib/guest-session";
 import { RsvpFlow } from "@/components/guest/RsvpFlow";
 import type { GuestRow, EventRow, MealOptionRow, QuestionRow, ResponseRow } from "@/lib/types";
 
@@ -19,8 +18,8 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
   const scope = defaultScope();
   const household = await households.byAccessToken(scope, token);
   if (!household) notFound();
-
-  await createGuestSession(household.id, scope.weddingId);
+  // NOTE: no cookie writes here — Server Components can't set cookies.
+  // Every RSVP action re-verifies the URL token instead (see actions.ts).
 
   const [context, deadline, locale] = await Promise.all([
     rsvp.getRsvpContext(scope, household.id),
