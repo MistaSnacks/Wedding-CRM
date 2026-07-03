@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Watercolor palette — from the wedding site's oklch values, converted */
+  --cream: #f9f7ee;
+  --olive: #646f40;
+  --olive-deep: #3b4823;
+  --olive-deeper: #2a3517;
+  --rose: #b17565;
+  --rose-deep: #8a4e40;
+  --blush: #fdecec;
+  --blush-border: #f2d9d4;
+  --sage-band: #e9f4e1;
+  --ink: #1c231b;
+  --muted: #8a8f86;
+  --paper: #f8f7ef;
+  --hairline: #ecebe4;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-cream: var(--cream);
+  --color-olive: var(--olive);
+  --color-olive-deep: var(--olive-deep);
+  --color-olive-deeper: var(--olive-deeper);
+  --color-rose: var(--rose);
+  --color-rose-deep: var(--rose-deep);
+  --color-blush: var(--blush);
+  --color-blush-border: var(--blush-border);
+  --color-sage-band: var(--sage-band);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-paper: var(--paper);
+  --color-hairline: var(--hairline);
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), ui-serif, Georgia, serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Guest surface watercolor wash (over the video poster/scrim) */
+.watercolor-bg {
+  background-color: var(--cream);
+  background-image:
+    radial-gradient(90% 42% at 50% 104%, rgba(233, 244, 225, 0.8) 0%, rgba(233, 244, 225, 0) 68%),
+    linear-gradient(180deg, #f5f3e7 0%, #f9f7ee 52%, #eef0de 100%);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
