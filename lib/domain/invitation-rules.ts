@@ -58,6 +58,41 @@ export function validateSubmission(
   return { ok: true };
 }
 
+export type NamedKnownGuest = KnownGuest & { firstName: string; lastName: string };
+export type IncomingPlusOne<R> = { firstName: string; lastName: string; responses: R[] };
+
+/**
+ * Makes plus-one submission idempotent: an incoming plus-one whose name
+ * matches an existing plus_one guest (case-insensitive) is an UPDATE to that
+ * guest, not a new insert. Autosaving twice must not consume a second slot.
+ */
+export function dedupePlusOnes<R>(
+  known: NamedKnownGuest[],
+  incoming: IncomingPlusOne<R>[],
+): { existing: Array<{ guestId: string; responses: R[] }>; fresh: IncomingPlusOne<R>[] } {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const existing: Array<{ guestId: string; responses: R[] }> = [];
+  const fresh: IncomingPlusOne<R>[] = [];
+  const claimed = new Set<string>();
+
+  for (const p of incoming) {
+    const match = known.find(
+      (k) =>
+        k.origin === "plus_one" &&
+        !claimed.has(k.id) &&
+        norm(k.firstName) === norm(p.firstName) &&
+        norm(k.lastName) === norm(p.lastName),
+    );
+    if (match) {
+      claimed.add(match.id);
+      existing.push({ guestId: match.id, responses: p.responses });
+    } else {
+      fresh.push(p);
+    }
+  }
+  return { existing, fresh };
+}
+
 export function computeHouseholdStatus(
   responses: Array<"pending" | "yes" | "no">,
   submittedComplete: boolean,

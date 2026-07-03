@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   validateSubmission,
   computeHouseholdStatus,
+  dedupePlusOnes,
   type HouseholdRules,
   type KnownGuest,
   type SubmissionGuest,
+  type NamedKnownGuest,
 } from "./invitation-rules";
 
 const namedOnly: HouseholdRules = { maxPartySize: 2, plusOneSlots: 0 };
@@ -84,6 +86,44 @@ describe("validateSubmission", () => {
       ok: false,
       code: "no_plus_one_slot",
     });
+  });
+});
+
+describe("dedupePlusOnes", () => {
+  const known: NamedKnownGuest[] = [
+    { id: "g1", origin: "named", firstName: "Jane", lastName: "Doe" },
+    { id: "px", origin: "plus_one", firstName: "Kate", lastName: "Durkin" },
+  ];
+
+  it("re-submitted plus-one matches the existing guest (autosave idempotency)", () => {
+    const r = dedupePlusOnes(known, [{ firstName: "Kate", lastName: "Durkin", responses: ["r1"] }]);
+    expect(r.fresh).toHaveLength(0);
+    expect(r.existing).toEqual([{ guestId: "px", responses: ["r1"] }]);
+  });
+
+  it("matches case-insensitively with whitespace", () => {
+    const r = dedupePlusOnes(known, [{ firstName: " kate ", lastName: "DURKIN", responses: [] }]);
+    expect(r.existing).toHaveLength(1);
+  });
+
+  it("a genuinely new name stays fresh", () => {
+    const r = dedupePlusOnes(known, [{ firstName: "Sam", lastName: "Lee", responses: [] }]);
+    expect(r.fresh).toHaveLength(1);
+    expect(r.existing).toHaveLength(0);
+  });
+
+  it("never matches a NAMED guest, only plus_ones", () => {
+    const r = dedupePlusOnes(known, [{ firstName: "Jane", lastName: "Doe", responses: [] }]);
+    expect(r.fresh).toHaveLength(1);
+  });
+
+  it("two incoming with the same name claim one existing then one fresh", () => {
+    const r = dedupePlusOnes(known, [
+      { firstName: "Kate", lastName: "Durkin", responses: [] },
+      { firstName: "Kate", lastName: "Durkin", responses: [] },
+    ]);
+    expect(r.existing).toHaveLength(1);
+    expect(r.fresh).toHaveLength(1);
   });
 });
 

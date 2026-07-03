@@ -119,12 +119,23 @@ export function RsvpFlow(props: {
     };
   }
 
+  const KNOWN_ERRORS = [
+    "no_plus_one_slot",
+    "over_party_size",
+    "unknown_guest",
+    "duplicate_guest",
+    "empty_name",
+    "rate_limited",
+    "deadline_passed",
+    "not_found",
+  ];
+
   function advance(next: Step, complete = false) {
     setError(null);
     startTransition(async () => {
       const result = await saveRsvp(props.token, buildPayload(complete));
       if (!result.ok) {
-        setError(result.error);
+        setError(KNOWN_ERRORS.includes(result.error) ? result.error : "unknown");
         return;
       }
       setStep(next);
@@ -325,7 +336,7 @@ export function RsvpFlow(props: {
               </button>
             )}
 
-            {error && <p className="text-center text-sm text-rose">{error}</p>}
+            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
             <button
               type="button"
               disabled={pending}
@@ -371,7 +382,7 @@ export function RsvpFlow(props: {
                 )}
               </div>
             ))}
-            {error && <p className="text-center text-sm text-rose">{error}</p>}
+            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -422,7 +433,7 @@ export function RsvpFlow(props: {
                   </div>
                 ))}
             </div>
-            {error && <p className="text-center text-sm text-rose">{error}</p>}
+            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
             <div className="flex gap-2">
               <button
                 type="button"

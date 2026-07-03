@@ -59,7 +59,18 @@
     "yourTableTitle": "{name}, you're at {table}",
     "seatedWith": "SEATED WITH YOU",
     "more": "+{count} more",
-    "wrongTable": "Wrong table? Let us know"
+    "wrongTable": "Wrong table? Let us know",
+    "errors": {
+      "no_plus_one_slot": "Your invitation doesn't have room for another guest. If something looks off, use your original link or contact Juliet & Juan.",
+      "over_party_size": "That's more guests than your invitation includes. Please double-check your party.",
+      "unknown_guest": "Something didn't match your invitation. Please reload the page and try again.",
+      "duplicate_guest": "It looks like a guest was submitted twice. Please reload and try again.",
+      "empty_name": "Please enter your guest's first and last name.",
+      "rate_limited": "Too many attempts — please wait a minute and try again.",
+      "deadline_passed": "The RSVP deadline has passed. Please contact Juliet & Juan directly.",
+      "not_found": "We couldn't find your invitation. Please use the link from your email.",
+      "unknown": "Something went wrong. Please try again."
+    }
   },
   "common": {
     "loading": "One moment…",

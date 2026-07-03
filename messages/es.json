@@ -59,7 +59,18 @@
     "yourTableTitle": "{name}, estás en la {table}",
     "seatedWith": "SENTADOS CONTIGO",
     "more": "+{count} más",
-    "wrongTable": "¿Mesa equivocada? Avísanos"
+    "wrongTable": "¿Mesa equivocada? Avísanos",
+    "errors": {
+      "no_plus_one_slot": "Tu invitación no tiene espacio para otro acompañante. Si algo no cuadra, usa tu enlace original o contacta a Juliet & Juan.",
+      "over_party_size": "Son más invitados de los que incluye tu invitación. Por favor revisa tu grupo.",
+      "unknown_guest": "Algo no coincidió con tu invitación. Recarga la página e inténtalo de nuevo.",
+      "duplicate_guest": "Parece que un invitado se envió dos veces. Recarga e inténtalo de nuevo.",
+      "empty_name": "Por favor escribe el nombre y apellido de tu acompañante.",
+      "rate_limited": "Demasiados intentos — espera un minuto e inténtalo de nuevo.",
+      "deadline_passed": "La fecha límite ha pasado. Contacta directamente a Juliet & Juan.",
+      "not_found": "No encontramos tu invitación. Usa el enlace de tu correo.",
+      "unknown": "Algo salió mal. Inténtalo de nuevo."
+    }
   },
   "common": {
     "loading": "Un momento…",

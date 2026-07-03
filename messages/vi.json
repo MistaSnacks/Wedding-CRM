@@ -59,7 +59,18 @@
     "yourTableTitle": "{name}, bạn ngồi ở {table}",
     "seatedWith": "NGỒI CÙNG BẠN",
     "more": "+{count} nữa",
-    "wrongTable": "Sai bàn? Cho chúng tôi biết"
+    "wrongTable": "Sai bàn? Cho chúng tôi biết",
+    "errors": {
+      "no_plus_one_slot": "Thiệp mời của bạn không còn chỗ cho khách khác. Nếu có gì chưa đúng, hãy dùng liên kết gốc hoặc liên hệ Juliet & Juan.",
+      "over_party_size": "Số khách vượt quá thiệp mời của bạn. Vui lòng kiểm tra lại nhóm của bạn.",
+      "unknown_guest": "Có gì đó không khớp với thiệp mời. Vui lòng tải lại trang và thử lại.",
+      "duplicate_guest": "Có vẻ một khách được gửi hai lần. Vui lòng tải lại và thử lại.",
+      "empty_name": "Vui lòng nhập họ và tên của khách đi cùng.",
+      "rate_limited": "Quá nhiều lần thử — vui lòng đợi một phút rồi thử lại.",
+      "deadline_passed": "Đã qua hạn phản hồi. Vui lòng liên hệ trực tiếp Juliet & Juan.",
+      "not_found": "Không tìm thấy thiệp mời của bạn. Vui lòng dùng liên kết trong email.",
+      "unknown": "Đã xảy ra lỗi. Vui lòng thử lại."
+    }
   },
   "common": {
     "loading": "Chờ một chút…",

@@ -1,6 +1,6 @@
 import type { WeddingScope } from "./scope";
 import type { SubmitRsvpPayload, EventRow, MealOptionRow, QuestionRow, ResponseRow } from "@/lib/types";
-import { validateSubmission, type SubmissionGuest } from "@/lib/domain/invitation-rules";
+import { validateSubmission, dedupePlusOnes, type SubmissionGuest } from "@/lib/domain/invitation-rules";
 import { invalidateCache } from "@/lib/limiter";
 
 export class RsvpValidationError extends Error {
@@ -54,18 +54,51 @@ export async function submit(
   const [{ data: household }, { data: guests }] = await Promise.all([
     scope.db
       .from("households")
-      .select("id, max_party_size, plus_one_slots, rsvp_deadline:wedding_id")
+      .select("id, max_party_size, plus_one_slots")
       .eq("wedding_id", scope.weddingId)
       .eq("id", householdId)
       .single(),
-    scope.db.from("guests").select("id, origin").eq("household_id", householdId),
+    scope.db.from("guests").select("id, origin, first_name, last_name").eq("household_id", householdId),
   ]);
   if (!household) throw new Error("household not found");
 
-  const known = (guests ?? []).map((g: { id: string; origin: "named" | "plus_one" }) => ({
-    id: g.id,
-    origin: g.origin,
+  const known = (guests ?? []).map(
+    (g: { id: string; origin: "named" | "plus_one"; first_name: string; last_name: string }) => ({
+      id: g.id,
+      origin: g.origin,
+      firstName: g.first_name,
+      lastName: g.last_name,
+    }),
+  );
+
+  // Idempotency: a re-submitted plus-one (autosave, retry, edit) matches the
+  // guest row it already created instead of consuming another slot.
+  const incoming = (payload.new_plus_ones ?? []).map((p) => ({
+    firstName: p.first_name,
+    lastName: p.last_name,
+    responses: p.responses,
   }));
+  const { existing: reusedPlusOnes, fresh } = dedupePlusOnes(known, incoming);
+
+  payload = {
+    ...payload,
+    responses: [
+      ...payload.responses,
+      ...reusedPlusOnes.flatMap((r) =>
+        r.responses.map((resp) => ({
+          guest_id: r.guestId,
+          event_id: resp.event_id,
+          attending: resp.attending,
+          meal_option_id: resp.meal_option_id ?? null,
+        })),
+      ),
+    ],
+    new_plus_ones: fresh.map((p) => ({
+      first_name: p.firstName,
+      last_name: p.lastName,
+      responses: p.responses,
+    })),
+  };
 
   const submitted: SubmissionGuest[] = [
     ...Array.from(new Set(payload.responses.map((r) => r.guest_id))).map((guestId) => ({ guestId })),
