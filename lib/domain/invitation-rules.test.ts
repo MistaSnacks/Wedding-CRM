@@ -3,6 +3,8 @@ import {
   validateSubmission,
   computeHouseholdStatus,
   dedupePlusOnes,
+  openPlusOneSlots,
+  normalizeHouseholdRules,
   type HouseholdRules,
   type KnownGuest,
   type SubmissionGuest,
@@ -124,6 +126,64 @@ describe("dedupePlusOnes", () => {
     ]);
     expect(r.existing).toHaveLength(1);
     expect(r.fresh).toHaveLength(1);
+  });
+});
+
+describe("openPlusOneSlots", () => {
+  it("grants the slot when party size has headroom", () => {
+    expect(openPlusOneSlots({ maxPartySize: 2, plusOneSlots: 1 }, single)).toBe(1);
+  });
+
+  it("is capped by party-size headroom, not just plus_one_slots (McMath bug)", () => {
+    // max_party_size 1 + plus_one_slots 1: the server would reject any new
+    // plus-one, so the UI must offer zero slots.
+    expect(openPlusOneSlots({ maxPartySize: 1, plusOneSlots: 1 }, single)).toBe(0);
+  });
+
+  it("counts existing plus_ones against the slots", () => {
+    const known: KnownGuest[] = [
+      { id: "g1", origin: "named" },
+      { id: "px", origin: "plus_one" },
+    ];
+    expect(openPlusOneSlots({ maxPartySize: 3, plusOneSlots: 1 }, known)).toBe(0);
+  });
+
+  it("never goes negative", () => {
+    expect(openPlusOneSlots({ maxPartySize: 1, plusOneSlots: 0 }, couple)).toBe(0);
+  });
+
+  it("offers multiple slots when both limits allow", () => {
+    expect(openPlusOneSlots({ maxPartySize: 4, plusOneSlots: 2 }, couple)).toBe(2);
+  });
+});
+
+describe("normalizeHouseholdRules", () => {
+  it("raises maxPartySize to cover named guests plus granted slots", () => {
+    expect(normalizeHouseholdRules({ maxPartySize: 1, plusOneSlots: 1 }, 1)).toEqual({
+      maxPartySize: 2,
+      plusOneSlots: 1,
+    });
+  });
+
+  it("leaves a consistent config untouched", () => {
+    expect(normalizeHouseholdRules({ maxPartySize: 4, plusOneSlots: 1 }, 2)).toEqual({
+      maxPartySize: 4,
+      plusOneSlots: 1,
+    });
+  });
+
+  it("raises maxPartySize to at least the named-guest count even with no slots", () => {
+    expect(normalizeHouseholdRules({ maxPartySize: 2, plusOneSlots: 0 }, 3)).toEqual({
+      maxPartySize: 3,
+      plusOneSlots: 0,
+    });
+  });
+
+  it("floors nonsense input at a party of one", () => {
+    expect(normalizeHouseholdRules({ maxPartySize: 0, plusOneSlots: 0 }, 0)).toEqual({
+      maxPartySize: 1,
+      plusOneSlots: 0,
+    });
   });
 });
 

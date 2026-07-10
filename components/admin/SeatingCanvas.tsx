@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
   DragOverlay,
+  pointerWithin,
   useDraggable,
   useDroppable,
   PointerSensor,
@@ -19,6 +20,7 @@ import {
   assignHousehold,
   unassignGuest,
   createTable,
+  removeTable,
   saveTablePosition,
   setSeatingPublished,
 } from "@/app/admin/(dashboard)/seating/actions";
@@ -30,6 +32,21 @@ type HH = {
   guests: Array<{ id: string; name: string; ageType: string; origin: string; dietary: boolean }>;
 };
 
+type DragState = { type: "guest" | "household" | "table"; label: string; count: number };
+
+type AssignmentAction =
+  | { kind: "assign"; guestIds: string[]; tableId: string; eventId: string }
+  | { kind: "unassign"; guestId: string };
+
+const GRID = 16;
+const RECT_DIMS = { w: 280, h: 96 };
+const ROUND_DIMS = { w: 136, h: 136 };
+const POPOVER_W = 200;
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(Math.max(n, min), max);
+}
+
 export function SeatingCanvas(props: {
   event: EventRow;
   allEvents: EventRow[];
@@ -39,12 +56,45 @@ export function SeatingCanvas(props: {
   responses: ResponseRow[];
   meals: MealOptionRow[];
 }) {
-  const [pending, startTransition] = useTransition();
-  const [dragging, setDragging] = useState<{ type: "guest" | "household" | "table"; label: string } | null>(null);
+  const [, startTransition] = useTransition();
+  const [dragging, setDragging] = useState<DragState | null>(null);
   const [adding, setAdding] = useState(false);
+  const [openTableId, setOpenTableId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTableDragEnd = useRef(0);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvasW, setCanvasW] = useState(0);
+  // Positions live client-side so a moved table never snaps back while the save round-trips.
+  const [posOverrides, setPosOverrides] = useState<Record<string, { x: number; y: number }>>({});
+  const [assignments, applyAssignment] = useOptimistic(
+    props.assignments,
+    (state: SeatAssignmentRow[], action: AssignmentAction) => {
+      if (action.kind === "unassign") return state.filter((a) => a.guest_id !== action.guestId);
+      const moved = new Set(action.guestIds);
+      return [
+        ...state.filter((a) => !moved.has(a.guest_id)),
+        ...action.guestIds.map((gid) => ({
+          guest_id: gid,
+          event_id: action.eventId,
+          table_id: action.tableId,
+          seat_number: null,
+        })),
+      ];
+    },
+  );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const assignedIds = useMemo(() => new Set(props.assignments.map((a) => a.guest_id)), [props.assignments]);
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setCanvasW(el.clientWidth));
+    ro.observe(el);
+    setCanvasW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+
+  const assignedIds = useMemo(() => new Set(assignments.map((a) => a.guest_id)), [assignments]);
   const attendingIds = useMemo(
     () => new Set(props.responses.filter((r) => r.attending === "yes").map((r) => r.guest_id)),
     [props.responses],
@@ -57,12 +107,40 @@ export function SeatingCanvas(props: {
     .map((h) => ({ ...h, guests: h.guests.filter((g) => attendingIds.has(g.id) && !assignedIds.has(g.id)) }))
     .filter((h) => h.guests.length > 0);
 
-  const seatedCount = props.assignments.filter((a) => attendingIds.has(a.guest_id)).length;
+  const seatedCount = assignments.filter((a) => attendingIds.has(a.guest_id)).length;
   const attendingCount = attendingIds.size;
 
+  const seatedByTable = useMemo(() => {
+    const m = new Map<string, SeatAssignmentRow[]>();
+    for (const a of assignments) {
+      const list = m.get(a.table_id) ?? [];
+      list.push(a);
+      m.set(a.table_id, list);
+    }
+    return m;
+  }, [assignments]);
+
+  const dragCount = dragging && dragging.type !== "table" ? dragging.count : 0;
+
+  function tablePos(t: SeatingTableRow) {
+    return posOverrides[t.id] ?? { x: t.pos_x, y: t.pos_y };
+  }
+
+  function showToast(msg: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current = setTimeout(() => setToast(null), 2600);
+  }
+
   function onDragStart(e: DragStartEvent) {
-    const data = e.active.data.current as { type: "guest" | "household" | "table"; label: string } | undefined;
-    if (data) setDragging(data);
+    const data = e.active.data.current as
+      | { type: "guest"; label: string }
+      | { type: "household"; label: string; guestIds: string[] }
+      | { type: "table"; label: string }
+      | undefined;
+    if (!data) return;
+    setOpenTableId(null);
+    setDragging({ type: data.type, label: data.label, count: data.type === "household" ? data.guestIds.length : 1 });
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -70,29 +148,66 @@ export function SeatingCanvas(props: {
     const data = e.active.data.current as
       | { type: "guest"; guestId: string }
       | { type: "household"; guestIds: string[] }
-      | { type: "table"; tableId: string; posX: number; posY: number }
+      | { type: "table"; tableId: string }
       | undefined;
     if (!data) return;
 
     if (data.type === "table") {
-      const nx = Math.max(0, data.posX + e.delta.x);
-      const ny = Math.max(0, data.posY + e.delta.y);
-      startTransition(() => saveTablePosition(data.tableId, nx, ny));
+      if (Math.abs(e.delta.x) < 2 && Math.abs(e.delta.y) < 2) return; // effectively a click — let it open the popover
+      lastTableDragEnd.current = performance.now();
+      const t = props.tables.find((t) => t.id === data.tableId);
+      if (!t) return;
+      const cur = tablePos(t);
+      const dims = t.shape !== "round" ? RECT_DIMS : ROUND_DIMS;
+      const canvas = canvasRef.current;
+      const maxX = canvas ? Math.max(0, canvas.clientWidth - dims.w) : Infinity;
+      const maxY = canvas ? Math.max(0, canvas.clientHeight - dims.h) : Infinity;
+      const nx = clamp(Math.round((cur.x + e.delta.x) / GRID) * GRID, 0, maxX);
+      const ny = clamp(Math.round((cur.y + e.delta.y) / GRID) * GRID, 0, maxY);
+      setPosOverrides((p) => ({ ...p, [t.id]: { x: nx, y: ny } }));
+      startTransition(() => saveTablePosition(t.id, nx, ny));
       return;
     }
 
     const overTable = e.over?.data.current as { tableId?: string } | undefined;
     if (!overTable?.tableId) return;
-    startTransition(() =>
-      data.type === "guest"
-        ? assignGuest(data.guestId, props.event.id, overTable.tableId!)
-        : assignHousehold(data.guestIds, props.event.id, overTable.tableId!),
-    );
+    const table = props.tables.find((t) => t.id === overTable.tableId);
+    if (!table) return;
+
+    const guestIds = data.type === "guest" ? [data.guestId] : data.guestIds;
+    const remaining = table.capacity - (seatedByTable.get(table.id)?.length ?? 0);
+    if (remaining < guestIds.length) {
+      showToast(
+        remaining <= 0
+          ? `${table.name} is full`
+          : `Only ${remaining} seat${remaining === 1 ? "" : "s"} left at ${table.name} — this group needs ${guestIds.length}`,
+      );
+      return;
+    }
+
+    startTransition(async () => {
+      applyAssignment({ kind: "assign", guestIds, tableId: table.id, eventId: props.event.id });
+      if (data.type === "guest") await assignGuest(data.guestId, props.event.id, table.id);
+      else await assignHousehold(data.guestIds, props.event.id, table.id);
+    });
+  }
+
+  function handleUnassign(guestId: string) {
+    startTransition(async () => {
+      applyAssignment({ kind: "unassign", guestId });
+      await unassignGuest(guestId, props.event.id);
+    });
+  }
+
+  function handleTableClick(tableId: string) {
+    // A click that lands right after a table drag is the tail of that drag, not a toggle.
+    if (performance.now() - lastTableDragEnd.current < 300) return;
+    setOpenTableId((cur) => (cur === tableId ? null : tableId));
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <div className={`flex flex-col gap-5 ${pending ? "opacity-80" : ""}`}>
+    <DndContext id="seating-dnd" sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div className="flex flex-col gap-5">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <h1 className="text-[22px] font-semibold text-ink">Seating — {props.event.name}</h1>
@@ -152,16 +267,33 @@ export function SeatingCanvas(props: {
         {adding && <AddTableForm eventId={props.event.id} nextNumber={props.tables.length + 1} onDone={() => setAdding(false)} />}
 
         <div className="flex items-start gap-4">
-          <div className="relative h-[640px] flex-1 overflow-hidden rounded-[14px] border border-[#e9e7da] bg-paper">
+          <div
+            ref={canvasRef}
+            className="relative h-[640px] flex-1 overflow-hidden rounded-[14px] border border-[#e9e7da] bg-paper"
+            style={{ backgroundImage: "radial-gradient(#e6e3d5 1px, transparent 1px)", backgroundSize: `${GRID * 2}px ${GRID * 2}px` }}
+          >
             {props.tables.map((t) => {
-              const seated = props.assignments.filter((a) => a.table_id === t.id);
+              const seated = seatedByTable.get(t.id) ?? [];
+              const pos = tablePos(t);
+              const dims = t.shape !== "round" ? RECT_DIMS : ROUND_DIMS;
               return (
                 <TableNode
                   key={t.id}
                   table={t}
+                  pos={pos}
                   seatedNames={seated.map((s) => guestById.get(s.guest_id)?.name ?? "")}
                   dietaryCount={seated.filter((s) => guestById.get(s.guest_id)?.dietary).length}
-                  onUnassign={(guestId) => startTransition(() => unassignGuest(guestId, props.event.id))}
+                  dropState={
+                    dragCount === 0 ? "idle" : t.capacity - seated.length >= dragCount ? "eligible" : "blocked"
+                  }
+                  isOpen={openTableId === t.id}
+                  flip={canvasW > 0 && pos.x + dims.w + POPOVER_W + 16 > canvasW}
+                  onToggle={() => handleTableClick(t.id)}
+                  onUnassign={handleUnassign}
+                  onDelete={() => startTransition(async () => {
+                    setOpenTableId(null);
+                    await removeTable(t.id);
+                  })}
                   assignments={seated}
                   guestById={guestById}
                 />
@@ -172,6 +304,19 @@ export function SeatingCanvas(props: {
                 No tables yet — click &quot;Add table&quot; to start the room.
               </p>
             )}
+
+            <AnimatePresence>
+              {toast && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="absolute left-1/2 top-3 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-[12.5px] font-medium text-cream shadow-[0_10px_24px_rgba(28,35,27,0.25)]"
+                >
+                  {toast}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <aside className="flex w-[280px] flex-shrink-0 flex-col gap-3 rounded-[14px] border border-hairline p-5">
@@ -199,16 +344,15 @@ export function SeatingCanvas(props: {
         </div>
       </div>
 
-      <DragOverlay>
-        {dragging && (
-          <motion.div
-            initial={{ scale: 1 }}
-            animate={{ scale: 1.04 }}
-            className="flex items-center gap-2 rounded-[10px] border-[1.5px] border-olive bg-white px-3.5 py-2.5 shadow-[0_12px_28px_rgba(28,35,27,0.18)]"
-          >
+      <DragOverlay dropAnimation={null}>
+        {dragging && dragging.type !== "table" && (
+          <div className="flex rotate-2 items-center gap-2 rounded-[10px] border-[1.5px] border-olive bg-white px-3.5 py-2.5 shadow-[0_14px_32px_rgba(28,35,27,0.22)]">
             <span className="h-2 w-2 rounded-full bg-rose" />
             <span className="whitespace-nowrap text-[12.5px] font-semibold text-ink">{dragging.label}</span>
-          </motion.div>
+            {dragging.count > 1 && (
+              <span className="rounded-full bg-blush px-2 py-0.5 text-[10.5px] font-semibold text-rose">{dragging.count} guests</span>
+            )}
+          </div>
         )}
       </DragOverlay>
     </DndContext>
@@ -225,7 +369,9 @@ function DraggableGuest(props: { guestId: string; name: string; ageType: string;
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`flex cursor-grab items-center gap-2.5 rounded-[9px] border border-hairline bg-paper px-3 py-2.5 ${isDragging ? "opacity-40" : ""}`}
+      className={`flex cursor-grab touch-none select-none items-center gap-2.5 rounded-[9px] border border-hairline bg-paper px-3 py-2.5 transition-colors hover:border-olive active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
     >
       <span className="text-muted">⠿</span>
       <span className="flex-1 truncate text-[13px] font-medium text-ink">
@@ -247,7 +393,9 @@ function DraggableHousehold(props: { householdId: string; name: string; guestIds
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`cursor-grab text-[11px] font-semibold tracking-[0.08em] text-muted uppercase hover:text-rose ${isDragging ? "opacity-40" : ""}`}
+      className={`cursor-grab touch-none select-none text-[11.5px] font-bold tracking-[0.08em] text-ink uppercase hover:text-rose active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
     >
       {props.name}
     </div>
@@ -256,17 +404,25 @@ function DraggableHousehold(props: { householdId: string; name: string; guestIds
 
 function TableNode(props: {
   table: SeatingTableRow;
+  pos: { x: number; y: number };
   seatedNames: string[];
   dietaryCount: number;
+  dropState: "idle" | "eligible" | "blocked";
+  isOpen: boolean;
+  flip: boolean;
+  onToggle: () => void;
+  onUnassign: (guestId: string) => void;
+  onDelete: () => void;
   assignments: SeatAssignmentRow[];
   guestById: Map<string, { name: string }>;
-  onUnassign: (guestId: string) => void;
 }) {
   const t = props.table;
-  const [open, setOpen] = useState(false);
   const full = props.seatedNames.length >= t.capacity;
 
-  const { setNodeRef: dropRef, isOver } = useDroppable({ id: `table:${t.id}`, data: { tableId: t.id } });
+  const { setNodeRef: dropRef, isOver } = useDroppable({
+    id: `table:${t.id}`,
+    data: { tableId: t.id },
+  });
   const {
     attributes,
     listeners,
@@ -275,15 +431,27 @@ function TableNode(props: {
     isDragging,
   } = useDraggable({
     id: `tablemove:${t.id}`,
-    data: { type: "table", tableId: t.id, posX: t.pos_x, posY: t.pos_y, label: t.name },
+    data: { type: "table", tableId: t.id, label: t.name },
   });
 
   const isRect = t.shape !== "round";
   const style: React.CSSProperties = {
-    left: t.pos_x,
-    top: t.pos_y,
+    left: props.pos.x,
+    top: props.pos.y,
     transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+    zIndex: isDragging || props.isOpen ? 10 : undefined,
   };
+
+  const borderClass =
+    props.dropState === "blocked"
+      ? "border-[#d8d5c8] opacity-45"
+      : props.dropState === "eligible"
+        ? isOver
+          ? "scale-[1.04] border-olive shadow-[0_0_0_5px_#dcedd0]"
+          : "border-olive shadow-[0_0_0_3px_#eef5e6]"
+        : full
+          ? "border-olive"
+          : "border-dashed border-rose";
 
   return (
     <div ref={dropRef} className="absolute" style={style}>
@@ -291,23 +459,33 @@ function TableNode(props: {
         ref={dragRef}
         {...listeners}
         {...attributes}
-        onClick={() => setOpen((o) => !o)}
-        className={`flex cursor-grab flex-col items-center justify-center gap-0.5 border-[1.5px] bg-white text-center transition-shadow ${
+        onClick={props.onToggle}
+        className={`flex cursor-grab touch-none select-none flex-col items-center justify-center gap-0.5 border-[1.5px] bg-white text-center transition-[transform,box-shadow,opacity] duration-150 active:cursor-grabbing ${
           isRect ? "h-[96px] w-[280px] rounded-[14px]" : "h-[136px] w-[136px] rounded-full"
-        } ${isOver ? "border-olive shadow-[0_0_0_4px_#e9f4e1]" : full ? "border-olive" : "border-dashed border-rose"} ${
-          isDragging ? "opacity-60" : ""
-        }`}
+        } ${borderClass} ${isDragging ? "opacity-60" : ""}`}
       >
         <span className="text-[13.5px] font-semibold text-ink">{t.name}</span>
         <span className={`text-[12px] font-medium ${full ? "text-olive" : "text-rose"}`}>
-          {props.seatedNames.length} of {t.capacity} seated
+          {props.dropState === "eligible"
+            ? `${t.capacity - props.seatedNames.length} open`
+            : `${props.seatedNames.length} of ${t.capacity} seated`}
         </span>
         {props.dietaryCount > 0 && (
           <span className="text-[10.5px] text-muted">{props.dietaryCount} dietary</span>
         )}
       </div>
-      {open && props.assignments.length > 0 && (
-        <div className="absolute left-full top-0 z-10 ml-2 w-[190px] rounded-[10px] border border-hairline bg-white p-2 shadow-lg">
+      {props.isOpen && (
+        <div
+          className={`absolute top-0 z-20 w-[200px] rounded-[10px] border border-hairline bg-white p-2 shadow-lg ${
+            props.flip ? "right-full mr-2" : "left-full ml-2"
+          }`}
+        >
+          <div className="flex items-center gap-1.5 px-1.5 pb-1.5 pt-0.5">
+            <span className="flex-1 truncate text-[11px] font-semibold tracking-[0.06em] text-muted uppercase">{t.name}</span>
+            <span className="text-[10.5px] text-muted">
+              {props.seatedNames.length}/{t.capacity}
+            </span>
+          </div>
           {props.assignments.map((a) => (
             <div key={a.guest_id} className="flex items-center gap-1.5 px-1.5 py-1">
               <span className="flex-1 truncate text-[12px] text-ink">{props.guestById.get(a.guest_id)?.name}</span>
@@ -323,6 +501,21 @@ function TableNode(props: {
               </button>
             </div>
           ))}
+          {!props.assignments.length && (
+            <>
+              <p className="px-1.5 py-1 text-[12px] text-muted">No guests seated yet.</p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.onDelete();
+                }}
+                className="mt-1 w-full rounded-[7px] px-1.5 py-1.5 text-left text-[11.5px] font-medium text-rose hover:bg-blush"
+              >
+                Delete table
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

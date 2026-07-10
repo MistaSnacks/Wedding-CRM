@@ -58,6 +58,29 @@ export function validateSubmission(
   return { ok: true };
 }
 
+/**
+ * How many NEW plus-ones the UI may offer. Mirrors validateSubmission: a slot
+ * only counts as open when the party-size cap also has headroom for it, so the
+ * guest is never offered a card the server would reject.
+ */
+export function openPlusOneSlots(rules: HouseholdRules, known: KnownGuest[]): number {
+  const existingPlusOnes = known.filter((k) => k.origin === "plus_one").length;
+  const bySlots = rules.plusOneSlots - existingPlusOnes;
+  const byPartySize = rules.maxPartySize - known.length;
+  return Math.max(0, Math.min(bySlots, byPartySize));
+}
+
+/**
+ * Admin-side guard: a household must always be able to use what it was
+ * granted. Raises maxPartySize so named guests + plus-one slots fit.
+ */
+export function normalizeHouseholdRules(rules: HouseholdRules, namedGuestCount: number): HouseholdRules {
+  return {
+    ...rules,
+    maxPartySize: Math.max(1, rules.maxPartySize, namedGuestCount + rules.plusOneSlots),
+  };
+}
+
 export type NamedKnownGuest = KnownGuest & { firstName: string; lastName: string };
 export type IncomingPlusOne<R> = { firstName: string; lastName: string; responses: R[] };
 

@@ -244,6 +244,24 @@ export async function update(
   });
 }
 
+export async function remove(scope: WeddingScope, id: string, actorId?: string): Promise<void> {
+  const { data, error } = await scope.db
+    .from("households")
+    .delete()
+    .eq("wedding_id", scope.weddingId)
+    .eq("id", id)
+    .select("display_name")
+    .single();
+  if (error) throw new Error(error.message);
+  // Wedding-level log: the household's own activity rows cascade away with it.
+  await activity.log(scope, {
+    actorType: "admin",
+    actorId,
+    action: "household.removed",
+    payload: { name: data.display_name },
+  });
+}
+
 export async function setPreferredLocale(scope: WeddingScope, id: string, locale: string): Promise<void> {
   await scope.db
     .from("households")

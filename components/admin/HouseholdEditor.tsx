@@ -1,4 +1,5 @@
-import { updateHousehold } from "@/app/admin/(dashboard)/guests/actions";
+import { updateHousehold, deleteHousehold } from "@/app/admin/(dashboard)/guests/actions";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
 
 export function HouseholdEditor(props: {
   householdId: string;
@@ -35,7 +36,13 @@ export function HouseholdEditor(props: {
         placeholder="Internal notes (never shown to guests)"
         className="rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-olive"
       />
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <ConfirmButton
+          label="Delete household"
+          confirmLabel="Delete household and all guests?"
+          variant="danger"
+          action={deleteHousehold.bind(null, props.householdId)}
+        />
         <button className="rounded-lg bg-olive-deep px-4 py-2 text-[12.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] motion-reduce:transition-none">
           Save changes
         </button>

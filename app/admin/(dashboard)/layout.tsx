@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import { defaultScope } from "@/lib/data/scope";
-import { SideNav } from "@/components/admin/SideNav";
-import { signOut } from "@/app/admin/login/actions";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { FilmBackdrop } from "@/components/FilmBackdrop";
 import Link from "next/link";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -22,29 +22,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const initials = admin.email.slice(0, 2).toUpperCase();
 
+  const dateLabel =
+    wedding?.wedding_date && daysOut !== null
+      ? `${new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(
+          new Date(wedding.wedding_date),
+        )} · ${daysOut} days out`
+      : null;
+
   return (
-    <div className="flex min-h-dvh bg-white">
-      {/* Sidebar — persists full height to the top */}
-      <aside className="flex w-[236px] flex-shrink-0 flex-col gap-7 border-r border-[#e9e7da] bg-paper px-5 py-7">
-        <div className="px-2">
-          <p className="font-display text-2xl font-semibold text-ink">{wedding?.couple_names ?? "Wedding"}</p>
-          {wedding?.wedding_date && daysOut !== null && (
-            <p className="mt-0.5 text-xs font-medium text-muted">
-              {new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(wedding.wedding_date))} ·{" "}
-              {daysOut} days out
-            </p>
-          )}
-        </div>
-        <SideNav />
-        <form action={signOut} className="mt-auto px-2">
-          <button className="text-xs font-medium text-muted underline-offset-2 hover:text-rose hover:underline">
-            Sign out
-          </button>
-        </form>
-      </aside>
+    <div className="relative flex min-h-dvh watercolor-bg overflow-hidden">
+      <FilmBackdrop />
+      {/* Sidebar — translucent so the film shows through; collapsible */}
+      <AdminSidebar coupleNames={wedding?.couple_names ?? "Wedding"} dateLabel={dateLabel} />
 
       {/* Main column: blush top bar (content-width only), then the page */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3.5 border-b border-blush-border bg-blush px-9 py-3 no-print">
           <div className="flex w-[320px] items-center gap-2.5 rounded-full border border-blush-border bg-white px-3.5 py-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B17565" strokeWidth="2.2" strokeLinecap="round">

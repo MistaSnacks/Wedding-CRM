@@ -3,6 +3,8 @@ import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import type { HouseholdFilter } from "@/lib/types";
 import { NewHouseholdForm } from "@/components/admin/NewHouseholdForm";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { deleteHousehold } from "@/app/admin/(dashboard)/guests/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +95,8 @@ export default async function GuestsPage({
               <th className="px-4 py-3">RULES</th>
               <th className="px-4 py-3">STATUS</th>
               <th className="px-4 py-3 text-right">CODE</th>
+              <th className="px-4 py-3" />
+
             </tr>
           </thead>
           <tbody>
@@ -117,11 +121,14 @@ export default async function GuestsPage({
                   </span>
                 </td>
                 <td className="px-4 py-3.5 text-right font-mono text-[12px] tracking-wider text-muted">{h.invite_code}</td>
+                <td className="px-4 py-3.5 text-right">
+                  <ConfirmButton label="Delete" confirmLabel="Delete all?" action={deleteHousehold.bind(null, h.id)} />
+                </td>
               </tr>
             ))}
             {!rows.length && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-[13px] text-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-[13px] text-muted">
                   No households match. Try a different filter, or import your guest list.
                 </td>
               </tr>

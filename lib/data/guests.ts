@@ -55,6 +55,17 @@ export async function create(
   return data as GuestRow;
 }
 
+export async function countNamed(scope: WeddingScope, householdId: string): Promise<number> {
+  const { count, error } = await scope.db
+    .from("guests")
+    .select("id", { count: "exact", head: true })
+    .eq("wedding_id", scope.weddingId)
+    .eq("household_id", householdId)
+    .eq("origin", "named");
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function update(
   scope: WeddingScope,
   id: string,

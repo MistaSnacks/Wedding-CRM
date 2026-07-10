@@ -19,9 +19,3 @@ export const DEFAULT_WEDDING_ID = "11111111-1111-1111-1111-111111111111";
 export function defaultScope(): WeddingScope {
   return forWedding(DEFAULT_WEDDING_ID);
 }
-
-export function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message);
-  if (res.data === null) throw new Error("not found");
-  return res.data;
-}

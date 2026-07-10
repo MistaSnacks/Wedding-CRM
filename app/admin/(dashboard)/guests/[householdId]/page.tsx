@@ -7,6 +7,9 @@ import { env } from "@/lib/env";
 import { CopyButton } from "@/components/admin/CopyButton";
 import { ResponseCell } from "@/components/admin/ResponseCell";
 import { HouseholdEditor } from "@/components/admin/HouseholdEditor";
+import { AddGuestForm } from "@/components/admin/AddGuestForm";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { removeGuest } from "@/app/admin/(dashboard)/guests/actions";
 import type { MealOptionRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -112,8 +115,11 @@ export default async function HouseholdDetailPage({
                   <span className="text-muted">No dietary notes</span>
                 )}
               </div>
+              <ConfirmButton label="Remove" confirmLabel="Confirm remove?" action={removeGuest.bind(null, detail.id, g.id)} />
             </div>
           ))}
+
+          <AddGuestForm householdId={detail.id} />
 
           <HouseholdEditor
             householdId={detail.id}

@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { saveRsvp, rememberLocale } from "@/app/(guest)/rsvp/h/[token]/actions";
+import { openPlusOneSlots } from "@/lib/domain/invitation-rules";
 import type { GuestRow, EventRow, MealOptionRow, QuestionRow, ResponseRow, Attending, Locale } from "@/lib/types";
 import type { GuestTableInfo } from "@/app/(guest)/rsvp/h/[token]/page";
 
-type Step = "guests" | "extras" | "review" | "confirmed";
+type Step = "guests" | "meals" | "extras" | "review" | "confirmed";
 
 type GuestState = {
   byEvent: Record<string, { attending: Attending; mealOptionId: string | null }>;
@@ -41,8 +42,12 @@ export function RsvpFlow(props: {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const existingPlusOnes = props.guests.filter((g) => g.origin === "plus_one").length;
-  const openSlots = Math.max(0, props.household.plusOneSlots - existingPlusOnes);
+  // Slots are only offered when the server would also accept them: both a
+  // plus-one grant AND party-size headroom must exist.
+  const openSlots = openPlusOneSlots(
+    { maxPartySize: props.household.maxPartySize, plusOneSlots: props.household.plusOneSlots },
+    props.guests.map((g) => ({ id: g.id, origin: g.origin })),
+  );
 
   const [guestState, setGuestState] = useState<Record<string, GuestState>>(() => {
     const init: Record<string, GuestState> = {};
@@ -147,6 +152,13 @@ export function RsvpFlow(props: {
     props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes"),
   );
 
+  // Plus-ones are implicitly attending; the meal step covers both.
+  const namedPlusOnes = plusOnes.filter((p) => p.firstName.trim());
+  const hasMealStep = anyoneAttending || namedPlusOnes.length > 0;
+  const stepAfterGuests: Step = hasMealStep ? "meals" : props.questions.length ? "extras" : "review";
+  const stepAfterMeals: Step = props.questions.length ? "extras" : "review";
+  const stepsLeftFromGuests = (hasMealStep ? 1 : 0) + props.questions.length;
+
   if (props.deadlinePassed && props.household.rsvpStatus !== "completed") {
     return (
       <Shell displayName={props.household.displayName} sub={t("deadlinePassed")} eventNames={eventNames} deadlineText="" />
@@ -203,40 +215,6 @@ export function RsvpFlow(props: {
                     );
                   })}
                 </div>
-                {props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes") && (
-                  <div className="mt-4">
-                    <p className="text-[11px] font-semibold tracking-widest text-muted">{t("mealLabel")}</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {props.meals
-                        .filter((m) => (g.age_type === "adult" ? !m.is_kids_meal : true))
-                        .map((m) => {
-                          const selected = guestState[g.id].byEvent[props.events[0].id]?.mealOptionId === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => setMeal(g.id, m.id)}
-                              className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
-                                selected
-                                  ? "bg-olive-deep text-cream"
-                                  : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
-                              }`}
-                            >
-                              {m.name}
-                            </button>
-                          );
-                        })}
-                    </div>
-                    <input
-                      value={guestState[g.id].dietary}
-                      onChange={(ev) =>
-                        setGuestState((s) => ({ ...s, [g.id]: { ...s[g.id], dietary: ev.target.value } }))
-                      }
-                      placeholder={t("dietaryPlaceholder")}
-                      className="mt-3 w-full rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
-                    />
-                  </div>
-                )}
               </div>
             ))}
 
@@ -269,40 +247,6 @@ export function RsvpFlow(props: {
                     placeholder={t("lastName")}
                     className="w-1/2 rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
                   />
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {props.meals
-                    .filter((m) => !m.is_kids_meal)
-                    .map((m) => {
-                      const selected = p.byEvent[props.events[0]?.id]?.mealOptionId === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() =>
-                            setPlusOnes((ps) =>
-                              ps.map((x, j) =>
-                                j === i
-                                  ? {
-                                      ...x,
-                                      byEvent: Object.fromEntries(
-                                        props.events.map((e) => [e.id, { attending: "yes" as Attending, mealOptionId: m.id }]),
-                                      ),
-                                    }
-                                  : x,
-                              ),
-                            )
-                          }
-                          className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
-                            selected
-                              ? "bg-olive-deep text-cream"
-                              : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
-                          }`}
-                        >
-                          {m.name}
-                        </button>
-                      );
-                    })}
                 </div>
               </div>
             ))}
@@ -340,12 +284,131 @@ export function RsvpFlow(props: {
             <button
               type="button"
               disabled={pending}
-              onClick={() => advance(props.questions.length ? "extras" : "review")}
+              onClick={() => advance(stepAfterGuests)}
               className="mt-2 w-full rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
             >
-              {pending ? "…" : props.questions.length ? t("questionsLeft", { count: props.questions.length }) : t("continue")}
+              {pending ? "…" : stepsLeftFromGuests ? t("questionsLeft", { count: stepsLeftFromGuests }) : t("continue")}
             </button>
             <p className="text-center text-xs text-[#75796a]">{t("autosave")}</p>
+          </motion.div>
+        )}
+
+        {step === "meals" && (
+          <motion.div key="meals" {...stepMotion} className="mt-7 flex w-full flex-col gap-4">
+            <h2 className="font-display text-center text-2xl font-semibold text-olive-deep">{t("mealsTitle")}</h2>
+            {props.guests
+              .filter((g) => props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes"))
+              .map((g) => (
+                <div key={g.id} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="font-display flex-1 text-xl font-semibold text-olive-deep">
+                      {g.first_name} {g.last_name}
+                    </h3>
+                    <span className="rounded-full bg-sage-band px-2.5 py-1 text-[10.5px] font-semibold tracking-wider text-olive">
+                      {t(g.age_type)}
+                    </span>
+                  </div>
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {props.meals
+                      .filter((m) => (g.age_type === "adult" ? !m.is_kids_meal : true))
+                      .map((m) => {
+                        const selected = guestState[g.id].byEvent[props.events[0]?.id]?.mealOptionId === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setMeal(g.id, m.id)}
+                            className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
+                              selected
+                                ? "bg-olive-deep text-cream"
+                                : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
+                            }`}
+                          >
+                            {m.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <input
+                    value={guestState[g.id].dietary}
+                    onChange={(ev) =>
+                      setGuestState((s) => ({ ...s, [g.id]: { ...s[g.id], dietary: ev.target.value } }))
+                    }
+                    placeholder={t("dietaryPlaceholder")}
+                    className="mt-3 w-full rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
+                  />
+                </div>
+              ))}
+            {plusOnes
+              .map((p, i) => ({ p, i }))
+              .filter(({ p }) => p.firstName.trim())
+              .map(({ p, i }) => (
+                <div key={`p1-${i}`} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="font-display flex-1 text-xl font-semibold text-olive-deep">
+                      {p.firstName} {p.lastName}
+                    </h3>
+                    <span className="rounded-full bg-sage-band px-2.5 py-1 text-[10.5px] font-semibold tracking-wider text-olive">
+                      {t("adult")}
+                    </span>
+                  </div>
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {props.meals
+                      .filter((m) => !m.is_kids_meal)
+                      .map((m) => {
+                        const selected = p.byEvent[props.events[0]?.id]?.mealOptionId === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() =>
+                              setPlusOnes((ps) =>
+                                ps.map((x, j) =>
+                                  j === i
+                                    ? {
+                                        ...x,
+                                        byEvent: Object.fromEntries(
+                                          props.events.map((e) => [
+                                            e.id,
+                                            { attending: "yes" as Attending, mealOptionId: m.id },
+                                          ]),
+                                        ),
+                                      }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
+                              selected
+                                ? "bg-olive-deep text-cream"
+                                : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
+                            }`}
+                          >
+                            {m.name}
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              ))}
+            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStep("guests")}
+                className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
+              >
+                {t("back")}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => advance(stepAfterMeals)}
+                className="flex-1 rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
+              >
+                {pending ? "…" : t("continue")}
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -386,7 +449,7 @@ export function RsvpFlow(props: {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setStep("guests")}
+                onClick={() => setStep(hasMealStep ? "meals" : "guests")}
                 className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
               >
                 {t("back")}
@@ -424,20 +487,25 @@ export function RsvpFlow(props: {
               })}
               {plusOnes
                 .filter((p) => p.firstName.trim())
-                .map((p, i) => (
-                  <div key={i} className="flex items-center justify-between border-b border-[#f1f0ea] py-3 last:border-0">
-                    <span className="text-[14px] font-medium text-ink">
-                      {p.firstName} {p.lastName}
-                    </span>
-                    <span className="text-[13px] font-medium text-olive">{t("reviewAttending")}</span>
-                  </div>
-                ))}
+                .map((p, i) => {
+                  const meal = props.meals.find((m) => m.id === p.byEvent[props.events[0]?.id]?.mealOptionId);
+                  return (
+                    <div key={i} className="flex items-center justify-between border-b border-[#f1f0ea] py-3 last:border-0">
+                      <span className="text-[14px] font-medium text-ink">
+                        {p.firstName} {p.lastName}
+                      </span>
+                      <span className="text-[13px] font-medium text-olive">
+                        {t("reviewAttending")}{meal ? ` · ${meal.name}` : ` · ${t("reviewNoMeal")}`}
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
             {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setStep("guests")}
+                onClick={() => setStep(props.questions.length ? "extras" : hasMealStep ? "meals" : "guests")}
                 className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
               >
                 {t("back")}
