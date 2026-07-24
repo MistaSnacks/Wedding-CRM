@@ -151,9 +151,9 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://guest-crm-camrens-projects-24b42280.vercel.app"
+site_url = "https://rsvp.julietandjuan.com"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://guest-crm-camrens-projects-24b42280.vercel.app/admin/auth/callback", "http://localhost:3000/admin/auth/callback", "http://127.0.0.1:3000"]
+additional_redirect_urls = ["https://rsvp.julietandjuan.com/admin/auth/callback", "http://localhost:3006/admin/auth/callback", "http://localhost:3000/admin/auth/callback", "http://127.0.0.1:3000"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to the local API URL (http://127.0.0.1:<port>/auth/v1).
@@ -217,19 +217,26 @@ otp_length = 6
 # 24h so demo sign-in links don't expire on the client; tighten after launch.
 otp_expiry = 86400
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# Production SMTP — routes all auth email (magic link, invite) through Resend
+# so it's branded and delivers reliably to any address. User is literally
+# "resend"; the password is the Resend API key, read from the environment at
+# push time (must be exported when running `supabase config push`).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 587
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "noreply@julietandjuan.com"
+sender_name = "Juliet & Juan"
 
 [auth.email.template.invite]
 subject = "You're invited to your wedding dashboard — Juliet & Juan"
 content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Your sign-in link — Juliet & Juan"
+content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
