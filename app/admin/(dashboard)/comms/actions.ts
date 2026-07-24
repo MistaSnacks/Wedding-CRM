@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireEditor } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import * as comms from "@/lib/data/comms";
@@ -13,7 +13,7 @@ import type { HouseholdFilter } from "@/lib/types";
 export type SendSummary = { sent: number; skippedNoEmail: number };
 
 export async function sendCampaign(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
 
   const type = String(formData.get("type") ?? "reminder") as CommType;

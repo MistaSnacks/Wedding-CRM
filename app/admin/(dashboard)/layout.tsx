@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="relative flex min-h-dvh watercolor-bg overflow-hidden">
       <FilmBackdrop />
       {/* Sidebar — translucent so the film shows through; collapsible */}
-      <AdminSidebar coupleNames={wedding?.couple_names ?? "Wedding"} dateLabel={dateLabel} />
+      <AdminSidebar coupleNames={wedding?.couple_names ?? "Wedding"} dateLabel={dateLabel} role={admin.role} />
 
       {/* Main column: blush top bar (content-width only), then the page */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
@@ -57,12 +57,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose text-xs font-semibold text-blush">
             {initials}
           </span>
-          <Link
-            href="/admin/guests?new=1"
-            className="rounded-full bg-olive-deep px-4 py-2 text-[13px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-olive-deeper hover:shadow-[0_6px_14px_rgba(42,53,23,0.3)] active:scale-[0.97] motion-reduce:transition-none"
-          >
-            ＋ New household
-          </Link>
+          {admin.role !== "viewer" && (
+            <Link
+              href="/admin/guests?new=1"
+              className="rounded-full bg-olive-deep px-4 py-2 text-[13px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-olive-deeper hover:shadow-[0_6px_14px_rgba(42,53,23,0.3)] active:scale-[0.97] motion-reduce:transition-none"
+            >
+              ＋ New household
+            </Link>
+          )}
         </header>
         <main className="min-w-0 flex-1 px-9 py-7">{children}</main>
       </div>

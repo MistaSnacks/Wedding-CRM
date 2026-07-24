@@ -9,9 +9,11 @@ const STORAGE_KEY = "admin-sidebar-collapsed";
 export function AdminSidebar({
   coupleNames,
   dateLabel,
+  role,
 }: {
   coupleNames: string;
   dateLabel: string | null;
+  role: "owner" | "editor" | "viewer";
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -71,7 +73,7 @@ export function AdminSidebar({
         </div>
       )}
 
-      <SideNav collapsed={collapsed} />
+      <SideNav collapsed={collapsed} role={role} />
 
       <form action={signOut} className={`mt-auto ${collapsed ? "flex justify-center" : "px-2"}`}>
         {collapsed ? (

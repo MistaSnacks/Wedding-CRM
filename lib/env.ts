@@ -8,6 +8,9 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_WEBHOOK_SECRET: z.string().optional(),
   RESEND_FROM: z.string().default("Juliet & Juan <onboarding@resend.dev>"),
+  /** Where guest replies go. Guests do reply to invitations; without this they'd
+   *  bounce to the unmonitored send address. Set to the couple's inbox. */
+  RESEND_REPLY_TO: z.string().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
