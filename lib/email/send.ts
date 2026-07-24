@@ -12,6 +12,8 @@ export async function sendEmail(args: {
   to: string;
   subject: string;
   html: string;
+  /** Overrides RESEND_REPLY_TO for this send (e.g. auth mail wants none). */
+  replyTo?: string | null;
 }): Promise<{ id: string | null }> {
   const e = env();
   if (!e.RESEND_API_KEY) {
@@ -24,11 +26,13 @@ export async function sendEmail(args: {
     return { id: null };
   }
   const resend = new Resend(e.RESEND_API_KEY);
+  const replyTo = args.replyTo === undefined ? e.RESEND_REPLY_TO : args.replyTo;
   const { data, error } = await resend.emails.send({
     from: e.RESEND_FROM,
     to: args.to,
     subject: args.subject,
     html: args.html,
+    ...(replyTo ? { replyTo } : {}),
   });
   if (error) {
     console.error("[email] send failed:", error.message);
@@ -58,7 +62,7 @@ ${
     : ""
 }
 </table>
-<table role="presentation" width="520"><tr><td align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8a8f86;padding-top:16px;">June 12, 2027 · Tulum, México</td></tr></table>
+<table role="presentation" width="520"><tr><td align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8a8f86;padding-top:16px;">June 12, 2027 · Guadalajara, México</td></tr></table>
 </td></tr></table></body></html>`;
 }
 

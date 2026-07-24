@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-const NAV: { href: string; label: string; icon: ReactNode }[] = [
+type NavItem = { href: string; label: string; icon: ReactNode; ownerOnly?: boolean };
+
+const NAV: NavItem[] = [
   {
     href: "/admin",
     label: "Overview",
@@ -74,13 +76,32 @@ const NAV: { href: string; label: string; icon: ReactNode }[] = [
       </>
     ),
   },
+  {
+    href: "/admin/team",
+    label: "Team",
+    ownerOnly: true,
+    icon: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+  },
 ];
 
-export function SideNav({ collapsed = false }: { collapsed?: boolean }) {
+export function SideNav({
+  collapsed = false,
+  role,
+}: {
+  collapsed?: boolean;
+  role: "owner" | "editor" | "viewer";
+}) {
   const pathname = usePathname();
   return (
     <nav className={`flex flex-col gap-0.5 ${collapsed ? "items-center" : ""}`}>
-      {NAV.map((item) => {
+      {NAV.filter((item) => !item.ownerOnly || role === "owner").map((item) => {
         const active =
           item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         return (

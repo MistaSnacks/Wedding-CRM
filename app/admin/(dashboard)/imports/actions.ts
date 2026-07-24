@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireEditor } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import * as importsData from "@/lib/data/imports";
 import { validateCsv, type CsvMapping } from "@/lib/csv";
@@ -16,7 +16,7 @@ export async function commitCsvImport(
   rows: Record<string, string>[],
   mapping: CsvMapping,
 ): Promise<CommitResult> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
 
   const validation = validateCsv(rows, mapping);

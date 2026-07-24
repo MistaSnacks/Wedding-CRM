@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireEditor } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import * as guests from "@/lib/data/guests";
@@ -12,7 +12,7 @@ import { normalizeHouseholdRules } from "@/lib/domain/invitation-rules";
 import type { SubmitRsvpPayload, AgeType } from "@/lib/types";
 
 export async function createHousehold(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
 
   const displayName = String(formData.get("display_name") ?? "").trim();
@@ -60,7 +60,7 @@ export async function createHousehold(formData: FormData): Promise<void> {
 }
 
 export async function updateHousehold(householdId: string, formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
   const rules = normalizeHouseholdRules(
     {
@@ -86,7 +86,7 @@ export async function updateHousehold(householdId: string, formData: FormData): 
 }
 
 export async function addGuest(householdId: string, formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
   const firstName = String(formData.get("first_name") ?? "").trim();
   if (!firstName) return;
@@ -114,7 +114,7 @@ export async function addGuest(householdId: string, formData: FormData): Promise
 }
 
 export async function deleteHousehold(householdId: string): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
   await households.remove(scope, householdId, admin.userId);
   revalidatePath("/admin/guests");
@@ -122,7 +122,7 @@ export async function deleteHousehold(householdId: string): Promise<void> {
 }
 
 export async function removeGuest(householdId: string, guestId: string): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
   await guests.remove(scope, guestId, admin.userId);
   revalidatePath(`/admin/guests/${householdId}`);
@@ -136,7 +136,7 @@ export async function adminSetResponse(
   attending: "yes" | "no" | "pending",
   mealOptionId?: string | null,
 ): Promise<void> {
-  const admin = await requireAdmin();
+  const admin = await requireEditor();
   const scope = forWedding(admin.weddingId);
   const payload: SubmitRsvpPayload = {
     responses: [{ guest_id: guestId, event_id: eventId, attending, meal_option_id: mealOptionId ?? null }],
