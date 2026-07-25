@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forWedding, type WeddingScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
+import { mealCounts } from "@/lib/data/metrics";
 import type { ResponseRow, MealOptionRow, EventRow, SeatingTableRow, SeatAssignmentRow } from "@/lib/types";
 
 type Table = { name: string; rows: Array<Record<string, string | number>> };
@@ -127,9 +128,9 @@ async function buildReport(scope: WeddingScope, report: string): Promise<Table> 
     case "meals":
       return {
         name: "Meal Counts",
-        rows: meals.map((m) => ({
-          Meal: m.name,
-          Count: responses.filter((r) => r.attending === "yes" && r.meal_option_id === m.id).length,
+        rows: mealCounts(responses, meals).map(({ name, count }) => ({
+          Meal: name,
+          Count: count,
         })),
       };
     case "dietary":
