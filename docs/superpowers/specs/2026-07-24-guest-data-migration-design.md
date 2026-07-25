@@ -2,7 +2,7 @@
 
 - **Date:** 2026-07-24
 - **Status:** Approved (design); pending implementation plan
-- **Scope:** One-shot master guest import + recurring Save-the-Date enrichment sync + admin review inbox
+- **Scope:** Extending the in-app CSV importer into a general-purpose ingestion feature, then using it for the one-shot master guest import + recurring Save-the-Date enrichment sync + admin review inbox
 - **Out of scope:** Event management UI (own spec, immediately after this one); seating (`docs/seating-roadmap.md`); the multi-tenant guest entry work (`2026-07-23-multi-tenant-guest-entry-design.md`)
 
 ## Background
@@ -42,6 +42,22 @@ This supersedes the older "wait for ~200 more responses before importing" plan. 
 4. **Ambiguous matches go to a human.** Confident matches auto-apply; everything else lands in an admin review inbox whose decisions persist.
 5. **Google service account + Sheets API** for recurring reads, on a weekly Vercel Cron.
 6. **Rehearsal Dinner** is added as a third event via DB migration. Event CRUD UI is a separate spec.
+7. **The importer is a product feature, not a migration script.** Every couple on the multi-tenant platform will onboard through it. Nothing may be hardcoded to this wedding's column names or cell values.
+
+## Design principle: the importer must stay tenant-agnostic
+
+The Juliet & Juan sheet is a *test case*, not a schema. Every gap below is closed with a general mechanism driven by the wizard's column mapping, never by a literal from this sheet.
+
+| Tempting shortcut | Required instead |
+|---|---|
+| Detect plus-ones by `List == "Plus One"` | An optional **Plus-one** column mapping; any truthy/`plus one`-ish value marks the row |
+| Detect infants by `List == "Baby"` | The existing **Age type** mapping plus `normalizeAge`, which already resolves `baby` → `infant` |
+| Hardcode `Envelope Name` as the grouping column | An optional second grouping mapping labelled **Envelope / invitation name**, with documented fallback order |
+| Hardcode `Wedding RSVP` → Ceremony + Reception | Per-event column mappings the user assigns to their own events |
+| Hardcode meal names | Case-insensitive match against that wedding's own `meal_options`, unmatched values warned |
+| Special-case `Le 1 Household` | Nothing wedding-specific reaches the code; this sheet's quirks live only in tests as fixtures |
+
+A column may feed more than one mapping — this sheet's `List` drives age type, plus-one detection, *and* tags simultaneously. Mappings are independent by design.
 
 ## Architecture
 
@@ -72,7 +88,33 @@ SAVE-THE-DATE SHEET ──(weekly cron)──► sheet_submissions │
                                               └─────────────┘
 ```
 
-## Part 1 — One-shot master import
+## Part 1 — Extending the importer
+
+### What exists today
+
+`/admin/imports` already ships a working wizard (`components/admin/ImportWizard.tsx`): file picker → `parseCsv` → `detectMapping` auto-detection → editable per-field column dropdowns → dry-run preview (household/guest counts, errors, warnings, preview table) → **Commit import** via the `commitCsvImport` server action, which re-validates server-side before writing. 42/42 tests pass.
+
+The shell is sound and is kept: file handling, the mapping UI, the preview table, and the commit action all stay. The gaps are in `lib/csv.ts` `validateCsv` and `lib/data/imports.ts` `commitHouseholds`.
+
+### The eight gaps
+
+Verified against the current code on 2026-07-24. None of these can be worked around by column mapping alone; each needs code.
+
+| # | Gap | Consequence today | Fix |
+|---|---|---|---|
+| 1 | `validateCsv` groups by the household column only | 13 Le relatives collapse into one household sharing one RSVP link | Optional second grouping mapping (envelope), composite key with fallback |
+| 2 | Blank-name rows are discarded — `"Empty name — row skipped."` | Every plus-one placeholder is silently lost (Cruz, Lauren, Mala, Minor, Gonzales, Stephan Nguyen) | Blank-name row inside a group becomes `plus_one_slots += 1` |
+| 3 | No tag support in `CsvMapping`, `ImportHouseholdInput`, or the `households` insert | `List` and the family cluster cannot be imported | Multi-column tag mapping → `households.tags` |
+| 4 | The `guests` insert never sets `origin` | Named plus-ones import as regular named guests | Optional plus-one column mapping → `origin = 'plus_one'` |
+| 5 | No address fields anywhere in the import path | Blocks the whole Save-the-Date enrichment path | Structured address mappings plus a single free-text fallback → `mailing_address` jsonb |
+| 6 | No meal, dietary, or notes mapping | Meal Choice, Dietary Restrictions and Notes are dropped | Add mappings; meals resolve case-insensitively against that wedding's `meal_options` |
+| 7 | `commitHouseholds` invites **every** household to **every** event unconditionally | Rehearsal Dinner "Not Invited" cannot be honored | Per-event column mapping with a not-invited value → omit the `household_event_invites` row |
+| 8 | Per-household insert loop, no transaction | A failure at household 90 of 140 leaves partial data; the run is marked `failed` but nothing rolls back | Commit through a single transactional RPC |
+
+### Two spec corrections
+
+- The `imports` table's `validated` status is declared in `finishRun`'s type but **never used** — `createRun` only fires at commit time, so no dry-run record is ever persisted. Persisting the dry run is new work, not reuse.
+- The dry-run preview is currently client-side only. Server-side re-validation happens at commit, which is correct for safety, but means the preview and the commit can in principle disagree. They must be driven by the same pure function.
 
 ### Grouping
 
@@ -138,7 +180,9 @@ If an envelope name references more people than the group has rows, the dry-run 
 
 ### Safety
 
-The import runs dry-run first, reusing the existing `imports` table `validated → committed` status flow. The dry-run report shows per-household guest counts, slot counts, tag assignments, warnings, and errors before anything is written. Committing is a separate explicit action. Re-committing an already-committed run is blocked. All writes are recorded through `activity.log`.
+The import runs dry-run first. The `imports` table already declares a `validated → committed` status flow but never exercises `validated`; persisting the dry-run record is new work (gap correction above). The dry-run report shows per-household guest counts, slot counts, tag assignments, warnings, and errors before anything is written. Committing is a separate explicit action and runs inside a single transaction, so a mid-import failure leaves no partial data. Re-committing an already-committed run is blocked. All writes are recorded through `activity.log`.
+
+Preview and commit are driven by the same pure `validateCsv` so they cannot disagree.
 
 ## Part 2 — Weekly Save-the-Date sync
 
@@ -231,6 +275,27 @@ Also required:
 | `CRON_SECRET` | Authenticates the weekly cron call |
 
 ## Testing
+
+**Importer generality** — guards the multi-tenant requirement
+- A CSV with entirely different column names (`Party`, `Mail To`, `Guest`, `Category`) imports correctly through mapping alone, with no code change.
+- A wedding whose meal options are `Steak / Salmon / Kids` resolves meals correctly; this sheet's `Chicken / Beef / Fish / Vegetarian / Vegan / Kids Meal / No Meal Needed` is just another fixture.
+- No literal from the Juliet & Juan sheet appears outside test fixtures — asserted by a grep-style test over `lib/csv.ts` and `lib/data/imports.ts` for `Le 1`, `Envelope Name`, `A List`, `Plus One`, `Baby`, `Wedding RSVP`.
+- Omitting every optional mapping still produces a valid import (names + auto-grouping only), preserving today's behaviour for existing users.
+- One column mapped to age type, plus-one, and tags simultaneously feeds all three without interference.
+
+**Importer gaps** — one per numbered gap
+1. Two grouping columns produce envelope-level households; envelope column absent falls back to household column; both absent falls back to today's last-name+email heuristic.
+2. A blank-name row increments `plus_one_slots` and creates no guest; it is no longer reported as a skipped-row warning.
+3. Mapped tag columns land in `households.tags`, trimmed and deduplicated.
+4. A plus-one-marked named row sets `origin = 'plus_one'` and does not also increment slots.
+5. Structured address columns and a single free-text address column both populate `mailing_address`; `source` is recorded.
+6. Meal names resolve case-insensitively against the wedding's own options; an unrecognised meal warns and leaves `meal_option_id` null rather than failing the row.
+7. A row marked not-invited for an event produces no `household_event_invites` row for it, and no response row.
+8. A commit that fails partway writes nothing — assert household count is unchanged after an induced mid-import error.
+
+**Dry run**
+- The dry run persists an `imports` row with status `validated` and writes no domain data.
+- Preview counts equal post-commit counts for the same input.
 
 **Grouping**
 - `Le 1 Household` produces 7 households; `Boyd Household` produces 2, with the Chavezes in their own envelope.
