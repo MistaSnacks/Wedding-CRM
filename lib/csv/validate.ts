@@ -4,6 +4,17 @@ import { cleanValue, norm, normalizeAge, isTruthy } from "./normalize";
 import { groupKey } from "./group";
 
 const NO_RESTRICTION = new Set(["none", "n/a", "na", "no", "-"]);
+const NOT_INVITED = new Set(["not invited", "notinvited", "n/a", "excluded"]);
+
+/** Translates a mapped RSVP cell into a generic four-state attendance value. No column or event name is hardcoded — the vocabulary here is generic RSVP language, not this wedding's own. */
+function toAttending(value: string | undefined): "pending" | "yes" | "no" | "not_invited" {
+  const s = norm(value);
+  if (!s) return "pending";
+  if (NOT_INVITED.has(s)) return "not_invited";
+  if (s === "attending" || s === "yes" || s === "y" || s === "accepted") return "yes";
+  if (s === "declined" || s === "no" || s === "n" || s === "regrets") return "no";
+  return "pending";
+}
 
 /** Matches a meal cell against this wedding's own meal options — no alias table, no hardcoded names. */
 function resolveMeal(
@@ -155,6 +166,11 @@ export function validateCsv(
       }
     }
 
+    const notInvited: string[] = [];
+    for (const spec of mapping.events ?? []) {
+      if (toAttending(first.row[spec.column]) === "not_invited") notInvited.push(spec.eventId);
+    }
+
     households.push({
       displayName,
       primaryContactName: `${first.row[mapping.firstName].trim()} ${first.row[mapping.lastName].trim()}`,
@@ -166,6 +182,7 @@ export function validateCsv(
       tags: tagSet.size > 0 ? [...tagSet] : undefined,
       mailingAddress: buildAddress(group.rows, mapping),
       internalNotes: noteSet.size > 0 ? [...noteSet].join("\n") : undefined,
+      notInvitedEventIds: mapping.events ? notInvited : undefined,
       guests: group.rows.map(({ row, line }) => ({
         firstName: row[mapping.firstName].trim(),
         lastName: row[mapping.lastName].trim(),
@@ -181,6 +198,13 @@ export function validateCsv(
           return d && !NO_RESTRICTION.has(norm(d)) ? d : undefined;
         })(),
         mealOptionId: mapping.meal ? resolveMeal(row[mapping.meal], context, line, warnings) : undefined,
+        attendingByEventId: mapping.events
+          ? Object.fromEntries(
+              mapping.events
+                .filter((spec) => !notInvited.includes(spec.eventId))
+                .map((spec) => [spec.eventId, toAttending(row[spec.column]) as "pending" | "yes" | "no"]),
+            )
+          : undefined,
       })),
     });
   }

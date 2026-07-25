@@ -27,6 +27,7 @@ export type ImportHouseholdInput = {
   tags?: string[];
   mailingAddress?: MailingAddress;
   internalNotes?: string;
+  notInvitedEventIds?: string[];
   guests: Array<{
     firstName: string;
     lastName: string;
@@ -35,6 +36,7 @@ export type ImportHouseholdInput = {
     origin?: "named" | "plus_one";
     dietaryRestrictions?: string;
     mealOptionId?: string;
+    attendingByEventId?: Record<string, "pending" | "yes" | "no">;
   }>;
 };
 
@@ -116,22 +118,25 @@ export async function commitHouseholds(
     if (gErr) throw new Error(`guests for "${input.displayName}": ${gErr.message}`);
     guestCount += guests?.length ?? 0;
 
-    if (eventIds.length) {
+    const notInvited = new Set(input.notInvitedEventIds ?? []);
+    const invitedEventIds = eventIds.filter((id) => !notInvited.has(id));
+
+    if (invitedEventIds.length) {
       await scope.db.from("household_event_invites").insert(
-        eventIds.map((eventId) => ({
+        invitedEventIds.map((eventId) => ({
           household_id: hh.id,
           event_id: eventId,
           wedding_id: scope.weddingId,
         })),
       );
-      // mealOptionId is carried on input.guests but not wired to responses here —
-      // Task 8 rewrites this insert to attach it (and to key it off actual event mapping).
       await scope.db.from("guest_event_responses").insert(
-        (guests ?? []).flatMap((g: { id: string }) =>
-          eventIds.map((eventId) => ({
+        (guests ?? []).flatMap((g: { id: string }, i: number) =>
+          invitedEventIds.map((eventId) => ({
             guest_id: g.id,
             event_id: eventId,
             wedding_id: scope.weddingId,
+            attending: input.guests[i]?.attendingByEventId?.[eventId] ?? "pending",
+            meal_option_id: input.guests[i]?.mealOptionId ?? null,
           })),
         ),
       );

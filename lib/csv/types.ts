@@ -23,6 +23,7 @@ export type CsvMapping = {
   meal?: string;
   dietary?: string;
   notes?: string;
+  events?: Array<{ column: string; eventId: string }>;
 };
 
 export type ImportContext = {
