@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, detectMapping, validateCsv } from "./csv";
+import { parseCsv, detectMapping, validateCsv } from "./index";
 
 const CSV = `First Name,Last Name,Household,Email,Age Type,Plus Ones
 John,Smith,The Smith Family,sarah@example.com,adult,0
@@ -56,5 +56,19 @@ describe("csv import", () => {
     const v = validateCsv(rows, detectMapping(headers));
     expect(v.ok).toBe(false);
     expect(v.errors.some((e) => e.message.includes("email"))).toBe(true);
+  });
+
+  it("collapses household values that differ only by surrounding/internal whitespace or case into one household", () => {
+    const WHITESPACE_CSV =
+      "First Name,Last Name,Household\n" +
+      "Ann,One, Group X\n" +
+      "Bob,Two,group x\n" +
+      "Cara,Three,Group  X\n";
+    const { headers, rows } = parseCsv(WHITESPACE_CSV);
+    const v = validateCsv(rows, detectMapping(headers));
+    expect(v.ok).toBe(true);
+    expect(v.households).toHaveLength(1);
+    expect(v.households[0].guests).toHaveLength(3);
+    expect(v.households[0].guests.map((g) => g.firstName).sort()).toEqual(["Ann", "Bob", "Cara"]);
   });
 });

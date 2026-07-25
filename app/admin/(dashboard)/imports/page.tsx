@@ -1,5 +1,10 @@
 import Link from "next/link";
+import { requireAdmin } from "@/lib/admin-auth";
+import { forWedding } from "@/lib/data/scope";
+import { loadImportContext } from "@/lib/data/imports";
 import { ImportWizard } from "@/components/admin/ImportWizard";
+
+export const dynamic = "force-dynamic";
 
 const REPORTS = [
   { key: "guest-list", label: "Full guest list" },
@@ -16,7 +21,14 @@ const REPORTS = [
   { key: "caterer", label: "Caterer report" },
 ];
 
-export default function ImportsPage() {
+export default async function ImportsPage() {
+  // Page-level gating is the layout's requireAdmin: this route also hosts the
+  // whole Export center, which viewers are entitled to (see the export route's
+  // own requireAdmin gate). Only the write surface below is editor-gated.
+  const admin = await requireAdmin();
+  const context = await loadImportContext(forWedding(admin.weddingId));
+  const canImport = admin.role !== "viewer";
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -26,7 +38,9 @@ export default function ImportsPage() {
         </p>
       </div>
 
-      <ImportWizard />
+      {/* Real enforcement is requireEditor() inside the server actions; this
+          only hides a surface a viewer could not use anyway. */}
+      {canImport && <ImportWizard events={context.events} mealOptions={context.mealOptions} />}
 
       <div className="rounded-xl border border-hairline p-5">
         <h2 className="text-[14.5px] font-semibold text-ink">Export center</h2>

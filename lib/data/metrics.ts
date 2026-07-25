@@ -2,6 +2,30 @@ import type { WeddingScope } from "./scope";
 import type { OverviewMetrics, ResponseRow, GuestRow, HouseholdRow, MealOptionRow } from "@/lib/types";
 import { cache } from "@/lib/limiter";
 
+/**
+ * Counts distinct guests choosing each meal, not response rows.
+ *
+ * `guest_event_responses` stores one row per guest per event, and a guest's
+ * meal choice is copied onto every one of their responses. Counting rows
+ * (`.filter(...).length`) over-counts any guest attending multiple events —
+ * a 3-event wedding would report ~3x the real entree count. Dedupe by
+ * `guest_id` so each guest contributes exactly one to their meal's count.
+ *
+ * `meals` is consumed in the order given — callers that need `sort_order`
+ * ordering must sort before calling; this function does not re-sort.
+ */
+export function mealCounts(
+  responses: Array<{ guest_id: string; attending: string; meal_option_id: string | null }>,
+  meals: Array<{ id: string; name: string; sort_order?: number }>,
+): Array<{ name: string; count: number }> {
+  return meals.map((m) => ({
+    name: m.name,
+    count: new Set(
+      responses.filter((r) => r.attending === "yes" && r.meal_option_id === m.id).map((r) => r.guest_id),
+    ).size,
+  }));
+}
+
 export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
   return cache(`metrics:${scope.weddingId}:overview`, 60, async () => {
     const [{ data: households }, { data: guests }, { data: responses }, { data: meals }, { data: tables }, { data: seats }] =
@@ -43,12 +67,10 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
     const byAge = (age: string) =>
       gs.filter((g) => g.age_type === age && attendingIds.has(g.id)).length;
 
-    const mealCounts = ms
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((m) => ({
-        name: m.name,
-        count: rs.filter((r) => r.attending === "yes" && r.meal_option_id === m.id).length,
-      }));
+    const mealCountsResult = mealCounts(
+      rs,
+      [...ms].sort((a, b) => a.sort_order - b.sort_order),
+    );
 
     return {
       householdsInvited: hh.length,
@@ -63,7 +85,7 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
       adultsAttending: byAge("adult"),
       childrenAttending: byAge("child"),
       infantsAttending: byAge("infant"),
-      mealCounts,
+      mealCounts: mealCountsResult,
       dietaryCount: gs.filter((g) => g.dietary_restrictions || g.allergies).length,
       accessibilityCount: gs.filter((g) => g.accessibility_needs).length,
       tablesCount: (tables ?? []).length,

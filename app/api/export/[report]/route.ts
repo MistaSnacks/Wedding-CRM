@@ -3,9 +3,27 @@ import * as XLSX from "xlsx";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forWedding, type WeddingScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
+import { mealCounts } from "@/lib/data/metrics";
 import type { ResponseRow, MealOptionRow, EventRow, SeatingTableRow, SeatAssignmentRow } from "@/lib/types";
 
 type Table = { name: string; rows: Array<Record<string, string | number>> };
+
+/**
+ * Renders a household's mailing address in postal order, field by field.
+ *
+ * Never iterate the jsonb with Object.values(): jsonb does not preserve key
+ * insertion order (Postgres sorts keys by length, then bytewise), and the
+ * object also carries a non-address `source` marker. Iterating produces
+ * scrambled output like `90001, Springfield, CA, csv, 1 Main St, USA` — on the
+ * one report that goes to a calligrapher or mail house.
+ */
+function formatAddress(address: Record<string, string> | null): string {
+  if (!address) return "";
+  if (address.raw) return address.raw;
+  return [address.street, address.city, address.state, address.zip, address.country]
+    .filter(Boolean)
+    .join(", ");
+}
 
 async function loadShared(scope: WeddingScope) {
   const [hhs, { data: responses }, { data: meals }, { data: events }, { data: tables }, { data: seats }] =
@@ -110,9 +128,9 @@ async function buildReport(scope: WeddingScope, report: string): Promise<Table> 
     case "meals":
       return {
         name: "Meal Counts",
-        rows: meals.map((m) => ({
-          Meal: m.name,
-          Count: responses.filter((r) => r.attending === "yes" && r.meal_option_id === m.id).length,
+        rows: mealCounts(responses, meals).map(({ name, count }) => ({
+          Meal: name,
+          Count: count,
         })),
       };
     case "dietary":
@@ -159,7 +177,7 @@ async function buildReport(scope: WeddingScope, report: string): Promise<Table> 
         rows: hhs.map((h) => ({
           Household: h.display_name,
           Contact: h.primary_contact_name ?? "",
-          Address: h.mailing_address ? Object.values(h.mailing_address).filter(Boolean).join(", ") : "",
+          Address: formatAddress(h.mailing_address),
           Email: h.email ?? "",
           Phone: h.phone ?? "",
         })),

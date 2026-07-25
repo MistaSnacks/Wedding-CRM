@@ -67,3 +67,10 @@ export async function requireOwnerPage(): Promise<AdminContext> {
   if (admin.role !== "owner") redirect("/admin?error=owner_only");
   return admin;
 }
+
+/** Editor-or-owner gate for pages, which want a redirect rather than an error page. */
+export async function requireEditorPage(): Promise<AdminContext> {
+  const admin = await requireAdmin();
+  if (admin.role === "viewer") redirect("/admin?error=editor_only");
+  return admin;
+}

@@ -1,60 +1,149 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { parseCsv, detectMapping, validateCsv, type CsvMapping, type CsvValidation } from "@/lib/csv";
-import { commitCsvImport, type CommitResult } from "@/app/admin/(dashboard)/imports/actions";
+import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  parseCsv,
+  detectMapping,
+  validateCsv,
+  type CsvMapping,
+  type CsvValidation,
+  type ImportContext,
+} from "@/lib/csv";
+import {
+  commitCsvImport,
+  validateCsvImport,
+  type CommitResult,
+} from "@/app/admin/(dashboard)/imports/actions";
+import { TagPicker } from "./TagPicker";
+import { EventPicker } from "./EventPicker";
 
-const MAPPING_FIELDS: Array<{ key: keyof CsvMapping; label: string; required?: boolean }> = [
+/** `tags` and `events` are arrays, not single-column strings, so they get their own controls. */
+type SingleColumnKey = Exclude<keyof CsvMapping, "tags" | "events">;
+
+const MAPPING_FIELDS: Array<{ key: SingleColumnKey; label: string; required?: boolean }> = [
   { key: "firstName", label: "First name", required: true },
   { key: "lastName", label: "Last name", required: true },
   { key: "household", label: "Household / party" },
+  { key: "envelope", label: "Envelope / invitation name" },
   { key: "email", label: "Email" },
   { key: "phone", label: "Phone" },
   { key: "ageType", label: "Age type" },
   { key: "relationship", label: "Relationship" },
+  { key: "isPlusOne", label: "Plus-one marker" },
   { key: "maxPartySize", label: "Max party size" },
   { key: "plusOneSlots", label: "Plus-one slots" },
   { key: "locale", label: "Language" },
+  { key: "address", label: "Mailing address (free text)" },
+  { key: "street", label: "Street" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "zip", label: "Zip" },
+  { key: "country", label: "Country" },
+  { key: "meal", label: "Meal choice" },
+  { key: "dietary", label: "Dietary restrictions" },
+  { key: "notes", label: "Notes" },
 ];
 
-export function ImportWizard() {
+export function ImportWizard({
+  events,
+  mealOptions,
+}: {
+  events: Array<{ id: string; name: string }>;
+  mealOptions: Array<{ id: string; name: string }>;
+}) {
+  /**
+   * The same ImportContext the server action builds. The preview must be given
+   * the real meal options: without them `resolveMeal` cannot match anything and
+   * warns "doesn't match any meal option" for every row with a mapped meal
+   * column, so a valid 400-row sheet previews as 400 warnings. A dry run whose
+   * output differs from the commit defeats the point of having one.
+   */
+  const context = useMemo<ImportContext>(() => ({ events, mealOptions }), [events, mealOptions]);
   const [filename, setFilename] = useState<string>("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [validation, setValidation] = useState<CsvValidation | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
   const [result, setResult] = useState<CommitResult | null>(null);
   const [pending, startTransition] = useTransition();
+
+  /**
+   * Bumped on every mapping/file mutation. A dry run captures the current
+   * value when it starts; if it's changed by the time the response lands,
+   * the mapping it validated is no longer the one on screen, and the
+   * response is stale and must not resurrect `runId`. Without this, a slow
+   * dry-run response arriving after a mapping edit could re-arm Commit for
+   * a shape that specific run never actually validated.
+   */
+  const generation = useRef(0);
 
   async function onFile(file: File) {
     const text = await file.text();
     const parsed = parseCsv(text);
     const detected = detectMapping(parsed.headers);
+    generation.current += 1;
     setFilename(file.name);
     setHeaders(parsed.headers);
     setRows(parsed.rows);
     setMapping(detected);
-    setValidation(validateCsv(parsed.rows, detected));
+    setValidation(validateCsv(parsed.rows, detected, context));
+    setRunId(null);
     setResult(null);
   }
 
-  function remap(key: keyof CsvMapping, value: string) {
+  function remap(key: SingleColumnKey, value: string) {
     if (!mapping) return;
     const next = { ...mapping, [key]: value || undefined } as CsvMapping;
+    generation.current += 1;
     setMapping(next);
-    setValidation(validateCsv(rows, next));
+    setValidation(validateCsv(rows, next, context));
+    setRunId(null);
+    setResult(null);
+  }
+
+  function onTagsChange(next: Array<{ column: string; prefix?: string }>) {
+    if (!mapping) return;
+    const nextMapping = { ...mapping, tags: next.length > 0 ? next : undefined };
+    generation.current += 1;
+    setMapping(nextMapping);
+    setValidation(validateCsv(rows, nextMapping, context));
+    setRunId(null);
+    setResult(null);
+  }
+
+  function onEventsChange(next: Array<{ column: string; eventId: string }>) {
+    if (!mapping) return;
+    const nextMapping = { ...mapping, events: next.length > 0 ? next : undefined };
+    generation.current += 1;
+    setMapping(nextMapping);
+    setValidation(validateCsv(rows, nextMapping, context));
+    setRunId(null);
+    setResult(null);
+  }
+
+  function dryRun() {
+    if (!mapping) return;
+    const startedAt = generation.current;
+    startTransition(async () => {
+      const r = await validateCsvImport(filename, rows, mapping);
+      if (generation.current !== startedAt) return; // stale — mapping/file changed since this run started
+      setRunId(r.ok ? r.runId : null);
+      setResult(r.ok ? null : { ok: false, errors: r.errors });
+    });
   }
 
   function commit() {
-    if (!mapping) return;
+    if (!mapping || !runId) return;
     startTransition(async () => {
-      const r = await commitCsvImport(filename, rows, mapping);
+      const r = await commitCsvImport(runId, rows, mapping);
       setResult(r);
       if (r.ok) {
         setRows([]);
         setHeaders([]);
         setMapping(null);
         setValidation(null);
+        setRunId(null);
       }
     });
   }
@@ -109,11 +198,16 @@ export function ImportWizard() {
             ))}
           </div>
 
+          <TagPicker headers={headers} value={mapping.tags ?? []} onChange={onTagsChange} />
+          {events.length > 0 && (
+            <EventPicker headers={headers} events={events} value={mapping.events ?? []} onChange={onEventsChange} />
+          )}
+
           {validation && (
             <div className="mt-4">
               <div className="flex items-center gap-3">
                 <p className="text-[13px] font-medium text-ink">
-                  Dry run: <span className="text-olive">{validation.households.length} households</span> ·{" "}
+                  Preview: <span className="text-olive">{validation.households.length} households</span> ·{" "}
                   <span className="text-olive">{validation.households.reduce((n, h) => n + h.guests.length, 0)} guests</span>
                   {validation.errors.length > 0 && (
                     <span className="text-rose"> · {validation.errors.length} errors</span>
@@ -126,6 +220,14 @@ export function ImportWizard() {
                 <button
                   type="button"
                   disabled={!validation.ok || pending}
+                  onClick={dryRun}
+                  className="rounded-lg border border-[#dddbd0] px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
+                >
+                  {pending ? "Running…" : runId ? "Dry run saved ✓" : "Run dry run"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!runId || pending}
                   onClick={commit}
                   className="rounded-lg bg-olive-deep px-5 py-2.5 text-[13.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-50 motion-reduce:transition-none"
                 >

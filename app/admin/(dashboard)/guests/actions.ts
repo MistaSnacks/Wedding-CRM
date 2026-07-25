@@ -37,9 +37,13 @@ export async function createHousehold(formData: FormData): Promise<void> {
     guestNames.length,
   );
 
+  const run = await imports.createRun(scope, "manual", "validated", {
+    households: 1,
+    guests: guestNames.length,
+  });
   await imports.commitHouseholds(
     scope,
-    "manual",
+    run.id,
     [
       {
         displayName,
