@@ -21,14 +21,24 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
     };
   }
 
-  const groups = new Map<string, { rows: Array<{ row: Record<string, string>; line: number }> }>();
+  const groups = new Map<
+    string,
+    { rows: Array<{ row: Record<string, string>; line: number }>; blankRows: number }
+  >();
 
   rows.forEach((row, i) => {
     const line = i + 2; // header is line 1
     const first = (row[mapping.firstName] ?? "").trim();
     const last = (row[mapping.lastName] ?? "").trim();
     if (!first && !last) {
-      warnings.push({ line, message: "Empty name — row skipped." });
+      const key = groupKey(row, mapping);
+      // A blank row with no grouping value is a stray line, not a seat.
+      if (key.startsWith("auto:|")) {
+        warnings.push({ line, message: "Empty name — row skipped." });
+        return;
+      }
+      if (!groups.has(key)) groups.set(key, { rows: [], blankRows: 0 });
+      groups.get(key)!.blankRows += 1;
       return;
     }
     if (!first || !last) {
@@ -36,12 +46,16 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       return;
     }
     const key = groupKey(row, mapping);
-    if (!groups.has(key)) groups.set(key, { rows: [] });
+    if (!groups.has(key)) groups.set(key, { rows: [], blankRows: 0 });
     groups.get(key)!.rows.push({ row, line });
   });
 
   const households: ImportHouseholdInput[] = [];
-  for (const [, group] of groups) {
+  for (const [key, group] of groups) {
+    if (group.rows.length === 0) {
+      warnings.push({ line: 1, message: `Group "${key}" has only unnamed rows — skipped.` });
+      continue;
+    }
     const first = group.rows[0];
     const envelopeName = mapping.envelope ? first.row[mapping.envelope]?.trim() : "";
     const householdName = mapping.household ? first.row[mapping.household]?.trim() : "";
@@ -57,7 +71,9 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       errors.push({ line: first.line, message: `"${email}" doesn't look like an email.` });
     }
 
-    const plusOneSlots = mapping.plusOneSlots ? parseInt(first.row[mapping.plusOneSlots] ?? "0", 10) || 0 : 0;
+    const plusOneSlots =
+      (mapping.plusOneSlots ? parseInt(first.row[mapping.plusOneSlots] ?? "0", 10) || 0 : 0) +
+      group.blankRows;
     const declaredMax = mapping.maxPartySize ? parseInt(first.row[mapping.maxPartySize] ?? "", 10) : NaN;
     const maxPartySize = Number.isFinite(declaredMax) && declaredMax > 0
       ? declaredMax
