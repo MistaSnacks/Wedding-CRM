@@ -103,4 +103,11 @@ $$;
 -- write households/guests/invites into any tenant. The app's own callers
 -- always use the service_role client (see lib/data/scope.ts forWedding()),
 -- which is unaffected by this revoke.
+--
+-- This same revoke is repeated in 0004_revoke_import_rpc_grants.sql. That is
+-- deliberate, not duplication to clean up: this copy closes the gap on a
+-- fresh database (0001 -> 0004), which never has the function exposed even
+-- momentarily; 0004's copy is what actually patches databases where 0003 is
+-- already recorded as applied and will never run again (revoke is
+-- idempotent, so running it twice is harmless).
 revoke execute on function import_households(uuid, uuid, jsonb) from public, anon, authenticated;
