@@ -1,7 +1,14 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { parseCsv, detectMapping, validateCsv, type CsvMapping, type CsvValidation } from "@/lib/csv";
+import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  parseCsv,
+  detectMapping,
+  validateCsv,
+  type CsvMapping,
+  type CsvValidation,
+  type ImportContext,
+} from "@/lib/csv";
 import {
   commitCsvImport,
   validateCsvImport,
@@ -37,7 +44,21 @@ const MAPPING_FIELDS: Array<{ key: SingleColumnKey; label: string; required?: bo
   { key: "notes", label: "Notes" },
 ];
 
-export function ImportWizard({ events }: { events: Array<{ id: string; name: string }> }) {
+export function ImportWizard({
+  events,
+  mealOptions,
+}: {
+  events: Array<{ id: string; name: string }>;
+  mealOptions: Array<{ id: string; name: string }>;
+}) {
+  /**
+   * The same ImportContext the server action builds. The preview must be given
+   * the real meal options: without them `resolveMeal` cannot match anything and
+   * warns "doesn't match any meal option" for every row with a mapped meal
+   * column, so a valid 400-row sheet previews as 400 warnings. A dry run whose
+   * output differs from the commit defeats the point of having one.
+   */
+  const context = useMemo<ImportContext>(() => ({ events, mealOptions }), [events, mealOptions]);
   const [filename, setFilename] = useState<string>("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, string>[]>([]);
@@ -66,7 +87,7 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
     setHeaders(parsed.headers);
     setRows(parsed.rows);
     setMapping(detected);
-    setValidation(validateCsv(parsed.rows, detected));
+    setValidation(validateCsv(parsed.rows, detected, context));
     setRunId(null);
     setResult(null);
   }
@@ -76,7 +97,7 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
     const next = { ...mapping, [key]: value || undefined } as CsvMapping;
     generation.current += 1;
     setMapping(next);
-    setValidation(validateCsv(rows, next));
+    setValidation(validateCsv(rows, next, context));
     setRunId(null);
     setResult(null);
   }
@@ -86,7 +107,7 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
     const nextMapping = { ...mapping, tags: next.length > 0 ? next : undefined };
     generation.current += 1;
     setMapping(nextMapping);
-    setValidation(validateCsv(rows, nextMapping));
+    setValidation(validateCsv(rows, nextMapping, context));
     setRunId(null);
     setResult(null);
   }
@@ -96,7 +117,7 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
     const nextMapping = { ...mapping, events: next.length > 0 ? next : undefined };
     generation.current += 1;
     setMapping(nextMapping);
-    setValidation(validateCsv(rows, nextMapping));
+    setValidation(validateCsv(rows, nextMapping, context));
     setRunId(null);
     setResult(null);
   }
