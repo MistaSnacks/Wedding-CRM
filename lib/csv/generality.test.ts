@@ -17,27 +17,57 @@ const FORBIDDEN = ["Le 1", "Envelope Name", "A List", "Wedding RSVP", "Juliet", 
 
 /**
  * Strip line (`//`) and block (`/* ... *\/`) comments from TypeScript source
- * before scanning for forbidden literals.
+ * before scanning for forbidden literals — WITHOUT touching the contents of
+ * string literals.
  *
- * Why: matching is case-insensitive so a lowercase client literal can't slip
- * through the way `"baby"` would under case-sensitive matching. But
- * case-insensitive matching on "A List" also matches ordinary English prose
- * in comments (e.g. a docblock describing "groups rows into a list of
- * households"). The constraint this test enforces is about *code* — actual
- * hardcoded values — not about what words appear in explanatory comments.
- * Stripping comments first targets exactly that: it lets doc prose use
- * ordinary English freely while still catching any literal or identifier
- * checked into the executable source.
- *
- * This is a simplification (it does not attempt to preserve `//` or `/* `
- * that appear inside string/regex literals) but is safe for this purpose:
- * it can only make the scan *more* lenient in contrived edge cases, never
- * hide a real forbidden literal sitting in live code outside a comment.
+ * Why this must be a stateful scanner and not a plain regex: a naive
+ * `/\/\/.*$/` strips everything from the first `//` to end-of-line with no
+ * awareness of whether that `//` is a real comment or just sits inside a
+ * string. A hardcoded wedding-website URL is exactly this shape —
+ * `const homepage = "https://wedding.example.com/Juan-and-Juliet";` — and a
+ * regex-only stripper deletes `Juan-and-Juliet` along with the fake
+ * "comment", hiding the exact class of client literal this test exists to
+ * catch (an earlier version of this file had precisely this bug). String
+ * contents are exactly where a hardcoded literal would live, so they must
+ * remain scannable; only comments outside of strings should be removed.
+ * This walks the text once, tracking whether we're inside a `'`, `"`, or
+ * `` ` `` literal (honouring backslash escapes) and only treats `//`/`/*` as
+ * a comment start when we are not.
  */
 function stripComments(text: string): string {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/.*$/gm, "");
+  let out = "";
+  let quote: string | null = null;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      out += c;
+      if (c === "\\") {
+        // Escaped char: emit it too and skip past both without inspecting it.
+        if (i + 1 < text.length) out += text[++i];
+      } else if (c === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+      out += c;
+      continue;
+    }
+    if (c === "/" && text[i + 1] === "/") {
+      while (i < text.length && text[i] !== "\n") i++;
+      i--; // let the loop's i++ re-consume the newline (or end) normally
+      continue;
+    }
+    if (c === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2);
+      i = end === -1 ? text.length : end + 1;
+      out += " ";
+      continue;
+    }
+    out += c;
+  }
+  return out;
 }
 
 describe("tenant agnosticism", () => {
