@@ -1,5 +1,5 @@
 import type { WeddingScope } from "./scope";
-import type { MailingAddress } from "@/lib/csv";
+import type { ImportContext, MailingAddress } from "@/lib/csv";
 import * as activity from "./activity";
 import { customAlphabet } from "nanoid";
 import { randomBytes } from "crypto";
@@ -39,6 +39,15 @@ export type ImportHouseholdInput = {
     attendingByEventId?: Record<string, "pending" | "yes" | "no">;
   }>;
 };
+
+/** Shared by both import server actions so validate and commit see the same context. */
+export async function loadImportContext(scope: WeddingScope): Promise<ImportContext> {
+  const [{ data: events }, { data: meals }] = await Promise.all([
+    scope.db.from("events").select("id, name").eq("wedding_id", scope.weddingId).order("sort_order"),
+    scope.db.from("meal_options").select("id, name").eq("wedding_id", scope.weddingId).order("sort_order"),
+  ]);
+  return { events: events ?? [], mealOptions: meals ?? [] };
+}
 
 export async function createRun(
   scope: WeddingScope,
