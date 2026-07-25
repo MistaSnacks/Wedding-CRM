@@ -1,0 +1,25 @@
+import type { AgeType } from "@/lib/types";
+
+export type CsvMapping = {
+  firstName: string;
+  lastName: string;
+  household?: string;
+  email?: string;
+  phone?: string;
+  ageType?: string;
+  relationship?: string;
+  maxPartySize?: string;
+  plusOneSlots?: string;
+  locale?: string;
+};
+
+export type RowError = { line: number; message: string };
+
+export type CsvValidation = {
+  ok: boolean;
+  households: import("@/lib/data/imports").ImportHouseholdInput[];
+  errors: RowError[];
+  warnings: RowError[];
+};
+
+export type { AgeType };

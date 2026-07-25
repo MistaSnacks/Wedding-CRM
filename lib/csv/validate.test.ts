@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, detectMapping, validateCsv } from "./csv";
+import { parseCsv, detectMapping, validateCsv } from "./index";
 
 const CSV = `First Name,Last Name,Household,Email,Age Type,Plus Ones
 John,Smith,The Smith Family,sarah@example.com,adult,0
