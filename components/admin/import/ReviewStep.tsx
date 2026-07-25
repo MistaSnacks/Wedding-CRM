@@ -72,13 +72,13 @@ export function ReviewStep({
           </h2>
           <p className="mt-2.5 max-w-[62ch] text-[13.5px] leading-relaxed text-[#4a5147]">
             Guests who share an envelope are grouped into one invitation with one RSVP link.
-            {unnamedSeats > 0 && (
-              <>
-                {" "}
-                {unnamedSeats} more {unnamedSeats === 1 ? "seat is" : "seats are"} held for
-                plus-ones you haven&rsquo;t named yet.
-              </>
-            )}
+            {/* One expression, not text interleaved with `{...}`: this
+                toolchain drops the leading space of a JSX text node that wraps
+                onto a second line, which silently shipped "seats areheld". */}
+            {unnamedSeats > 0 &&
+              ` ${unnamedSeats} more ${
+                unnamedSeats === 1 ? "seat is" : "seats are"
+              } held for plus-ones you haven’t named yet.`}
           </p>
 
           {extras.length > 0 && (
@@ -135,8 +135,9 @@ export function ReviewStep({
           </button>
           {problems.errors.length > 0 && (
             <p className="max-w-[38ch] text-[12.5px] leading-relaxed text-[#6b7167]">
-              The {problems.errors.length} {problems.errors.length === 1 ? "row" : "rows"} above
-              won&rsquo;t be included. You can import now and add them later.
+              {`The ${problems.errors.length} ${
+                problems.errors.length === 1 ? "row" : "rows"
+              } above won’t be included. You can import now and add them later.`}
             </p>
           )}
         </div>
