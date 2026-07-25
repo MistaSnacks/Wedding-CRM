@@ -59,13 +59,37 @@ function buildAddress(
   return undefined;
 }
 
+const EMPTY_CONTEXT: ImportContext = { events: [], mealOptions: [] };
+
+/**
+ * Per-guest attendance for the events this household *is* invited to.
+ *
+ * `notInvited` is a household-level union (one envelope, one invite code), so
+ * an event that survives the filter cannot legitimately read "not invited" on
+ * any row. The residual mapping to "pending" is a belt-and-braces guard: the
+ * return type is the same union `guest_event_responses.attending` accepts
+ * (`check (attending in ('pending','yes','no'))`), so the compiler — not a
+ * cast — is what keeps an illegal value out of the commit payload.
+ */
+function buildAttending(
+  row: Record<string, string>,
+  events: NonNullable<CsvMapping["events"]>,
+  notInvited: string[],
+): Record<string, "pending" | "yes" | "no"> {
+  const out: Record<string, "pending" | "yes" | "no"> = {};
+  for (const spec of events) {
+    if (notInvited.includes(spec.eventId)) continue;
+    const attending = toAttending(row[spec.column]);
+    out[spec.eventId] = attending === "not_invited" ? "pending" : attending;
+  }
+  return out;
+}
+
 /**
  * Groups rows into households (see groupKey for the column fallback order)
  * and validates. Dry-run output: households ready to commit + row errors
  * with 1-based line numbers (line 1 = header).
  */
-const EMPTY_CONTEXT: ImportContext = { events: [], mealOptions: [] };
-
 export function validateCsv(
   rows: Record<string, string>[],
   mapping: CsvMapping,
@@ -133,13 +157,32 @@ export function validateCsv(
       errors.push({ line: first.line, message: `"${email}" doesn't look like an email.` });
     }
 
-    const plusOneSlots =
-      (mapping.plusOneSlots ? parseInt(first.row[mapping.plusOneSlots] ?? "0", 10) || 0 : 0) +
-      group.blankRows;
+    const slotsCell = mapping.plusOneSlots ? (first.row[mapping.plusOneSlots] ?? "").trim() : "";
+    const declaredSlots = parseInt(slotsCell, 10) || 0;
+    if (declaredSlots < 0) {
+      warnings.push({
+        line: first.line,
+        message: `"${displayName}": plus-one slots "${slotsCell}" is negative — treated as 0.`,
+      });
+    }
+    // Clamped: households.plus_one_slots carries `check (plus_one_slots >= 0)`,
+    // and a negative cell would otherwise abort the whole import transaction.
+    const explicitSlots = Math.max(0, declaredSlots);
+    // A named plus-one row is an *occupied* slot, not an absent one. The RSVP
+    // engine reads plus_one_slots as the grant and existing origin='plus_one'
+    // guests as consumers (lib/domain/invitation-rules.ts, and the submit_rsvp
+    // backstop in 0001_init.sql), so a household with a named plus-one and zero
+    // slots can never RSVP at all — every submission trips `existing > slots`.
+    const namedPlusOnes = mapping.isPlusOne
+      ? group.rows.filter(({ row }) => isTruthy(row[mapping.isPlusOne!])).length
+      : 0;
+    const plusOneSlots = explicitSlots + group.blankRows + namedPlusOnes;
     const declaredMax = mapping.maxPartySize ? parseInt(first.row[mapping.maxPartySize] ?? "", 10) : NaN;
+    // maxPartySize deliberately excludes namedPlusOnes: those people already
+    // have rows in group.rows, so counting them again would inflate the cap.
     const maxPartySize = Number.isFinite(declaredMax) && declaredMax > 0
       ? declaredMax
-      : group.rows.length + plusOneSlots;
+      : group.rows.length + explicitSlots + group.blankRows;
 
     if (maxPartySize < group.rows.length) {
       errors.push({
@@ -177,9 +220,15 @@ export function validateCsv(
       }
     }
 
+    // Invitations are an envelope-level concept — one household, one invite
+    // code — so "not invited" anywhere in the group excludes the whole
+    // household. Reading only the first row would leave later rows holding a
+    // "not_invited" attendance value that no CHECK constraint accepts.
     const notInvited: string[] = [];
     for (const spec of mapping.events ?? []) {
-      if (toAttending(first.row[spec.column]) === "not_invited") notInvited.push(spec.eventId);
+      if (group.rows.some(({ row }) => toAttending(row[spec.column]) === "not_invited")) {
+        notInvited.push(spec.eventId);
+      }
     }
 
     households.push({
@@ -210,11 +259,7 @@ export function validateCsv(
         })(),
         mealOptionId: mapping.meal ? resolveMeal(row[mapping.meal], context, line, warnings) : undefined,
         attendingByEventId: mapping.events
-          ? Object.fromEntries(
-              mapping.events
-                .filter((spec) => !notInvited.includes(spec.eventId))
-                .map((spec) => [spec.eventId, toAttending(row[spec.column]) as "pending" | "yes" | "no"]),
-            )
+          ? buildAttending(row, mapping.events, notInvited)
           : undefined,
       })),
     });

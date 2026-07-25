@@ -55,4 +55,17 @@ Group A,Bob,One,,CA
     const v = validateCsv(rows, detectMapping(headers));
     expect(v.households[0].mailingAddress).toBeUndefined();
   });
+
+  it("omits the field when address columns are mapped but every cell is blank", () => {
+    // Distinct from the case above: the columns exist and are mapped, so the
+    // household must still get no mailing_address rather than `{source:"csv"}`.
+    const { headers, rows } = parseCsv(
+      `Household,First Name,Last Name,Street Address,City,Zip
+Group A,Ann,One,,,
+Group A,Bob,One,,,
+`,
+    );
+    const v = validateCsv(rows, detectMapping(headers));
+    expect(v.households[0].mailingAddress).toBeUndefined();
+  });
 });

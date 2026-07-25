@@ -43,6 +43,27 @@ describe("per-event mapping", () => {
     expect(b.guests[0].attendingByEventId).toEqual({ "ev-main": "pending", "ev-extra": "yes" });
   });
 
+  it("excludes an event any row in the household is not invited to", () => {
+    // The parents are invited to the welcome party, the children are not — one
+    // envelope, so the exclusion is household-wide. Reading only the first row
+    // would leave the children holding attending="not_invited", which
+    // `check (attending in ('pending','yes','no'))` rejects, aborting the
+    // entire import transaction.
+    const { headers, rows } = parseCsv(
+      `Household,First Name,Last Name,Main RSVP,Extra RSVP
+Group C,Cara,Three,Attending,Attending
+Group C,Kid,Three,Attending,Not Invited
+`,
+    );
+    const v = validateCsv(rows, { ...detectMapping(headers), events: MAPPING_EVENTS }, CONTEXT);
+    const c = v.households.find((h) => h.displayName === "Group C")!;
+    expect(c.notInvitedEventIds).toEqual(["ev-extra"]);
+    for (const guest of c.guests) {
+      expect(guest.attendingByEventId).toEqual({ "ev-main": "yes" });
+      expect(Object.values(guest.attendingByEventId!)).not.toContain("not_invited");
+    }
+  });
+
   it("omits event data entirely when no event columns are mapped", () => {
     const { headers, rows } = parseCsv(CSV);
     const v = validateCsv(rows, detectMapping(headers), CONTEXT);

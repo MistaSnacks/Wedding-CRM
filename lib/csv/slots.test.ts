@@ -50,6 +50,23 @@ Group C,,
     expect(v.warnings.some((w) => w.message.includes("Empty name"))).toBe(true);
   });
 
+  it("clamps a negative plus-one-slots cell and warns instead of aborting", () => {
+    // parseInt("-1", 10) || 0 is -1, which passes validation and then dies at
+    // commit on `check (plus_one_slots >= 0)` — taking the whole transaction
+    // with it. Max Party Size is mapped and large enough here so nothing else
+    // catches the row first.
+    const { headers, rows } = parseCsv(
+      `Household,First Name,Last Name,Plus Ones,Max Party Size
+Group E,Eve,Five,-1,4
+`,
+    );
+    const v = validateCsv(rows, detectMapping(headers));
+    expect(v.ok).toBe(true);
+    expect(v.households[0].plusOneSlots).toBe(0);
+    expect(v.households[0].maxPartySize).toBe(4);
+    expect(v.warnings.some((w) => w.message.includes("negative"))).toBe(true);
+  });
+
   it("adds slots on top of an explicit plus-one-slots column", () => {
     const { headers, rows } = parseCsv(
       `Household,First Name,Last Name,Plus Ones
