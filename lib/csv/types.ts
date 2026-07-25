@@ -4,6 +4,7 @@ export type CsvMapping = {
   firstName: string;
   lastName: string;
   household?: string;
+  envelope?: string;
   email?: string;
   phone?: string;
   ageType?: string;

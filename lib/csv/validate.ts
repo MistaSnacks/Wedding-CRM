@@ -4,9 +4,9 @@ import { normalizeAge } from "./normalize";
 import { groupKey } from "./group";
 
 /**
- * Groups rows into households (by the Household column, else by last name +
- * email) and validates. Dry-run output: households ready to commit + row
- * errors with 1-based line numbers (line 1 = header).
+ * Groups rows into households (see groupKey for the column fallback order)
+ * and validates. Dry-run output: households ready to commit + row errors
+ * with 1-based line numbers (line 1 = header).
  */
 export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping): CsvValidation {
   const errors: RowError[] = [];
@@ -43,12 +43,14 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
   const households: ImportHouseholdInput[] = [];
   for (const [, group] of groups) {
     const first = group.rows[0];
+    const envelopeName = mapping.envelope ? first.row[mapping.envelope]?.trim() : "";
+    const householdName = mapping.household ? first.row[mapping.household]?.trim() : "";
     const displayName =
-      mapping.household && first.row[mapping.household]?.trim()
-        ? first.row[mapping.household].trim()
-        : group.rows.length > 1
-          ? `The ${first.row[mapping.lastName].trim()} Family`
-          : `${first.row[mapping.firstName].trim()} ${first.row[mapping.lastName].trim()}`;
+      envelopeName ||
+      householdName ||
+      (group.rows.length > 1
+        ? `The ${first.row[mapping.lastName].trim()} Family`
+        : `${first.row[mapping.firstName].trim()} ${first.row[mapping.lastName].trim()}`);
 
     const email = mapping.email ? first.row[mapping.email]?.trim() || undefined : undefined;
     if (email && !email.includes("@")) {
