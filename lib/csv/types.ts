@@ -20,6 +20,14 @@ export type CsvMapping = {
   state?: string;
   zip?: string;
   country?: string;
+  meal?: string;
+  dietary?: string;
+  notes?: string;
+};
+
+export type ImportContext = {
+  events: Array<{ id: string; name: string }>;
+  mealOptions: Array<{ id: string; name: string }>;
 };
 
 export type MailingAddress = {

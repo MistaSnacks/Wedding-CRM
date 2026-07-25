@@ -1,7 +1,24 @@
 import type { ImportHouseholdInput } from "@/lib/data/imports";
-import type { CsvMapping, CsvValidation, MailingAddress, RowError } from "./types";
-import { cleanValue, normalizeAge, isTruthy } from "./normalize";
+import type { CsvMapping, CsvValidation, ImportContext, MailingAddress, RowError } from "./types";
+import { cleanValue, norm, normalizeAge, isTruthy } from "./normalize";
 import { groupKey } from "./group";
+
+const NO_RESTRICTION = new Set(["none", "n/a", "na", "no", "-"]);
+
+/** Matches a meal cell against this wedding's own meal options — no alias table, no hardcoded names. */
+function resolveMeal(
+  value: string | undefined,
+  context: ImportContext,
+  line: number,
+  warnings: RowError[],
+): string | undefined {
+  const wanted = norm(value);
+  if (!wanted) return undefined;
+  const hit = context.mealOptions.find((m) => norm(m.name) === wanted);
+  if (hit) return hit.id;
+  warnings.push({ line, message: `Meal "${value!.trim()}" doesn't match any meal option — left unset.` });
+  return undefined;
+}
 
 /**
  * First row in the group with any non-empty address field wins (whole-row,
@@ -36,7 +53,13 @@ function buildAddress(
  * and validates. Dry-run output: households ready to commit + row errors
  * with 1-based line numbers (line 1 = header).
  */
-export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping): CsvValidation {
+const EMPTY_CONTEXT: ImportContext = { events: [], mealOptions: [] };
+
+export function validateCsv(
+  rows: Record<string, string>[],
+  mapping: CsvMapping,
+  context: ImportContext = EMPTY_CONTEXT,
+): CsvValidation {
   const errors: RowError[] = [];
   const warnings: RowError[] = [];
 
@@ -124,6 +147,14 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       }
     }
 
+    const noteSet = new Set<string>();
+    if (mapping.notes) {
+      for (const { row } of group.rows) {
+        const n = cleanValue(row[mapping.notes]);
+        if (n) noteSet.add(n);
+      }
+    }
+
     households.push({
       displayName,
       primaryContactName: `${first.row[mapping.firstName].trim()} ${first.row[mapping.lastName].trim()}`,
@@ -134,7 +165,8 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       preferredLocale: ["es", "vi"].includes(locale) ? locale : "en",
       tags: tagSet.size > 0 ? [...tagSet] : undefined,
       mailingAddress: buildAddress(group.rows, mapping),
-      guests: group.rows.map(({ row }) => ({
+      internalNotes: noteSet.size > 0 ? [...noteSet].join("\n") : undefined,
+      guests: group.rows.map(({ row, line }) => ({
         firstName: row[mapping.firstName].trim(),
         lastName: row[mapping.lastName].trim(),
         ageType: normalizeAge(mapping.ageType ? row[mapping.ageType] : undefined),
@@ -144,6 +176,11 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
             ? "plus_one"
             : "named"
           : undefined,
+        dietaryRestrictions: (() => {
+          const d = cleanValue(mapping.dietary ? row[mapping.dietary] : undefined);
+          return d && !NO_RESTRICTION.has(norm(d)) ? d : undefined;
+        })(),
+        mealOptionId: mapping.meal ? resolveMeal(row[mapping.meal], context, line, warnings) : undefined,
       })),
     });
   }

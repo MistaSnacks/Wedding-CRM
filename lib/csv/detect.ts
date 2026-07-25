@@ -22,5 +22,8 @@ export function detectMapping(headers: string[]): CsvMapping {
     state: find("state", "province", "region", "estado") || undefined,
     zip: find("zip", "zipcode", "postalcode", "postcode", "cp") || undefined,
     country: find("country", "pais") || undefined,
+    meal: find("mealchoice", "meal", "entree", "dinnerchoice") || undefined,
+    dietary: find("dietaryrestrictions", "dietary", "diet", "restrictions") || undefined,
+    notes: find("notes", "note", "comments", "notas") || undefined,
   };
 }

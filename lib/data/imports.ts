@@ -26,12 +26,15 @@ export type ImportHouseholdInput = {
   preferredLocale?: string;
   tags?: string[];
   mailingAddress?: MailingAddress;
+  internalNotes?: string;
   guests: Array<{
     firstName: string;
     lastName: string;
     ageType?: "adult" | "child" | "infant";
     relationship?: string;
     origin?: "named" | "plus_one";
+    dietaryRestrictions?: string;
+    mealOptionId?: string;
   }>;
 };
 
@@ -87,6 +90,7 @@ export async function commitHouseholds(
         preferred_locale: input.preferredLocale ?? "en",
         tags: input.tags ?? [],
         mailing_address: input.mailingAddress ?? null,
+        internal_notes: input.internalNotes ?? null,
         invite_code: newInviteCode(),
         access_token: newAccessToken(),
       })
@@ -105,6 +109,7 @@ export async function commitHouseholds(
           age_type: g.ageType ?? "adult",
           relationship: g.relationship ?? null,
           origin: g.origin ?? "named",
+          dietary_restrictions: g.dietaryRestrictions ?? null,
         })),
       )
       .select("id");
@@ -119,6 +124,8 @@ export async function commitHouseholds(
           wedding_id: scope.weddingId,
         })),
       );
+      // mealOptionId is carried on input.guests but not wired to responses here —
+      // Task 8 rewrites this insert to attach it (and to key it off actual event mapping).
       await scope.db.from("guest_event_responses").insert(
         (guests ?? []).flatMap((g: { id: string }) =>
           eventIds.map((eventId) => ({
