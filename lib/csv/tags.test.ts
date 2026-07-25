@@ -42,4 +42,15 @@ Group C,Fay,Three,
     const v = validateCsv(rows, detectMapping(headers));
     expect(v.households[0].tags).toBeUndefined();
   });
+
+  it("collects distinct tag values from every row in a household, not just the first", () => {
+    const { headers, rows } = parseCsv(
+      `Household,First Name,Last Name,Category
+Group D,Gil,Four,Friends
+Group D,Hana,Four,VIP
+`,
+    );
+    const v = validateCsv(rows, { ...detectMapping(headers), tags: [{ column: "Category" }] });
+    expect(v.households[0].tags!.sort()).toEqual(["Friends", "VIP"]);
+  });
 });
