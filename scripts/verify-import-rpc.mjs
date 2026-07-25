@@ -33,7 +33,9 @@ const { error: badErr } = await db.rpc("import_households", {
 });
 const afterBad = await count();
 console.log(badErr ? "rollback: errored as expected" : "rollback: NO ERROR — FAIL");
+if (!badErr) process.exitCode = 1;
 console.log(afterBad === before ? "rollback: no rows written — PASS" : `rollback: leaked ${afterBad - before} rows — FAIL`);
+if (afterBad !== before) process.exitCode = 1;
 
 // Success check.
 const good = [
@@ -43,6 +45,7 @@ const { data: ok, error: okErr } = await db.rpc("import_households", {
   p_wedding_id: WEDDING, p_run_id: run.id, p_households: good,
 });
 console.log(okErr ? `commit: FAILED ${okErr.message}` : `commit: PASS ${JSON.stringify(ok)}`);
+if (okErr) process.exitCode = 1;
 
 // Clean up.
 await db.from("households").delete().eq("wedding_id", WEDDING).like("display_name", "RPC Verify%");

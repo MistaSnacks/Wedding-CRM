@@ -94,3 +94,13 @@ begin
   return jsonb_build_object('households', household_count, 'guests', guest_count);
 end;
 $$;
+
+-- security definer bypasses RLS by design (it must, to write across several
+-- tables in one transaction), but Postgres/Supabase grants EXECUTE on new
+-- public-schema functions to PUBLIC by default — including anon and
+-- authenticated. Without this revoke, any browser holding the public anon
+-- key could call this function directly with an arbitrary p_wedding_id and
+-- write households/guests/invites into any tenant. The app's own callers
+-- always use the service_role client (see lib/data/scope.ts forWedding()),
+-- which is unaffected by this revoke.
+revoke execute on function import_households(uuid, uuid, jsonb) from public, anon, authenticated;
