@@ -1,49 +1,33 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import Papa from "papaparse";
 import {
   parseCsv,
   detectMapping,
   validateCsv,
+  summarize,
   type CsvMapping,
   type CsvValidation,
   type ImportContext,
+  type ImportProblem,
+  type RowError,
 } from "@/lib/csv";
-import {
-  commitCsvImport,
-  validateCsvImport,
-  type CommitResult,
-} from "@/app/admin/(dashboard)/imports/actions";
-import { TagPicker } from "./TagPicker";
-import { EventPicker } from "./EventPicker";
+import { commitCsvImport, validateCsvImport } from "@/app/admin/(dashboard)/imports/actions";
+import { UploadStep } from "./import/UploadStep";
+import { ReviewStep } from "./import/ReviewStep";
+import { DoneStep } from "./import/DoneStep";
+import { ColumnMatches, type SingleColumnKey } from "./import/ColumnMatches";
 
-/** `tags` and `events` are arrays, not single-column strings, so they get their own controls. */
-type SingleColumnKey = Exclude<keyof CsvMapping, "tags" | "events">;
+type Step = "upload" | "review" | "done";
 
-const MAPPING_FIELDS: Array<{ key: SingleColumnKey; label: string; required?: boolean }> = [
-  { key: "firstName", label: "First name", required: true },
-  { key: "lastName", label: "Last name", required: true },
-  { key: "household", label: "Household / party" },
-  { key: "envelope", label: "Envelope / invitation name" },
-  { key: "email", label: "Email" },
-  { key: "phone", label: "Phone" },
-  { key: "ageType", label: "Age type" },
-  { key: "relationship", label: "Relationship" },
-  { key: "isPlusOne", label: "Plus-one marker" },
-  { key: "maxPartySize", label: "Max party size" },
-  { key: "plusOneSlots", label: "Plus-one slots" },
-  { key: "locale", label: "Language" },
-  { key: "address", label: "Mailing address (free text)" },
-  { key: "street", label: "Street" },
-  { key: "city", label: "City" },
-  { key: "state", label: "State" },
-  { key: "zip", label: "Zip" },
-  { key: "country", label: "Country" },
-  { key: "meal", label: "Meal choice" },
-  { key: "dietary", label: "Dietary restrictions" },
-  { key: "notes", label: "Notes" },
-];
-
+/**
+ * Step machine only: Upload → Review → Done. It holds state and handlers;
+ * every pixel lives in the child components under `./import/`.
+ *
+ * The central inversion versus the old wizard: a dropped file goes straight
+ * to Review. Configuration is reachable from Review, never ahead of it.
+ */
 export function ImportWizard({
   events,
   mealOptions,
@@ -59,13 +43,20 @@ export function ImportWizard({
    * output differs from the commit defeats the point of having one.
    */
   const context = useMemo<ImportContext>(() => ({ events, mealOptions }), [events, mealOptions]);
+
+  const [step, setStep] = useState<Step>("upload");
   const [filename, setFilename] = useState<string>("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, string>[]>([]);
   const [mapping, setMapping] = useState<CsvMapping | null>(null);
   const [validation, setValidation] = useState<CsvValidation | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [result, setResult] = useState<CommitResult | null>(null);
+  const [commitErrors, setCommitErrors] = useState<RowError[] | null>(null);
+  const [done, setDone] = useState<{ households: number; guests: number; skipped: ImportProblem[] } | null>(null);
+  const [reading, setReading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [columnsReason, setColumnsReason] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   /**
@@ -75,202 +66,223 @@ export function ImportWizard({
    * response is stale and must not resurrect `runId`. Without this, a slow
    * dry-run response arriving after a mapping edit could re-arm Commit for
    * a shape that specific run never actually validated.
+   *
+   * The import sequence below re-checks it after *every* await, not just the
+   * first: the mapping controls stay mounted while an import runs, so the
+   * window between the dry run landing and the commit leaving is just as
+   * racy as the window before it.
    */
   const generation = useRef(0);
 
+  const summary = useMemo(
+    () => (validation && mapping ? summarize(validation, rows, mapping) : null),
+    [validation, mapping, rows],
+  );
+
+  /** No name columns is the one case where the mapping surface opens unprompted. */
+  const needsColumns = !mapping?.firstName || !mapping?.lastName;
+
   async function onFile(file: File) {
-    const text = await file.text();
-    const parsed = parseCsv(text);
-    const detected = detectMapping(parsed.headers);
-    generation.current += 1;
+    setFileError(null);
+    setReading(true);
     setFilename(file.name);
-    setHeaders(parsed.headers);
-    setRows(parsed.rows);
-    setMapping(detected);
-    setValidation(validateCsv(parsed.rows, detected, context));
-    setRunId(null);
-    setResult(null);
+    // A new file invalidates any dry run in flight for the previous one.
+    generation.current += 1;
+    try {
+      const text = await readSpreadsheet(file);
+      const parsed = parseCsv(text);
+      if (parsed.rows.length === 0) {
+        setFileError(
+          "That file didn't have any guests in it. If your spreadsheet has more than one tab, export the tab with your guest list on it and try again.",
+        );
+        return;
+      }
+      const detected = detectMapping(parsed.headers);
+      const missingNames = !detected.firstName || !detected.lastName;
+      setHeaders(parsed.headers);
+      setRows(parsed.rows);
+      setMapping(detected);
+      setValidation(validateCsv(parsed.rows, detected, context));
+      setRunId(null);
+      setCommitErrors(null);
+      setDone(null);
+      setColumnsOpen(missingNames);
+      setColumnsReason(
+        missingNames
+          ? "We couldn't tell which columns hold names. Choose your first name and last name columns below and your guests will appear."
+          : null,
+      );
+      setStep("review");
+    } catch {
+      setFileError(
+        "We couldn't read that file. It needs to be a spreadsheet saved as CSV or Excel — in Google Sheets that's File → Download → Comma-separated values.",
+      );
+    } finally {
+      setReading(false);
+    }
   }
 
-  function remap(key: SingleColumnKey, value: string) {
-    if (!mapping) return;
-    const next = { ...mapping, [key]: value || undefined } as CsvMapping;
+  /** Every mapping mutation revalidates locally and disarms the dry run. */
+  function applyMapping(next: CsvMapping) {
     generation.current += 1;
     setMapping(next);
     setValidation(validateCsv(rows, next, context));
     setRunId(null);
-    setResult(null);
+    setCommitErrors(null);
+    if (next.firstName && next.lastName) setColumnsReason(null);
+  }
+
+  function remap(key: SingleColumnKey, value: string) {
+    if (!mapping) return;
+    applyMapping({ ...mapping, [key]: value || undefined } as CsvMapping);
   }
 
   function onTagsChange(next: Array<{ column: string; prefix?: string }>) {
     if (!mapping) return;
-    const nextMapping = { ...mapping, tags: next.length > 0 ? next : undefined };
-    generation.current += 1;
-    setMapping(nextMapping);
-    setValidation(validateCsv(rows, nextMapping, context));
-    setRunId(null);
-    setResult(null);
+    applyMapping({ ...mapping, tags: next.length > 0 ? next : undefined });
   }
 
   function onEventsChange(next: Array<{ column: string; eventId: string }>) {
     if (!mapping) return;
-    const nextMapping = { ...mapping, events: next.length > 0 ? next : undefined };
-    generation.current += 1;
-    setMapping(nextMapping);
-    setValidation(validateCsv(rows, nextMapping, context));
-    setRunId(null);
-    setResult(null);
+    applyMapping({ ...mapping, events: next.length > 0 ? next : undefined });
   }
 
-  function dryRun() {
-    if (!mapping) return;
+  /**
+   * One button, two server calls, in the required order: the dry run persists
+   * an `imports` row and returns the run id; the commit is only ever reached
+   * with a `runId` this very sequence produced, so a commit can never precede
+   * a dry run. Each `await` is followed by the staleness check — a mapping
+   * edit mid-flight aborts the sequence rather than committing a shape that
+   * was never validated.
+   */
+  function importNow() {
+    if (!mapping || pending) return;
     const startedAt = generation.current;
+    const skipped = summary?.problems.errors ?? [];
+    setCommitErrors(null);
+
     startTransition(async () => {
-      const r = await validateCsvImport(filename, rows, mapping);
+      const dry = await validateCsvImport(filename, rows, mapping);
       if (generation.current !== startedAt) return; // stale — mapping/file changed since this run started
-      setRunId(r.ok ? r.runId : null);
-      setResult(r.ok ? null : { ok: false, errors: r.errors });
-    });
-  }
-
-  function commit() {
-    if (!mapping || !runId) return;
-    startTransition(async () => {
-      const r = await commitCsvImport(runId, rows, mapping);
-      setResult(r);
-      if (r.ok) {
-        setRows([]);
-        setHeaders([]);
-        setMapping(null);
-        setValidation(null);
+      if (!dry.ok) {
         setRunId(null);
+        setCommitErrors(dry.errors);
+        return;
       }
+      setRunId(dry.runId);
+
+      if (generation.current !== startedAt) return; // stale — do not commit an unvalidated shape
+      const committed = await commitCsvImport(dry.runId, rows, mapping);
+      if (generation.current !== startedAt) return;
+
+      if (!committed.ok) {
+        setCommitErrors(committed.errors);
+        return;
+      }
+      setDone({ households: committed.households, guests: committed.guests, skipped });
+      setRunId(null);
+      setStep("done");
     });
   }
 
-  return (
-    <div className="rounded-xl border border-hairline p-5">
-      <h2 className="text-[14.5px] font-semibold text-ink">CSV import</h2>
-      <p className="mt-0.5 text-[12.5px] text-muted">
-        Columns are auto-detected; group rows into households with a Household column, or we group by last name + email.
-      </p>
+  function startOver() {
+    generation.current += 1;
+    setStep("upload");
+    setFilename("");
+    setHeaders([]);
+    setRows([]);
+    setMapping(null);
+    setValidation(null);
+    setRunId(null);
+    setCommitErrors(null);
+    setDone(null);
+    setFileError(null);
+    setColumnsOpen(false);
+    setColumnsReason(null);
+  }
 
-      <label className="mt-3.5 flex w-fit cursor-pointer items-center gap-2 rounded-lg bg-olive-deep px-4 py-2.5 text-[13.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] motion-reduce:transition-none">
-        Choose CSV file
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-        />
-      </label>
+  /**
+   * Builds a CSV of just the offending rows, with a plain-language column
+   * saying what to fix, so the sheet can be corrected and re-uploaded.
+   * Household-level problems carry no row of their own (they're reported at
+   * the header line); they're still listed, with the cells left blank.
+   */
+  function downloadProblems(problems: ImportProblem[], name: string) {
+    const data = problems.map((p) => {
+      const row = p.line >= 2 ? rows[p.line - 2] : undefined;
+      const out: Record<string, string> = {};
+      for (const h of headers) out[h] = row?.[h] ?? "";
+      out["Spreadsheet row"] = p.line >= 2 ? String(p.line) : "";
+      out["What to fix"] = p.message;
+      return out;
+    });
+    const csv = Papa.unparse({ fields: [...headers, "Spreadsheet row", "What to fix"], data });
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
-      {result?.ok && (
-        <p className="mt-3 rounded-lg bg-sage-band px-3.5 py-2.5 text-[13px] font-medium text-olive-deep">
-          Imported {result.households} households · {result.guests} guests. Invite codes and RSVP links were generated automatically.
-        </p>
-      )}
-      {result && !result.ok && (
-        <div className="mt-3 rounded-lg bg-blush px-3.5 py-2.5 text-[13px] text-rose-deep">
-          {result.errors.map((e, i) => (
-            <p key={i}>{e.line ? `Line ${e.line}: ` : ""}{e.message}</p>
-          ))}
-        </div>
-      )}
+  if (step === "done" && done) {
+    return (
+      <DoneStep
+        households={done.households}
+        guests={done.guests}
+        skipped={done.skipped}
+        onDownloadSkipped={downloadProblems}
+        onImportAnother={startOver}
+      />
+    );
+  }
 
-      {mapping && headers.length > 0 && (
-        <>
-          <div className="mt-4 grid grid-cols-5 gap-2">
-            {MAPPING_FIELDS.map((f) => (
-              <label key={f.key} className="flex flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-                {f.label.toUpperCase()}{f.required ? " *" : ""}
-                <select
-                  value={(mapping[f.key] as string) ?? ""}
-                  onChange={(e) => remap(f.key, e.target.value)}
-                  className="rounded-lg border border-[#dddbd0] bg-white px-2 py-2 text-[12.5px] font-normal"
-                >
-                  <option value="">—</option>
-                  {headers.map((h) => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
+  if (step === "review" && summary && mapping) {
+    return (
+      <ReviewStep
+        summary={summary}
+        filename={filename}
+        importing={pending}
+        needsColumns={needsColumns}
+        commitErrors={commitErrors}
+        onImport={importNow}
+        onStartOver={startOver}
+        onDownloadProblems={downloadProblems}
+        columnMatches={
+          <ColumnMatches
+            open={columnsOpen}
+            onToggle={() => setColumnsOpen((v) => !v)}
+            headers={headers}
+            mapping={mapping}
+            events={events}
+            reason={columnsReason}
+            disabled={pending}
+            onRemap={remap}
+            onTagsChange={onTagsChange}
+            onEventsChange={onEventsChange}
+          />
+        }
+      />
+    );
+  }
 
-          <TagPicker headers={headers} value={mapping.tags ?? []} onChange={onTagsChange} />
-          {events.length > 0 && (
-            <EventPicker headers={headers} events={events} value={mapping.events ?? []} onChange={onEventsChange} />
-          )}
+  return <UploadStep onFile={onFile} reading={reading} readingName={filename} error={fileError} />;
+}
 
-          {validation && (
-            <div className="mt-4">
-              <div className="flex items-center gap-3">
-                <p className="text-[13px] font-medium text-ink">
-                  Preview: <span className="text-olive">{validation.households.length} households</span> ·{" "}
-                  <span className="text-olive">{validation.households.reduce((n, h) => n + h.guests.length, 0)} guests</span>
-                  {validation.errors.length > 0 && (
-                    <span className="text-rose"> · {validation.errors.length} errors</span>
-                  )}
-                  {validation.warnings.length > 0 && (
-                    <span className="text-[#7a6420]"> · {validation.warnings.length} warnings</span>
-                  )}
-                </p>
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  disabled={!validation.ok || pending}
-                  onClick={dryRun}
-                  className="rounded-lg border border-[#dddbd0] px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
-                >
-                  {pending ? "Running…" : runId ? "Dry run saved ✓" : "Run dry run"}
-                </button>
-                <button
-                  type="button"
-                  disabled={!runId || pending}
-                  onClick={commit}
-                  className="rounded-lg bg-olive-deep px-5 py-2.5 text-[13.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-50 motion-reduce:transition-none"
-                >
-                  {pending ? "Importing…" : "Commit import"}
-                </button>
-              </div>
-
-              {[...validation.errors, ...validation.warnings].slice(0, 8).map((e, i) => (
-                <p key={i} className={`mt-1 text-[12.5px] ${validation.errors.includes(e) ? "text-rose" : "text-[#7a6420]"}`}>
-                  Line {e.line}: {e.message}
-                </p>
-              ))}
-
-              <div className="mt-3 max-h-56 overflow-auto rounded-lg border border-hairline">
-                <table className="w-full text-left text-[12.5px]">
-                  <thead className="sticky top-0 bg-paper text-[10.5px] font-semibold tracking-wider text-[#6b7167]">
-                    <tr>
-                      <th className="px-3 py-2">HOUSEHOLD</th>
-                      <th className="px-3 py-2">GUESTS</th>
-                      <th className="px-3 py-2">EMAIL</th>
-                      <th className="px-3 py-2">RULES</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {validation.households.map((h, i) => (
-                      <tr key={i} className="border-t border-[#f1f0ea]">
-                        <td className="px-3 py-2 font-medium text-ink">{h.displayName}</td>
-                        <td className="px-3 py-2 text-[#4a5147]">
-                          {h.guests.map((g) => `${g.firstName} ${g.lastName}`).join(", ")}
-                        </td>
-                        <td className="px-3 py-2 text-[#4a5147]">{h.email ?? "—"}</td>
-                        <td className="px-3 py-2 text-[#4a5147]">
-                          Max {h.maxPartySize}{h.plusOneSlots ? ` · +${h.plusOneSlots}` : ""}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
+/**
+ * CSV goes straight to the tested parser. Excel workbooks are converted to
+ * CSV first and then take the identical path, so there is exactly one parsing
+ * code path. `xlsx` is already a dependency (the export routes use it) and is
+ * loaded dynamically, so it stays out of the bundle unless someone actually
+ * drops a workbook.
+ */
+async function readSpreadsheet(file: File): Promise<string> {
+  if (!/\.xlsx?$/i.test(file.name)) return file.text();
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!sheet) throw new Error("empty workbook");
+  return XLSX.utils.sheet_to_csv(sheet);
 }

@@ -7,7 +7,7 @@ import * as importsData from "@/lib/data/imports";
 import { validateCsv, type CsvMapping, type RowError } from "@/lib/csv";
 
 export type ValidateResult =
-  | { ok: true; runId: string; households: number; guests: number; warnings: RowError[] }
+  | { ok: true; runId: string; households: number; guests: number; errors: RowError[]; warnings: RowError[] }
   | { ok: false; errors: RowError[]; warnings: RowError[] };
 
 export type CommitResult =
@@ -24,7 +24,12 @@ export async function validateCsvImport(
   const scope = forWedding(admin.weddingId);
   const context = await importsData.loadImportContext(scope);
   const validation = validateCsv(rows, mapping, context);
-  if (!validation.ok) {
+  // Partial import: a bad row is dropped by the engine before grouping, so the
+  // households that survive are complete and valid on their own. Blocking the
+  // whole file on them made twelve missing last names hold 246 guests hostage.
+  // We only refuse when there is genuinely nothing to import — no name columns
+  // mapped, or every row unusable.
+  if (validation.households.length === 0) {
     return { ok: false, errors: validation.errors, warnings: validation.warnings };
   }
   const stats = {
@@ -32,7 +37,7 @@ export async function validateCsvImport(
     guests: validation.households.reduce((n, h) => n + h.guests.length, 0),
   };
   const run = await importsData.createRun(scope, filename, "validated", stats);
-  return { ok: true, runId: run.id, ...stats, warnings: validation.warnings };
+  return { ok: true, runId: run.id, ...stats, errors: validation.errors, warnings: validation.warnings };
 }
 
 /** Commits a previously validated run. Re-validates server-side against the same context. */
@@ -46,7 +51,10 @@ export async function commitCsvImport(
   const context = await importsData.loadImportContext(scope);
 
   const validation = validateCsv(rows, mapping, context);
-  if (!validation.ok) {
+  // Same partial-import gate as the dry run above: commit the valid households
+  // and leave the unusable rows behind. Only a file with nothing importable in
+  // it fails outright.
+  if (validation.households.length === 0) {
     await importsData.finishRun(scope, runId, "failed", null, { errors: validation.errors });
     return { ok: false, errors: validation.errors };
   }
