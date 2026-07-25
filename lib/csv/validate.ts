@@ -1,6 +1,6 @@
 import type { ImportHouseholdInput } from "@/lib/data/imports";
 import type { CsvMapping, CsvValidation, RowError } from "./types";
-import { normalizeAge } from "./normalize";
+import { normalizeAge, isTruthy } from "./normalize";
 import { groupKey } from "./group";
 
 /**
@@ -110,6 +110,11 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
         lastName: row[mapping.lastName].trim(),
         ageType: normalizeAge(mapping.ageType ? row[mapping.ageType] : undefined),
         relationship: mapping.relationship ? row[mapping.relationship]?.trim() || undefined : undefined,
+        origin: mapping.isPlusOne
+          ? isTruthy(row[mapping.isPlusOne])
+            ? "plus_one"
+            : "named"
+          : undefined,
       })),
     });
   }

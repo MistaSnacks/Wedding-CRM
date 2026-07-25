@@ -17,3 +17,13 @@ export function normalizeAge(v: string | undefined): AgeType {
   if (s.startsWith("infant") || s === "baby" || s === "bebé") return "infant";
   return "adult";
 }
+
+const AFFIRMATIVE = new Set(["yes", "y", "true", "t", "1", "x"]);
+
+/** Affirmative cell value, or a plus-one marker phrase. */
+export function isTruthy(v: string | undefined): boolean {
+  const s = norm(v);
+  if (!s) return false;
+  if (AFFIRMATIVE.has(s)) return true;
+  return s.includes("plus one") || s.includes("plus-one") || s.includes("+1");
+}

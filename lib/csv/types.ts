@@ -9,6 +9,7 @@ export type CsvMapping = {
   phone?: string;
   ageType?: string;
   relationship?: string;
+  isPlusOne?: string;
   maxPartySize?: string;
   plusOneSlots?: string;
   locale?: string;

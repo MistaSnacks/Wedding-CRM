@@ -24,7 +24,13 @@ export type ImportHouseholdInput = {
   plusOneSlots: number;
   preferredLocale?: string;
   tags?: string[];
-  guests: Array<{ firstName: string; lastName: string; ageType?: "adult" | "child" | "infant"; relationship?: string }>;
+  guests: Array<{
+    firstName: string;
+    lastName: string;
+    ageType?: "adult" | "child" | "infant";
+    relationship?: string;
+    origin?: "named" | "plus_one";
+  }>;
 };
 
 export async function createRun(scope: WeddingScope, filename: string): Promise<{ id: string }> {
@@ -95,6 +101,7 @@ export async function commitHouseholds(
           last_name: g.lastName,
           age_type: g.ageType ?? "adult",
           relationship: g.relationship ?? null,
+          origin: g.origin ?? "named",
         })),
       )
       .select("id");
