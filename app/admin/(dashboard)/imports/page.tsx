@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import { loadImportContext } from "@/lib/data/imports";
 import { ImportWizard } from "@/components/admin/ImportWizard";
+import { ExportLinks } from "@/components/admin/ExportLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -44,25 +45,10 @@ export default async function ImportsPage() {
 
       <div className="rounded-xl border border-hairline p-5">
         <h2 className="text-[14.5px] font-semibold text-ink">Export center</h2>
-        <p className="mt-0.5 text-[12.5px] text-muted">Each report downloads as CSV — add ?format=xlsx for Excel.</p>
-        <div className="mt-3.5 flex flex-wrap gap-1.5">
-          {REPORTS.map((r) => (
-            <span key={r.key} className="flex overflow-hidden rounded-full border border-[#dddbd0]">
-              <a
-                href={`/api/export/${r.key}`}
-                className="px-3.5 py-1.5 text-[12.5px] font-medium text-[#4a5147] transition-colors hover:bg-sage-band hover:text-olive-deep"
-              >
-                {r.label}
-              </a>
-              <a
-                href={`/api/export/${r.key}?format=xlsx`}
-                className="border-l border-[#dddbd0] px-2.5 py-1.5 text-[11px] font-semibold text-muted transition-colors hover:bg-sage-band hover:text-olive-deep"
-              >
-                XLSX
-              </a>
-            </span>
-          ))}
-        </div>
+        <p className="mt-0.5 text-[12.5px] text-muted">
+          Pick a report and it downloads straight to your computer — CSV, or XLSX for Excel.
+        </p>
+        <ExportLinks reports={REPORTS} />
         <div className="mt-4 flex gap-2">
           <Link
             href="/admin/print/escort-cards"

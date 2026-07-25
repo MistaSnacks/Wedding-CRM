@@ -211,10 +211,28 @@ function toCsv(rows: Array<Record<string, string | number>>): string {
   return [headers.join(","), ...rows.map((r) => headers.map((h) => esc(r[h])).join(","))].join("\n");
 }
 
+/**
+ * Echoes the client's one-time download token back as a short-lived cookie.
+ *
+ * This is the only way the page can honestly know the file arrived: an `<a
+ * href>` download fires no load event and leaves no trace in the document, so
+ * without a signal from the response itself any "downloaded ✓" would just be a
+ * timer guessing. Deliberately not HttpOnly — reading it is the entire point —
+ * and it carries no data beyond the opaque token the client just minted, so
+ * there is nothing here worth stealing. Format-validated because it lands in a
+ * response header.
+ */
+function downloadReceipt(request: Request): Record<string, string> {
+  const token = new URL(request.url).searchParams.get("dl");
+  if (!token || !/^[A-Za-z0-9_-]{1,64}$/.test(token)) return {};
+  return { "Set-Cookie": `export_download=${token}; Path=/; Max-Age=60; SameSite=Lax` };
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ report: string }> }) {
   const admin = await requireAdmin();
   const { report } = await params;
   const format = new URL(request.url).searchParams.get("format") ?? "csv";
+  const receipt = downloadReceipt(request);
 
   let table: Table;
   try {
@@ -233,6 +251,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ repo
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${report}-${stamp}.xlsx"`,
+        ...receipt,
       },
     });
   }
@@ -241,6 +260,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ repo
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${report}-${stamp}.csv"`,
+      ...receipt,
     },
   });
 }
