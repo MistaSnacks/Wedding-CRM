@@ -134,10 +134,12 @@ export function ReviewStep({
               : `Import ${namedGuests.toLocaleString()} ${namedGuests === 1 ? "guest" : "guests"}`}
           </button>
           {problems.errors.length > 0 && (
-            <p className="max-w-[38ch] text-[12.5px] leading-relaxed text-[#6b7167]">
-              {`The ${problems.errors.length} ${
-                problems.errors.length === 1 ? "row" : "rows"
-              } above won’t be included. You can import now and add them later.`}
+            <p className="max-w-[44ch] text-[12.5px] leading-relaxed text-[#6b7167]">
+              {`${problems.errors.length === 1 ? "That row" : `Those ${problems.errors.length} rows`} won’t be included. Fixing ${
+                problems.errors.length === 1 ? "it" : "them"
+              } in your spreadsheet and uploading again brings everyone in at once — if you import now, you’ll need to add ${
+                problems.errors.length === 1 ? "that guest" : "those guests"
+              } by hand afterwards, because uploading the same file twice would duplicate the rest.`}
             </p>
           )}
         </div>
