@@ -142,13 +142,13 @@ export function buildHousehold(
   const namedPlusOnes = mapping.isPlusOne
     ? group.rows.filter(({ row }) => isTruthy(row[mapping.isPlusOne!])).length
     : 0;
-  const plusOneSlots = explicitSlots + group.blankRows + namedPlusOnes;
+  const plusOneSlots = explicitSlots + group.blankLines.length + namedPlusOnes;
   const declaredMax = mapping.maxPartySize ? parseInt(first.row[mapping.maxPartySize] ?? "", 10) : NaN;
   // maxPartySize deliberately excludes namedPlusOnes: those people already
   // have rows in group.rows, so counting them again would inflate the cap.
   const maxPartySize = Number.isFinite(declaredMax) && declaredMax > 0
     ? declaredMax
-    : group.rows.length + explicitSlots + group.blankRows;
+    : group.rows.length + explicitSlots + group.blankLines.length;
 
   if (maxPartySize < group.rows.length) {
     errors.push({
@@ -159,7 +159,7 @@ export function buildHousehold(
 
   if (mapping.envelope) {
     const named = countEnvelopeNames(first.row[mapping.envelope]);
-    const seats = group.rows.length + group.blankRows;
+    const seats = group.rows.length + group.blankLines.length;
     if (named > seats) {
       warnings.push({
         line: first.line,

@@ -53,34 +53,27 @@ function titleCase(s: string): string {
 
 // Matches the engine's "Group "<key>" has only unnamed rows — skipped." warning
 // (lib/csv/validate.ts). The key is one of groupRows' internal formats:
-// "hh:<household>|env:<envelope>", "env:<envelope>", "hh:<household>", or
-// "auto:<lastname>|<email>" (lib/csv/group.ts groupKey).
+// "env:<envelope>", "hh:<household>", or "auto:<lastname>|<email>"
+// (lib/csv/group.ts groupKey).
 const GROUP_SKIP = /^Group "(.+)" has only unnamed rows — skipped\.$/;
 
 /**
  * Decodes the engine's internal grouping key back into something a person
  * can read. The key is built entirely from the sheet's own normalized column
  * values (lib/csv/group.ts groupKey) — real information, just not fit for a
- * human to see verbatim (`hh:group a|env:ann one` leaks the internal prefix
- * and lowercases everything). Prefers the envelope half when both are
- * present, since it's the more specific identifier.
+ * human to see verbatim (`hh:group a` leaks the internal prefix and
+ * lowercases everything).
  */
 function decodeGroupKey(key: string): string | undefined {
   let body = key;
-  let envPart: string | undefined;
-  if (body.startsWith("hh:") && body.includes("|env:")) {
-    const [hhPart, rest] = body.split("|env:");
-    envPart = rest;
-    body = hhPart.slice(3);
-  } else if (body.startsWith("env:")) {
-    envPart = body.slice(4);
-    body = "";
+  if (body.startsWith("env:")) {
+    body = body.slice(4);
   } else if (body.startsWith("hh:")) {
     body = body.slice(3);
   } else if (body.startsWith("auto:")) {
     body = body.slice(5).split("|")[0] ?? "";
   }
-  const picked = (envPart && envPart.trim()) || body.trim();
+  const picked = body.trim();
   return picked ? titleCase(picked) : undefined;
 }
 

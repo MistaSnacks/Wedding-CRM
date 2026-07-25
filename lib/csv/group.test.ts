@@ -41,6 +41,36 @@ group x,SAME Envelope,Ben,Two
     expect(v.households[0].guests).toHaveLength(2);
   });
 
+  it("merges rows sharing an envelope even when their household values differ", () => {
+    // One family, inconsistently labelled in the household column. The envelope
+    // line is what gets mailed, so these three rows are one invitation — two
+    // identically addressed envelopes to one doorstep would be a bug.
+    const { headers, rows } = parseCsv(
+      `Household,Envelope Name,First Name,Last Name
+Group P,Ann One & Ben Two,Ann,One
+Group P,Ann One & Ben Two,Ben,Two
+Group Q,Ann One & Ben Two,Cara,Two
+`,
+    );
+    const v = validateCsv(rows, detectMapping(headers));
+    expect(v.ok).toBe(true);
+    expect(v.households).toHaveLength(1);
+    expect(v.households[0].displayName).toBe("Ann One & Ben Two");
+    expect(v.households[0].guests.map((g) => g.firstName).sort()).toEqual(["Ann", "Ben", "Cara"]);
+  });
+
+  it("control: one household value across several envelopes still splits", () => {
+    const { headers, rows } = parseCsv(
+      `Household,Envelope Name,First Name,Last Name
+Group R,Ann One,Ann,One
+Group R,Ben Two,Ben,Two
+`,
+    );
+    const v = validateCsv(rows, detectMapping(headers));
+    expect(v.households).toHaveLength(2);
+    expect(v.households.map((h) => h.displayName).sort()).toEqual(["Ann One", "Ben Two"]);
+  });
+
   it("falls back to the household column when envelope is blank", () => {
     const { headers, rows } = parseCsv(
       `Household,Envelope Name,First Name,Last Name
