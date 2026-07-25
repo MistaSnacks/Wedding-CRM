@@ -95,6 +95,13 @@ type ImportGuestInput = ImportHouseholdInput["guests"][number];
  * to build each guest's `attendingByEventId` (see buildAttending above) —
  * recomputing it per guest would repeat the same household-wide scan.
  */
+/**
+ * Precondition: `group.rows` must be non-empty — the caller is responsible for
+ * filtering groups that contain only blank-name rows (see validateCsv, which
+ * warns and skips them). This dereferences `group.rows[0]` directly, and
+ * `noUncheckedIndexedAccess` is off, so an empty group throws here rather than
+ * being caught by the type system.
+ */
 export function buildHousehold(
   group: Group,
   mapping: CsvMapping,

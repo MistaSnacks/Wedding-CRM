@@ -54,8 +54,10 @@ describe("mealCounts", () => {
   });
 
   it("preserves the order of the meals array as given (caller sorts by sort_order)", () => {
-    const sorted = [...MEALS].sort((a, b) => a.sort_order - b.sort_order);
-    const result = mealCounts([], sorted);
-    expect(result.map((r) => r.name)).toEqual(["Fish", "Chicken"]);
+    // MEALS is deliberately passed UNSORTED — its sort_order is Fish(0), Chicken(1),
+    // so an implementation that re-sorted internally would return ["Fish","Chicken"].
+    // Expecting declaration order is what pins "consumed in the order given".
+    const result = mealCounts([], MEALS);
+    expect(result.map((r) => r.name)).toEqual(["Chicken", "Fish"]);
   });
 });
