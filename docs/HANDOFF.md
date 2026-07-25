@@ -1,6 +1,6 @@
 # Guest CRM — Delivery Handoff
 
-_Last updated: 2026-07-09 (delivery to Juliet & Juan)._
+_Last updated: 2026-07-24 (tenant-agnostic CSV importer + RPC security hardening)._
 
 This doc is the single source of truth for handing the project off — to the client, or to a future working session. If you're an agent picking this up: read this file, then `docs/seating-roadmap.md` for deferred work.
 
@@ -9,8 +9,13 @@ This doc is the single source of truth for handing the project off — to the cl
 - **Production app:** https://guest-crm-camrens-projects-24b42280.vercel.app
 - **Guest RSVP entry:** `/rsvp` (code entry) and `/rsvp/h/[token]` (direct household links)
 - **Admin dashboard:** `/admin` (magic-link login at `/admin/login`)
-- **Hosting:** Vercel project `guest-crm` (team `camrens-projects-24b42280`). No git remote — deploys are `vercel --prod` from the local checkout.
-- **Database/auth:** Supabase. The MCP server and local CLI are linked to the *wrong* project/account — use the service-role key in `.env.local` for any admin API work (see `scripts/`).
+- **Hosting:** Vercel project `guest-crm` (team `camrens-projects-24b42280`), deployed with `vercel --prod --scope camrens-projects-24b42280`. There **is** a git remote: `origin` → `github.com/MistaSnacks/Wedding-CRM` (this doc previously said there wasn't).
+- **Database/auth:** Supabase, project ref `lagjcyaquqbddmnmzvcm` (matches `NEXT_PUBLIC_SUPABASE_URL`). Corrected 2026-07-24:
+  - The **CLI is linked to the correct project** and is authenticated — `supabase migration list` and `supabase db push` both work. This doc previously said it pointed at the wrong project; that is no longer true.
+  - The **MCP server is unauthorized** (every call returns `Unauthorized. Please provide a valid access token`). Don't route this repo's work through it.
+  - `db push` **refuses to re-apply an already-recorded migration** — a fix to applied SQL must go in a new numbered file.
+  - Always use `create or replace function`, never `drop` + `create`: replace preserves privileges, whereas a drop-and-recreate silently restores Supabase's default `EXECUTE` grant to `anon` (see the security note below).
+  - For data rather than DDL, use the service-role key in `.env.local` (patterns in `scripts/`).
 
 ## Giving the client access
 
@@ -33,11 +38,35 @@ The admin auth callback accepts both PKCE (`?code=`) and `token_hash` links, so 
 
 Verified at delivery: 42/42 tests pass, clean production build.
 
+## What shipped 2026-07-24 — tenant-agnostic CSV importer
+
+The `/admin/imports` wizard was a names-only importer. It now ingests a real guest list, driven entirely by column mapping so any wedding can use it — no client's spreadsheet vocabulary is hardcoded, and `lib/csv/generality.test.ts` fails the build if anyone adds some.
+
+- **Households are envelopes, not surnames.** Grouping keys on `(Household, Envelope Name)`. A coarse family-cluster column is not a mailing unit — one real value spanned 13 people across 7 invitations, which under the old grouping would have shared a single RSVP link and party-size cap.
+- **New mappings:** envelope, tags (with optional per-column prefixes), plus-one marker, structured + free-text mailing address, meal, dietary, notes, and one RSVP column per event including a not-invited state.
+- **Blank-name rows become plus-one slots** instead of being silently dropped.
+- **Transactional commit.** `commitHouseholds` now calls the `import_households` RPC, so a failure at household 90 of 140 rolls back completely instead of leaving a half-imported list with live invite codes.
+- **Explicit dry run** persisted as an `imports` row, gating the commit button; changing any mapping invalidates it.
+- **Free-text addresses are stored verbatim, never parsed** — international addresses defeat any parser and a wrong parse silently corrupts a mailing label.
+
+Verified: 95/95 tests, clean `tsc` and production build.
+
+### Security — two `security definer` RPCs were exposed to `anon`
+
+Supabase grants `EXECUTE` on new `public`-schema functions to `anon` and `authenticated` by default, and the anon key ships to every browser. Both of these were confirmed exploitable before being fixed:
+
+- `import_households` — could inject households, guests, invite codes and access tokens into **any** tenant. Revoked in migration `0004`.
+- `submit_rsvp` (pre-existing, from `0001`) — keyed on `p_household_id`, bypassing the "the access token is the credential" model. Revoked in migration `0005`.
+
+**Any new `security definer` function needs `revoke execute … from public, anon, authenticated`.** Revoking only `public` is not enough — the default privileges create explicit per-role grants. Do **not** revoke `is_wedding_member` / `is_wedding_editor`; RLS policies evaluate those as the calling role. To check a function, call it with the anon key: `42501` means revoked, a function-level error means still exposed.
+
 ## Pending — do NOT forget
 
-1. **Invite email template not yet live.** `supabase/config.toml` + `supabase/templates/invite.html` need `supabase config push`, blocked because the CLI is linked to the wrong Supabase project. Until pushed, invites use the default Supabase template. Fix the CLI link (`supabase link --project-ref <correct ref>`) then push.
-2. **Save-the-date guest import — DO NOT RUN YET.** Waiting on ~200 more responses in the Google Sheet. When ready: declines map to `rsvp_status = 'declined'`. See memory note / import tooling in `lib/data/imports.ts`.
-3. **Seating roadmap deferred** until this client is live — spec in `docs/seating-roadmap.md`.
+1. **Run the master guest import.** The importer is built and tested but the real import has not been run — it needs a CSV export of the MASTER WEDDING LIST *Guest List* tab (sheet owned by julietle24@gmail.com). Full mapping instructions are in Task 13 of `docs/superpowers/plans/2026-07-24-tenant-agnostic-csv-importer.md`, including the expected dry-run sanity checks. That task also adds the Rehearsal Dinner event, which must be migration `0007` now that `0006` is taken.
+2. **Save-the-Date weekly sync not built.** Design is approved in `docs/superpowers/specs/2026-07-24-guest-data-migration-design.md` (Google service account + Sheets API, Vercel Cron, a `sheet_submissions` table, a fuzzy matcher, and an admin review inbox for ambiguous matches). This is Plan B and has no implementation plan yet. Note the two sheets share no identifier and names do not match (`Alison Aw` → `Alison Aw-Irwin`, `Amadeo Guiao` → `Amadeo Cruz`), so the join needs human review by design.
+3. **Invite email template not yet live.** `supabase/config.toml` + `supabase/templates/invite.html` still need `supabase config push`. The blocker recorded here previously — "the CLI is linked to the wrong Supabase project" — **no longer applies**; the CLI is correctly linked, so this should just work. Until pushed, invites use the default Supabase template.
+4. **Event management UI.** The schema supports arbitrary events with per-household invite lists, and the importer can now populate them, but there is no admin UI to create/edit/delete events. Spec'd as the follow-up to the migration design.
+5. **Seating roadmap deferred** until this client is live — spec in `docs/seating-roadmap.md`.
 
 ## Local development
 
