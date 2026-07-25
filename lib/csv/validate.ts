@@ -1,6 +1,6 @@
 import type { ImportHouseholdInput } from "@/lib/data/imports";
 import type { CsvMapping, CsvValidation, ImportContext, MailingAddress, RowError } from "./types";
-import { cleanValue, norm, normalizeAge, isTruthy } from "./normalize";
+import { cleanValue, norm, normalizeAge, isTruthy, countEnvelopeNames } from "./normalize";
 import { groupKey } from "./group";
 
 const NO_RESTRICTION = new Set(["none", "n/a", "na", "no", "-"]);
@@ -146,6 +146,17 @@ export function validateCsv(
         line: first.line,
         message: `"${displayName}": max party size ${maxPartySize} is smaller than its ${group.rows.length} guests.`,
       });
+    }
+
+    if (mapping.envelope) {
+      const named = countEnvelopeNames(first.row[mapping.envelope]);
+      const seats = group.rows.length + group.blankRows;
+      if (named > seats) {
+        warnings.push({
+          line: first.line,
+          message: `"${displayName}" names ${named} people but has only ${seats} row${seats === 1 ? "" : "s"} — someone may be missing.`,
+        });
+      }
     }
 
     const locale = mapping.locale ? (first.row[mapping.locale] ?? "").trim().toLowerCase() : "";

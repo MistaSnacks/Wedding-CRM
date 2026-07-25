@@ -18,6 +18,19 @@ export function normalizeAge(v: string | undefined): AgeType {
   return "adult";
 }
 
+/**
+ * Rough count of how many people an envelope name refers to.
+ * "Ann, Bob & Cal" -> 3. Deliberately naive: used only to raise a warning.
+ */
+export function countEnvelopeNames(envelope: string | undefined): number {
+  const t = (envelope ?? "").trim();
+  if (!t) return 0;
+  return t
+    .split(/\s*(?:&|,|\band\b|\+)\s*/i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0).length;
+}
+
 const AFFIRMATIVE = new Set(["yes", "y", "true", "t", "1", "x"]);
 
 /** Affirmative cell value, or a plus-one marker phrase. */
