@@ -12,6 +12,7 @@ export type CsvMapping = {
   maxPartySize?: string;
   plusOneSlots?: string;
   locale?: string;
+  tags?: Array<{ column: string; prefix?: string }>;
 };
 
 export type RowError = { line: number; message: string };

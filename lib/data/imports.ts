@@ -23,6 +23,7 @@ export type ImportHouseholdInput = {
   maxPartySize: number;
   plusOneSlots: number;
   preferredLocale?: string;
+  tags?: string[];
   guests: Array<{ firstName: string; lastName: string; ageType?: "adult" | "child" | "infant"; relationship?: string }>;
 };
 
@@ -76,6 +77,7 @@ export async function commitHouseholds(
         max_party_size: input.maxPartySize,
         plus_one_slots: input.plusOneSlots,
         preferred_locale: input.preferredLocale ?? "en",
+        tags: input.tags ?? [],
         invite_code: newInviteCode(),
         access_token: newAccessToken(),
       })

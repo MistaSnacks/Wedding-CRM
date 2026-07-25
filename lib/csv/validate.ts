@@ -88,6 +88,14 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
 
     const locale = mapping.locale ? (first.row[mapping.locale] ?? "").trim().toLowerCase() : "";
 
+    const tagSet = new Set<string>();
+    for (const spec of mapping.tags ?? []) {
+      for (const { row } of group.rows) {
+        const raw = (row[spec.column] ?? "").trim();
+        if (raw) tagSet.add(`${spec.prefix ?? ""}${raw}`);
+      }
+    }
+
     households.push({
       displayName,
       primaryContactName: `${first.row[mapping.firstName].trim()} ${first.row[mapping.lastName].trim()}`,
@@ -96,6 +104,7 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       maxPartySize,
       plusOneSlots,
       preferredLocale: ["es", "vi"].includes(locale) ? locale : "en",
+      tags: tagSet.size > 0 ? [...tagSet] : undefined,
       guests: group.rows.map(({ row }) => ({
         firstName: row[mapping.firstName].trim(),
         lastName: row[mapping.lastName].trim(),
