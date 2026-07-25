@@ -46,7 +46,10 @@ export async function commitCsvImport(
   const context = await importsData.loadImportContext(scope);
 
   const validation = validateCsv(rows, mapping, context);
-  if (!validation.ok) return { ok: false, errors: validation.errors };
+  if (!validation.ok) {
+    await importsData.finishRun(scope, runId, "failed", null, { errors: validation.errors });
+    return { ok: false, errors: validation.errors };
+  }
 
   try {
     const result = await importsData.commitHouseholds(scope, runId, validation.households, admin.userId);

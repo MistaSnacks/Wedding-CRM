@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { parseCsv, detectMapping, validateCsv, type CsvMapping, type CsvValidation } from "@/lib/csv";
 import {
   commitCsvImport,
@@ -47,10 +47,21 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
   const [result, setResult] = useState<CommitResult | null>(null);
   const [pending, startTransition] = useTransition();
 
+  /**
+   * Bumped on every mapping/file mutation. A dry run captures the current
+   * value when it starts; if it's changed by the time the response lands,
+   * the mapping it validated is no longer the one on screen, and the
+   * response is stale and must not resurrect `runId`. Without this, a slow
+   * dry-run response arriving after a mapping edit could re-arm Commit for
+   * a shape that specific run never actually validated.
+   */
+  const generation = useRef(0);
+
   async function onFile(file: File) {
     const text = await file.text();
     const parsed = parseCsv(text);
     const detected = detectMapping(parsed.headers);
+    generation.current += 1;
     setFilename(file.name);
     setHeaders(parsed.headers);
     setRows(parsed.rows);
@@ -63,31 +74,39 @@ export function ImportWizard({ events }: { events: Array<{ id: string; name: str
   function remap(key: SingleColumnKey, value: string) {
     if (!mapping) return;
     const next = { ...mapping, [key]: value || undefined } as CsvMapping;
+    generation.current += 1;
     setMapping(next);
     setValidation(validateCsv(rows, next));
     setRunId(null);
+    setResult(null);
   }
 
   function onTagsChange(next: Array<{ column: string; prefix?: string }>) {
     if (!mapping) return;
     const nextMapping = { ...mapping, tags: next.length > 0 ? next : undefined };
+    generation.current += 1;
     setMapping(nextMapping);
     setValidation(validateCsv(rows, nextMapping));
     setRunId(null);
+    setResult(null);
   }
 
   function onEventsChange(next: Array<{ column: string; eventId: string }>) {
     if (!mapping) return;
     const nextMapping = { ...mapping, events: next.length > 0 ? next : undefined };
+    generation.current += 1;
     setMapping(nextMapping);
     setValidation(validateCsv(rows, nextMapping));
     setRunId(null);
+    setResult(null);
   }
 
   function dryRun() {
     if (!mapping) return;
+    const startedAt = generation.current;
     startTransition(async () => {
       const r = await validateCsvImport(filename, rows, mapping);
+      if (generation.current !== startedAt) return; // stale — mapping/file changed since this run started
       setRunId(r.ok ? r.runId : null);
       setResult(r.ok ? null : { ok: false, errors: r.errors });
     });

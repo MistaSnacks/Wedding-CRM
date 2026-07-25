@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireEditor } from "@/lib/admin-auth";
+import { requireEditorPage } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import { loadImportContext } from "@/lib/data/imports";
 import { ImportWizard } from "@/components/admin/ImportWizard";
@@ -22,7 +22,7 @@ const REPORTS = [
 ];
 
 export default async function ImportsPage() {
-  const admin = await requireEditor();
+  const admin = await requireEditorPage();
   const context = await loadImportContext(forWedding(admin.weddingId));
 
   return (
