@@ -1,4 +1,4 @@
 export { parseCsv } from "./parse";
 export { detectMapping } from "./detect";
 export { validateCsv } from "./validate";
-export type { CsvMapping, RowError, CsvValidation } from "./types";
+export type { CsvMapping, RowError, CsvValidation, MailingAddress } from "./types";

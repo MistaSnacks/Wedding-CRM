@@ -16,5 +16,11 @@ export function detectMapping(headers: string[]): CsvMapping {
     maxPartySize: find("maxpartysize", "maxparty", "partysize") || undefined,
     plusOneSlots: find("plusoneslots", "plusones", "plusone") || undefined,
     locale: find("locale", "language", "lang", "idioma") || undefined,
+    address: find("mailingaddress", "address", "fulladdress", "direccion") || undefined,
+    street: find("streetaddress", "street", "address1", "addressline1") || undefined,
+    city: find("city", "town", "ciudad") || undefined,
+    state: find("state", "province", "region", "estado") || undefined,
+    zip: find("zip", "zipcode", "postalcode", "postcode", "cp") || undefined,
+    country: find("country", "pais") || undefined,
   };
 }

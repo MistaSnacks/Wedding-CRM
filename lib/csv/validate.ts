@@ -1,7 +1,35 @@
 import type { ImportHouseholdInput } from "@/lib/data/imports";
-import type { CsvMapping, CsvValidation, RowError } from "./types";
-import { normalizeAge, isTruthy } from "./normalize";
+import type { CsvMapping, CsvValidation, MailingAddress, RowError } from "./types";
+import { cleanValue, normalizeAge, isTruthy } from "./normalize";
 import { groupKey } from "./group";
+
+/**
+ * First row in the group with any non-empty address field wins (whole-row,
+ * not merged across rows). Free text lands in `raw` verbatim — never parsed.
+ */
+function buildAddress(
+  rows: Array<{ row: Record<string, string> }>,
+  mapping: CsvMapping,
+): MailingAddress | undefined {
+  const fields = [
+    ["raw", mapping.address],
+    ["street", mapping.street],
+    ["city", mapping.city],
+    ["state", mapping.state],
+    ["zip", mapping.zip],
+    ["country", mapping.country],
+  ] as const;
+  for (const { row } of rows) {
+    const built: Record<string, string> = {};
+    for (const [key, column] of fields) {
+      if (!column) continue;
+      const value = cleanValue(row[column]);
+      if (value) built[key] = value;
+    }
+    if (Object.keys(built).length > 0) return { ...built, source: "csv" };
+  }
+  return undefined;
+}
 
 /**
  * Groups rows into households (see groupKey for the column fallback order)
@@ -105,6 +133,7 @@ export function validateCsv(rows: Record<string, string>[], mapping: CsvMapping)
       plusOneSlots,
       preferredLocale: ["es", "vi"].includes(locale) ? locale : "en",
       tags: tagSet.size > 0 ? [...tagSet] : undefined,
+      mailingAddress: buildAddress(group.rows, mapping),
       guests: group.rows.map(({ row }) => ({
         firstName: row[mapping.firstName].trim(),
         lastName: row[mapping.lastName].trim(),

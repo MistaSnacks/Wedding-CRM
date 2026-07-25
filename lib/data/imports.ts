@@ -1,4 +1,5 @@
 import type { WeddingScope } from "./scope";
+import type { MailingAddress } from "@/lib/csv";
 import * as activity from "./activity";
 import { customAlphabet } from "nanoid";
 import { randomBytes } from "crypto";
@@ -24,6 +25,7 @@ export type ImportHouseholdInput = {
   plusOneSlots: number;
   preferredLocale?: string;
   tags?: string[];
+  mailingAddress?: MailingAddress;
   guests: Array<{
     firstName: string;
     lastName: string;
@@ -84,6 +86,7 @@ export async function commitHouseholds(
         plus_one_slots: input.plusOneSlots,
         preferred_locale: input.preferredLocale ?? "en",
         tags: input.tags ?? [],
+        mailing_address: input.mailingAddress ?? null,
         invite_code: newInviteCode(),
         access_token: newAccessToken(),
       })

@@ -14,6 +14,22 @@ export type CsvMapping = {
   plusOneSlots?: string;
   locale?: string;
   tags?: Array<{ column: string; prefix?: string }>;
+  address?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+};
+
+export type MailingAddress = {
+  raw?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  source: "csv" | "save_the_date";
 };
 
 export type RowError = { line: number; message: string };
