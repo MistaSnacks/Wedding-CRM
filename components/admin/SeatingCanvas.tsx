@@ -25,6 +25,7 @@ import {
   setSeatingPublished,
 } from "@/app/admin/(dashboard)/seating/actions";
 import type { EventRow, SeatingTableRow, SeatAssignmentRow, ResponseRow, MealOptionRow } from "@/lib/types";
+import { MobileAssignSheet } from "@/components/admin/MobileAssignSheet";
 
 type HH = {
   id: string;
@@ -45,6 +46,19 @@ const POPOVER_W = 200;
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
+}
+
+/** Below Tailwind's md breakpoint the canvas is unusable; seat people from a list instead. */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
 }
 
 export function SeatingCanvas(props: {
@@ -121,6 +135,7 @@ export function SeatingCanvas(props: {
   }, [assignments]);
 
   const dragCount = dragging && dragging.type !== "table" ? dragging.count : 0;
+  const isMobile = useIsMobile();
 
   function tablePos(t: SeatingTableRow) {
     return posOverrides[t.id] ?? { x: t.pos_x, y: t.pos_y };
@@ -199,10 +214,95 @@ export function SeatingCanvas(props: {
     });
   }
 
+  function handleMobileAssign(guestIds: string[], tableId: string) {
+    startTransition(async () => {
+      applyAssignment({ kind: "assign", guestIds, tableId, eventId: props.event.id });
+      await assignHousehold(guestIds, props.event.id, tableId);
+    });
+  }
+
   function handleTableClick(tableId: string) {
     // A click that lands right after a table drag is the tail of that drag, not a toggle.
     if (performance.now() - lastTableDragEnd.current < 300) return;
     setOpenTableId((cur) => (cur === tableId ? null : tableId));
+  }
+
+  if (isMobile) {
+    const openTable = props.tables.find((t) => t.id === openTableId) ?? null;
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="text-[22px] font-semibold text-ink">Seating — {props.event.name}</h1>
+          <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
+            {props.tables.length} tables · {seatedCount} of {attendingCount} attending guests seated
+          </p>
+        </div>
+        {props.allEvents.length > 1 && (
+          <div className="flex gap-1 overflow-x-auto pb-1">
+            {props.allEvents.map((e) => (
+              <Link
+                key={e.id}
+                href={`/admin/seating?event=${e.id}`}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium ${
+                  e.id === props.event.id ? "bg-olive-deep text-cream" : "border border-[#dddbd0] text-[#4a5147]"
+                }`}
+              >
+                {e.name}
+              </Link>
+            ))}
+          </div>
+        )}
+        <p className="rounded-[10px] bg-blush px-3.5 py-3 text-[12px] leading-relaxed text-rose-deep">
+          Arrange tables on a computer — here you can seat people. Tap a table to start.
+        </p>
+        {props.tables.map((t) => {
+          const seated = seatedByTable.get(t.id) ?? [];
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setOpenTableId(t.id)}
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-white/70 px-4 py-3.5 text-left active:bg-paper"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold text-ink">{t.name}</span>
+                <span className="mt-0.5 block truncate text-[12.5px] text-[#4a5147]">
+                  {seated.length
+                    ? seated.map((s) => guestById.get(s.guest_id)?.name).filter(Boolean).join(", ")
+                    : "Empty"}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full bg-[#f1f0ea] px-2.5 py-1 text-[11px] font-semibold text-[#6b7167]">
+                {seated.length}/{t.capacity}
+              </span>
+            </button>
+          );
+        })}
+        {!props.tables.length && (
+          <p className="rounded-xl border border-hairline px-4 py-8 text-center text-[13px] text-muted">
+            No tables yet — add them from a computer.
+          </p>
+        )}
+        {openTable && (
+          <MobileAssignSheet
+            tableLabel={openTable.name}
+            capacity={openTable.capacity}
+            seated={(seatedByTable.get(openTable.id) ?? [])
+              .map((a) => guestById.get(a.guest_id))
+              .filter((g): g is NonNullable<typeof g> => Boolean(g))
+              .map((g) => ({ id: g.id, name: g.name, ageType: g.ageType }))}
+            unassigned={unassigned.map((h) => ({
+              id: h.id,
+              displayName: h.displayName,
+              guests: h.guests.map((g) => ({ id: g.id, name: g.name, ageType: g.ageType })),
+            }))}
+            onAssign={(guestIds) => handleMobileAssign(guestIds, openTable.id)}
+            onUnassign={handleUnassign}
+            onClose={() => setOpenTableId(null)}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
