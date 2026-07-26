@@ -31,7 +31,11 @@ export type EventView = {
   venueName: string;
   venueAddress: string;
   dressCode: string;
-  /** Her stated scope: everyone, or a chosen few. */
+  /**
+   * Her standing rule for this event: is a household added later invited to it
+   * automatically? Stored as `visibility`, and load-bearing since 0008 — the
+   * importer reads it. Nothing infers it from the tick list.
+   */
   everyone: boolean;
   rsvpEnabled: boolean;
   /** Households where at least one guest actually answered. */
@@ -52,9 +56,11 @@ export function EventsScreen({
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState<{ id: string; tab: "edit" | "invites" } | null>(null);
   const [invites, setInvites] = useState<Record<string, string[]>>({});
+  const [scopes, setScopes] = useState<Record<string, boolean>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [liftedId, setLiftedId] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [orderRetry, setOrderRetry] = useState<(() => void) | null>(null);
   const [, startTransition] = useTransition();
   const orderBeforeDrag = useRef<string[] | null>(null);
 
@@ -68,16 +74,30 @@ export function EventsScreen({
   ];
 
   const invitedIds = (event: EventView) => invites[event.id] ?? event.invitedHouseholdIds;
+  const everyoneFor = (event: EventView) => scopes[event.id] ?? event.everyone;
 
+  /**
+   * Optimistic reorder. A server refusal returns `ok:false`; a dropped
+   * connection rejects, and an uncaught rejection inside a transition reaches
+   * the route's error boundary and replaces this whole screen. Both land here
+   * instead, on one line above the list, with the order put back.
+   */
   function commitOrder(ids: string[], rollbackTo: string[]) {
     if (ids.join() === rollbackTo.join()) return;
     setOrder(ids);
     setOrderError(null);
+    setOrderRetry(null);
     startTransition(async () => {
-      const result = await reorderEvents(ids);
-      if (!result.ok) {
+      function fail(message: string) {
         setOrder(rollbackTo);
-        setOrderError(result.message ?? "That order didn't save.");
+        setOrderError(message);
+        setOrderRetry(() => () => commitOrder(ids, rollbackTo));
+      }
+      try {
+        const result = await reorderEvents(ids);
+        if (!result.ok) fail(result.message ?? "That order didn't save.");
+      } catch {
+        fail("That order didn't save — the connection dropped. Nothing was changed.");
       }
     });
   }
@@ -113,6 +133,16 @@ export function EventsScreen({
 
   function afterSave(result: EventFormState) {
     setAdding(false);
+    // The form can move both the invite list and the standing rule, and the
+    // render that follows the save is authoritative — drop the local overrides
+    // rather than letting a stale optimistic value outrank it.
+    const savedId = result.savedEventId;
+    if (savedId !== undefined) {
+      const without = <T,>(prev: Record<string, T>): Record<string, T> =>
+        Object.fromEntries(Object.entries(prev).filter(([id]) => id !== savedId));
+      setInvites(without);
+      setScopes(without);
+    }
     setOpen(
       result.openInvites && result.savedEventId
         ? { id: result.savedEventId, tab: "invites" }
@@ -146,9 +176,18 @@ export function EventsScreen({
       {orderError && (
         <p
           role="alert"
-          className="rounded-lg border border-blush-border bg-blush px-3.5 py-2.5 text-[12.5px] text-rose-deep"
+          className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-blush-border bg-blush px-3.5 py-2.5 text-[12.5px] text-rose-deep"
         >
-          {orderError}
+          <span>{orderError}</span>
+          {orderRetry && (
+            <button
+              type="button"
+              onClick={orderRetry}
+              className="font-semibold underline decoration-rose-deep/40 underline-offset-2 transition-colors hover:decoration-rose-deep"
+            >
+              Try again
+            </button>
+          )}
         </p>
       )}
 
@@ -181,8 +220,7 @@ export function EventsScreen({
         {ordered.map((event, index) => {
           const selected = invitedIds(event);
           const panel = open?.id === event.id ? open.tab : null;
-          const isEveryone =
-            event.everyone && households.length > 0 && selected.length === households.length;
+          const everyone = everyoneFor(event);
           const where = [event.venueName, event.venueAddress].filter(Boolean).join(", ");
 
           return (
@@ -218,11 +256,6 @@ export function EventsScreen({
                     <h2 className="font-display text-[23px] leading-tight font-medium text-olive-deep">
                       {event.name}
                     </h2>
-                    {isEveryone && (
-                      <span className="rounded-full bg-sage-band px-2.5 py-0.5 text-[10.5px] font-semibold tracking-[0.06em] text-olive-deep uppercase">
-                        Everyone
-                      </span>
-                    )}
                     {!event.rsvpEnabled && (
                       <span className="rounded-full bg-[#f1f0ea] px-2.5 py-0.5 text-[10.5px] font-semibold tracking-[0.06em] text-[#6b7167] uppercase">
                         No RSVPs
@@ -243,6 +276,26 @@ export function EventsScreen({
                   {event.dressCode.length > 0 && (
                     <p className="mt-0.5 text-[12.5px] text-muted">{event.dressCode}</p>
                   )}
+
+                  {/* The standing rule, stated on the card in both directions.
+                      It decides whether an import adds people to this event, so
+                      the version that used to show only when it was "everyone"
+                      left the more consequential state — curated — invisible. */}
+                  <span
+                    className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] leading-none font-medium ${
+                      everyone ? "bg-sage-band text-olive-deep" : "bg-[#f1f0ea] text-[#6b7167]"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        everyone ? "bg-[#3b4823]" : "bg-[#b9bfae]"
+                      }`}
+                    />
+                    {everyone
+                      ? "Everyone — new guests you add are invited automatically"
+                      : "Just the people you pick — new guests aren't added"}
+                  </span>
 
                   {selected.length === 0 && (
                     <p className="mt-2 text-[12.5px] font-medium text-rose-deep">
@@ -307,7 +360,7 @@ export function EventsScreen({
                       venueName: event.venueName,
                       venueAddress: event.venueAddress,
                       dressCode: event.dressCode,
-                      everyone: event.everyone,
+                      everyone,
                       rsvpEnabled: event.rsvpEnabled,
                     }}
                     repliedHouseholds={event.replied}
@@ -324,7 +377,11 @@ export function EventsScreen({
                     eventName={event.name}
                     households={households}
                     selected={selected}
+                    everyone={everyone}
                     onChange={(next) => setInvites((prev) => ({ ...prev, [event.id]: next }))}
+                    onEveryoneChange={(next) =>
+                      setScopes((prev) => ({ ...prev, [event.id]: next }))
+                    }
                   />
                 </div>
               )}

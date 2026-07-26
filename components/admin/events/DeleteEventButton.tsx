@@ -49,13 +49,21 @@ export function DeleteEventButton({
   function fire(confirmation: string) {
     setPhase("deleting");
     startTransition(async () => {
-      const result = await deleteEvent(eventId, confirmation);
-      if (result.ok) {
-        onDeleted();
-        return;
+      try {
+        const result = await deleteEvent(eventId, confirmation);
+        if (result.ok) {
+          onDeleted();
+          return;
+        }
+        setPhase("idle");
+        setError(result.message ?? "That didn't delete. Nothing was changed.");
+      } catch {
+        // The request never landed. Say so rather than letting the rejection
+        // reach the error boundary — and be unambiguous that nothing went,
+        // because "did my delete happen?" is the worst question to be left with.
+        setPhase("idle");
+        setError("Couldn't reach the server — the connection dropped. Nothing was deleted.");
       }
-      setPhase("idle");
-      setError(result.message ?? "That didn't delete. Nothing was changed.");
     });
   }
 
@@ -70,19 +78,26 @@ export function DeleteEventButton({
 
     setPhase("checking");
     startTransition(async () => {
-      const result = await deletionCost(eventId);
-      if (!result.ok || !result.impact) {
+      try {
+        const result = await deletionCost(eventId);
+        if (!result.ok || !result.impact) {
+          setPhase("idle");
+          setError(result.message ?? "Couldn't check what this would remove.");
+          return;
+        }
+        setImpact(result.impact);
+        if (result.impact.replied > 0 || result.impact.mealsChosen > 0) {
+          setTyped("");
+          setPhase("guarded");
+        } else {
+          setPhase("armed");
+          disarmLater();
+        }
+      } catch {
+        // Never arm on a failed check: the whole guard rests on knowing what
+        // would be destroyed, and an unread cost is not a cost of zero.
         setPhase("idle");
-        setError(result.message ?? "Couldn't check what this would remove.");
-        return;
-      }
-      setImpact(result.impact);
-      if (result.impact.replied > 0 || result.impact.mealsChosen > 0) {
-        setTyped("");
-        setPhase("guarded");
-      } else {
-        setPhase("armed");
-        disarmLater();
+        setError("Couldn't check what this would remove — the connection dropped.");
       }
     });
   }

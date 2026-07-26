@@ -31,10 +31,18 @@ export function HouseholdEvents({
     setError(null);
     setChosen(nowInvited ? [...chosen, eventId] : chosen.filter((id) => id !== eventId));
     startTransition(async () => {
-      const result = await setHouseholdInvite(householdId, eventId, nowInvited);
-      if (!result.ok) {
+      // `ok:false` is a refusal; a dropped connection rejects instead, and an
+      // uncaught rejection in a transition takes the whole page down to the
+      // error boundary. Both revert the tick and say so on this line.
+      try {
+        const result = await setHouseholdInvite(householdId, eventId, nowInvited);
+        if (!result.ok) {
+          setChosen(before);
+          setError(result.message ?? "That didn't save. Nothing was changed.");
+        }
+      } catch {
         setChosen(before);
-        setError(result.message ?? "That didn't save. Nothing was changed.");
+        setError("That didn't save — the connection dropped. Nothing was changed.");
       }
     });
   }

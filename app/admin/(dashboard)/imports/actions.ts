@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { requireEditor } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import * as importsData from "@/lib/data/imports";
@@ -64,6 +65,10 @@ export async function commitCsvImport(
     revalidatePath("/admin/guests");
     return { ok: true, ...result };
   } catch (e) {
+    // `requireEditor()` is above the try, so its redirect already escapes —
+    // but this catch-all turns anything thrown into a message, and Next
+    // signals redirect()/notFound() by throwing. Let those through.
+    unstable_rethrow(e);
     const message = e instanceof Error ? e.message : "unknown error";
     await importsData.finishRun(scope, runId, "failed", null, { message });
     return { ok: false, errors: [{ line: 0, message }] };

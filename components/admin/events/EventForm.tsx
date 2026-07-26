@@ -156,6 +156,9 @@ export function EventForm({
         />
       </Question>
 
+      {/* Not just today's list: `visibility` is what the importer reads when it
+          decides whether a newly added household joins this event, so the
+          question has to be asked about the future as well as the present. */}
       <Question label="Who's invited?">
         <div className="flex flex-wrap gap-2">
           <Choice
@@ -164,15 +167,19 @@ export function EventForm({
             checked={everyone}
             onChange={() => setEveryone(true)}
             title="Everyone"
-            note="Every household on your guest list"
+            note="Every household on your guest list — and new guests you add later are invited automatically."
           />
           <Choice
             name="everyone"
             value="no"
             checked={!everyone}
             onChange={() => setEveryone(false)}
-            title="Only some households"
-            note={isNew ? "You'll pick them next" : "Pick them under “Who's invited”"}
+            title="Just the people you pick"
+            note={
+              isNew
+                ? "You'll pick them next. New guests you add later aren't invited to this."
+                : "Pick them under “Who's invited”. New guests you add later aren't invited to this."
+            }
           />
         </div>
       </Question>
@@ -289,9 +296,9 @@ function Choice({
         onChange={onChange}
         className="mt-0.5 accent-[#3b4823]"
       />
-      <span className="block">
+      <span className="block max-w-[34ch]">
         <span className="block text-[13.5px] font-semibold text-ink">{title}</span>
-        <span className="block text-[12px] text-[#6b7167]">{note}</span>
+        <span className="block text-[12px] leading-relaxed text-[#6b7167]">{note}</span>
       </span>
     </label>
   );

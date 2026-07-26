@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { requireEditor } from "@/lib/admin-auth";
 import { forWedding, type WeddingScope } from "@/lib/data/scope";
 import * as events from "@/lib/data/events";
@@ -16,6 +17,15 @@ import { toInstant } from "@/components/admin/events/when";
  * throws, and there is no error boundary on this surface, so each action
  * catches and returns a sentence the screen can render rather than letting a
  * rejected promise take the page down.
+ *
+ * That catch-all is a trap, so every one of them opens with
+ * `unstable_rethrow`. `requireEditor` → `requireAdmin` calls `redirect()` when
+ * the session has lapsed, and Next implements `redirect()` (and `notFound()`)
+ * by *throwing* a control-flow signal rather than an error. Swallowed, it never
+ * navigates and `readableError` renders its internal message — the literal
+ * string `NEXT_REDIRECT` — into the pink box on screen. Rethrown, the framework
+ * completes the navigation and she lands on the sign-in page, which is what an
+ * expired session is supposed to do.
  */
 
 export type EventFormState = {
@@ -47,38 +57,56 @@ async function householdIds(scope: WeddingScope): Promise<string[]> {
 }
 
 /**
- * Keeps the stored `visibility` from claiming more than the invite list does.
+ * Who this event is for, as a standing rule rather than a snapshot.
  *
- * Only ever narrows: un-inviting one household from an "everyone" event makes
- * it an "only some" event, but re-inviting the last one does not silently
- * re-promote it — that stays her choice on the form.
+ * `visibility` used to be inert, so narrowing it as a side effect of un-ticking
+ * one household was harmless bookkeeping. Migration 0008 gave it teeth: it now
+ * decides whether newly imported households are auto-invited. Un-inviting Aunt
+ * Sue from the ceremony and "stop adding future guests to the ceremony" are
+ * different intentions, and inferring the second from the first silently
+ * converted a whole-guest-list event into a curated one — after which every
+ * import left people out of their own ceremony.
+ *
+ * So it is a choice she makes, in both directions, and nothing else moves it.
+ * `setInvites` is only replayed when the rule *becomes* "everyone"; re-saving
+ * an event that was already "everyone" leaves the tick list alone, so an
+ * exception she made by hand survives an unrelated edit to the venue.
  */
-async function narrowVisibility(
-  scope: WeddingScope,
-  eventId: string,
-  invitedCount: number,
-  actorId: string,
-): Promise<void> {
-  const event = await events.get(scope, eventId);
-  if (event.visibility !== "all") return;
-  const total = (await householdIds(scope)).length;
-  if (invitedCount >= total) return;
+export async function setEventScope(eventId: string, everyone: boolean): Promise<ActionResult> {
+  try {
+    const admin = await requireEditor();
+    const scope = forWedding(admin.weddingId);
+    const event = await events.get(scope, eventId);
 
-  await events.update(
-    scope,
-    eventId,
-    {
-      name: event.name,
-      startsAt: event.starts_at,
-      endsAt: event.ends_at,
-      venueName: event.venue_name,
-      venueAddress: event.venue_address,
-      dressCode: event.dress_code,
-      visibility: "invited_only",
-      rsvpEnabled: event.rsvp_enabled,
-    },
-    actorId,
-  );
+    if ((event.visibility === "all") !== everyone) {
+      await events.update(
+        scope,
+        eventId,
+        {
+          name: event.name,
+          startsAt: event.starts_at,
+          endsAt: event.ends_at,
+          venueName: event.venue_name,
+          venueAddress: event.venue_address,
+          dressCode: event.dress_code,
+          visibility: everyone ? "all" : "invited_only",
+          rsvpEnabled: event.rsvp_enabled,
+        },
+        admin.userId,
+      );
+    }
+
+    if (everyone) {
+      await events.setInvites(scope, eventId, await householdIds(scope), admin.userId);
+    }
+
+    revalidatePath("/admin/events");
+    revalidatePath("/admin/guests");
+    return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { ok: false, message: readableError(error) };
+  }
 }
 
 /**
@@ -152,7 +180,10 @@ export async function saveEvent(
         ? await events.create(scope, input, admin.userId)
         : await events.update(scope, eventId, input, admin.userId);
 
-    if (everyone) {
+    // Only when "everyone" is newly true. Replaying it on every save would undo
+    // any exception she has ticked off by hand since — un-ticking a household
+    // no longer narrows the rule, so an "everyone" event can carry one.
+    if (everyone && (eventId === null || !wasEveryone)) {
       await events.setInvites(scope, saved.id, await householdIds(scope), admin.userId);
     }
 
@@ -164,6 +195,7 @@ export async function saveEvent(
       openInvites: !everyone && (eventId === null || wasEveryone),
     };
   } catch (error) {
+    unstable_rethrow(error);
     const message = readableError(error);
     if (error instanceof EventValidationError) {
       const field = error.errors[0]?.field;
@@ -186,6 +218,7 @@ export async function deletionCost(
     const scope = forWedding(admin.weddingId);
     return { ok: true, impact: await events.impactOf(scope, eventId) };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
   }
 }
@@ -217,6 +250,7 @@ export async function deleteEvent(eventId: string, typedName: string): Promise<A
     revalidatePath("/admin/guests");
     return { ok: true };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
   }
 }
@@ -229,6 +263,7 @@ export async function reorderEvents(orderedIds: string[]): Promise<ActionResult>
     revalidatePath("/admin/events");
     return { ok: true };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
   }
 }
@@ -242,11 +277,11 @@ export async function setEventInvites(
     const admin = await requireEditor();
     const scope = forWedding(admin.weddingId);
     await events.setInvites(scope, eventId, selectedHouseholdIds, admin.userId);
-    await narrowVisibility(scope, eventId, selectedHouseholdIds.length, admin.userId);
     revalidatePath("/admin/events");
     revalidatePath("/admin/guests");
     return { ok: true };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
   }
 }
@@ -271,11 +306,11 @@ export async function setHouseholdInvite(
       : current.filter((id) => id !== householdId);
 
     await events.setInvites(scope, eventId, next, admin.userId);
-    await narrowVisibility(scope, eventId, next.length, admin.userId);
     revalidatePath("/admin/events");
     revalidatePath(`/admin/guests/${householdId}`);
     return { ok: true };
   } catch (error) {
+    unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
   }
 }

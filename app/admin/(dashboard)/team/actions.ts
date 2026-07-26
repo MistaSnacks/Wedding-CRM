@@ -1,12 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
 import { requireOwner } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import { env } from "@/lib/env";
 import * as members from "@/lib/data/members";
 
 export type ActionResult = { ok: true; message: string } | { ok: false; error: string };
+
+/**
+ * `requireOwner()` sits outside every try below, so an expired session already
+ * redirects rather than being swallowed. The catch-alls still open with
+ * `unstable_rethrow`: Next signals `redirect()` and `notFound()` by throwing,
+ * and a catch-all that turns anything thrown into a string will render the
+ * sentinel `NEXT_REDIRECT` at the user the first time one drifts inside.
+ */
 
 export async function inviteMember(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   const admin = await requireOwner();
@@ -32,6 +41,7 @@ export async function inviteMember(_prev: ActionResult | null, formData: FormDat
         : `${email} already had an account — granted ${role} access. They sign in at /admin/login.`,
     };
   } catch (e) {
+    unstable_rethrow(e);
     return { ok: false, error: e instanceof Error ? e.message : "Invite failed." };
   }
 }
@@ -48,6 +58,7 @@ export async function changeMemberRole(_prev: ActionResult | null, formData: For
     revalidatePath("/admin/team");
     return { ok: true, message: "Role updated." };
   } catch (e) {
+    unstable_rethrow(e);
     return { ok: false, error: e instanceof Error ? e.message : "Update failed." };
   }
 }
@@ -62,6 +73,7 @@ export async function removeMember(_prev: ActionResult | null, formData: FormDat
     revalidatePath("/admin/team");
     return { ok: true, message: "Access removed." };
   } catch (e) {
+    unstable_rethrow(e);
     return { ok: false, error: e instanceof Error ? e.message : "Remove failed." };
   }
 }
