@@ -38,7 +38,7 @@ export type MailingAddress = {
   state?: string;
   zip?: string;
   country?: string;
-  source: "csv" | "save_the_date";
+  source: "csv" | "save_the_date" | "admin";
 };
 
 export type RowError = { line: number; message: string };

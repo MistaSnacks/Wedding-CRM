@@ -9,6 +9,7 @@ import * as guests from "@/lib/data/guests";
 import * as rsvpData from "@/lib/data/rsvp";
 import * as imports from "@/lib/data/imports";
 import { normalizeHouseholdRules } from "@/lib/domain/invitation-rules";
+import { resolveAddressUpdate } from "@/lib/domain/mailing-address";
 import type { SubmitRsvpPayload, AgeType } from "@/lib/types";
 
 export async function createHousehold(formData: FormData): Promise<void> {
@@ -73,6 +74,12 @@ export async function updateHousehold(householdId: string, formData: FormData): 
     },
     await guests.countNamed(scope, householdId),
   );
+  // The form carries the address it was rendered with; comparing against it
+  // means an untouched textarea never overwrites (or re-sources) the stored value.
+  const addressUpdate = resolveAddressUpdate(
+    { raw: String(formData.get("mailing_address_prev") ?? ""), source: "admin" },
+    String(formData.get("mailing_address") ?? ""),
+  );
   await households.update(
     scope,
     householdId,
@@ -83,6 +90,7 @@ export async function updateHousehold(householdId: string, formData: FormData): 
       max_party_size: rules.maxPartySize,
       plus_one_slots: rules.plusOneSlots,
       internal_notes: String(formData.get("internal_notes") ?? "") || null,
+      ...(addressUpdate !== undefined ? { mailing_address: addressUpdate } : {}),
     },
     admin.userId,
   );

@@ -10,6 +10,7 @@ import { HouseholdEditor } from "@/components/admin/HouseholdEditor";
 import { AddGuestForm } from "@/components/admin/AddGuestForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { HouseholdEvents } from "@/components/admin/events/HouseholdEvents";
+import type { MailingAddress } from "@/lib/csv/types";
 import { formatWhen } from "@/components/admin/events/when";
 import { removeGuest } from "@/app/admin/(dashboard)/guests/actions";
 import * as events from "@/lib/data/events";
@@ -142,6 +143,7 @@ export default async function HouseholdDetailPage({
             maxPartySize={detail.max_party_size}
             plusOneSlots={detail.plus_one_slots}
             internalNotes={detail.internal_notes}
+            mailingAddress={(detail.mailing_address as MailingAddress | null) ?? null}
           />
         </div>
 

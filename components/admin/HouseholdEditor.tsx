@@ -1,5 +1,7 @@
 import { updateHousehold, deleteHousehold } from "@/app/admin/(dashboard)/guests/actions";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { formatMailingAddress, provenanceLabel } from "@/lib/domain/mailing-address";
+import type { MailingAddress } from "@/lib/csv/types";
 
 export function HouseholdEditor(props: {
   householdId: string;
@@ -9,6 +11,7 @@ export function HouseholdEditor(props: {
   maxPartySize: number;
   plusOneSlots: number;
   internalNotes: string | null;
+  mailingAddress: MailingAddress | null;
 }) {
   const action = updateHousehold.bind(null, props.householdId);
   return (
@@ -28,6 +31,19 @@ export function HouseholdEditor(props: {
           Plus-one slots
           <input name="plus_one_slots" type="number" min={0} defaultValue={props.plusOneSlots} className="w-14 rounded-lg border border-[#dddbd0] bg-white px-2 py-1.5 text-center text-[13px]" />
         </label>
+      </div>
+      <div className="flex flex-col gap-1">
+        <textarea
+          name="mailing_address"
+          rows={3}
+          defaultValue={formatMailingAddress(props.mailingAddress)}
+          placeholder="Mailing address"
+          className="rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] leading-relaxed outline-none focus:border-olive"
+        />
+        <input type="hidden" name="mailing_address_prev" value={formatMailingAddress(props.mailingAddress)} />
+        {provenanceLabel(props.mailingAddress) && (
+          <p className="text-[11.5px] text-muted">Address {provenanceLabel(props.mailingAddress)}</p>
+        )}
       </div>
       <textarea
         name="internal_notes"

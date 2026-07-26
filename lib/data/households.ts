@@ -236,6 +236,7 @@ export async function update(
       | "preferred_locale"
       | "tags"
       | "internal_notes"
+      | "mailing_address"
     >
   >,
   actorId?: string,
