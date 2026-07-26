@@ -1,6 +1,17 @@
 # Guest CRM — Delivery Handoff
 
-_Last updated: 2026-07-24 (tenant-agnostic CSV importer + RPC security hardening)._
+_Last updated: 2026-07-26 (usability blockers: safe sends, addresses, live search, mobile admin)._
+
+## What shipped 2026-07-26 — admin usability blockers
+
+Spec: `docs/superpowers/specs/2026-07-26-admin-usability-blockers-design.md`. Four items from a browser-driven ease-of-use audit:
+
+- **Safe sends.** `/admin/comms` composes → **Review campaign** (recipient count, skipped-no-email names, rendered per-locale preview) → confirm send. A stale review refuses to send (`review_token` guard). **Send a test to me** emails only the signed-in admin, `[Test]`-prefixed, never in History.
+- **Mailing addresses** visible and editable on the household page — free-text, stored verbatim as `{raw, source:"admin"}`, provenance shown ("from the Save-the-Date form" / "from your spreadsheet import" / "edited by you"). Never parsed.
+- **One search.** `lib/search/guest-query.ts` (diacritic-insensitive, tested) powers both the header search (real input now, live dropdown, was a `Link` styled as an input) and the Guests page (filters as you type; Search button removed).
+- **Mobile admin** below 768px: drawer nav, card-based guest list, stacked household editor, responsive overview/comms; Seating is view+assign on phones (tap table → bottom sheet; arranging stays desktop). Guest RSVP flow was already fluid and is untouched.
+
+Also: the Save-the-Date one-off merge ran (see `scripts/std-check.mjs` / `std-apply.mjs`), and metric cards no longer hide until hydration.
 
 This doc is the single source of truth for handing the project off — to the client, or to a future working session. If you're an agent picking this up: read this file, then `docs/seating-roadmap.md` for deferred work.
 
