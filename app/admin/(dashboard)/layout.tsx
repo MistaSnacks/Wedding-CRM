@@ -38,11 +38,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Main column: blush top bar (content-width only), then the page */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3.5 border-b border-blush-border bg-blush px-9 py-3 no-print">
+        <header className="flex items-center gap-3.5 border-b border-blush-border bg-blush px-9 py-3 no-print max-md:gap-2 max-md:pl-14 max-md:pr-3">
           <HeaderSearch />
           <div className="flex-1" />
           {deadlineDays !== null && (
-            <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-deep">
+            <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-deep max-md:hidden">
               <span className="h-[7px] w-[7px] rounded-full bg-rose" />
               RSVPs close in {deadlineDays} days
             </span>
@@ -55,11 +55,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               href="/admin/guests?new=1"
               className="rounded-full bg-olive-deep px-4 py-2 text-[13px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-olive-deeper hover:shadow-[0_6px_14px_rgba(42,53,23,0.3)] active:scale-[0.97] motion-reduce:transition-none"
             >
-              ＋ New household
+              ＋<span className="max-md:hidden"> New household</span>
             </Link>
           )}
         </header>
-        <main className="min-w-0 flex-1 px-9 py-7">{children}</main>
+        <main className="min-w-0 flex-1 px-9 py-7 max-md:px-4 max-md:py-5">{children}</main>
       </div>
     </div>
   );
