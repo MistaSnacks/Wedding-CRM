@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import { defaultScope } from "@/lib/data/scope";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { HeaderSearch } from "@/components/admin/HeaderSearch";
 import { FilmBackdrop } from "@/components/FilmBackdrop";
 import Link from "next/link";
 
@@ -38,15 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Main column: blush top bar (content-width only), then the page */}
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3.5 border-b border-blush-border bg-blush px-9 py-3 no-print">
-          <div className="flex w-[320px] items-center gap-2.5 rounded-full border border-blush-border bg-white px-3.5 py-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B17565" strokeWidth="2.2" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <Link href="/admin/guests" className="flex-1 text-[13px] text-[#9b8a85]">
-              Search guests, households…
-            </Link>
-          </div>
+          <HeaderSearch />
           <div className="flex-1" />
           {deadlineDays !== null && (
             <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-deep">
