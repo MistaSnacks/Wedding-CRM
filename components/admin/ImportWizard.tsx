@@ -18,7 +18,7 @@ import { UploadStep } from "./import/UploadStep";
 import { ReviewStep } from "./import/ReviewStep";
 import { DoneStep } from "./import/DoneStep";
 import { ColumnMatches, type SingleColumnKey } from "./import/ColumnMatches";
-import { resolveFix, type RowFix } from "./import/fixable";
+import { resolveApplied, resolveFix, type AppliedFix, type RowFix } from "./import/fixable";
 
 type Step = "upload" | "review" | "done";
 
@@ -58,8 +58,20 @@ export function ImportWizard({
   const [fileError, setFileError] = useState<string | null>(null);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [columnsReason, setColumnsReason] = useState<string | null>(null);
-  /** Sheet lines repaired in place on this screen — the numerator of "3 of 12 fixed". */
-  const [fixedLines, setFixedLines] = useState<Set<number>>(() => new Set());
+  /**
+   * Rows repaired in place on this screen — the numerator of "3 of 12 fixed",
+   * and the record that lets every one of them be read back and re-edited.
+   * Only which cell was written is kept here; the value itself is read out of
+   * `rows`, so the read-back cannot drift from what will actually be imported.
+   */
+  const [applied, setApplied] = useState<AppliedFix[]>([]);
+  /**
+   * Warnings the most recent repair *added*. Filling in a name can resurrect a
+   * whole invitation, which then draws its own "someone may be missing" check —
+   * so her own correction can push the count up. That is correct, and it is
+   * also the single most alarming thing on the screen if left unexplained.
+   */
+  const [warningsAdded, setWarningsAdded] = useState(0);
   const [pending, startTransition] = useTransition();
 
   /**
@@ -80,6 +92,12 @@ export function ImportWizard({
   const summary = useMemo(
     () => (validation && mapping ? summarize(validation, rows, mapping) : null),
     [validation, mapping, rows],
+  );
+
+  /** The repairs as editable rows again, read straight out of the current data. */
+  const fixed = useMemo(
+    () => (mapping ? resolveApplied(applied, rows, mapping) : []),
+    [applied, rows, mapping],
   );
 
   /** No name columns is the one case where the mapping surface opens unprompted. */
@@ -109,7 +127,8 @@ export function ImportWizard({
       setRunId(null);
       setCommitErrors(null);
       setDone(null);
-      setFixedLines(new Set());
+      setApplied([]);
+      setWarningsAdded(0);
       setColumnsOpen(missingNames);
       setColumnsReason(
         missingNames
@@ -138,8 +157,11 @@ export function ImportWizard({
     // what is being validated, so the tally that counts them must reset too —
     // otherwise "11 of 22 fixed" appears above eleven errors that are back.
     if (next.firstName !== mapping?.firstName || next.lastName !== mapping?.lastName) {
-      setFixedLines(new Set());
+      setApplied([]);
     }
+    // Whatever the last repair did to the warning count, the note explaining it
+    // is about a screen that no longer exists after a remap.
+    setWarningsAdded(0);
     if (next.firstName && next.lastName) setColumnsReason(null);
   }
 
@@ -158,6 +180,11 @@ export function ImportWizard({
    * move that guest onto a different invitation, close a "someone may be
    * missing" warning, or change the household totals. Re-validation gets all of
    * that right for free; patching a list would get only the list right.
+   *
+   * The same path serves a first repair and a correction to one, so a typo is
+   * fixed by the identical gesture that made it. `applied` is keyed by sheet
+   * line for exactly that reason: re-editing a row updates its entry instead of
+   * adding a second one, and the tally stays honest.
    */
   function applyRowFix(fix: RowFix, raw: string) {
     if (!mapping) return;
@@ -169,13 +196,25 @@ export function ImportWizard({
     if ((rows[index]?.[fix.column] ?? "").trim() === value) return;
 
     const next = rows.map((row, i) => (i === index ? { ...row, [fix.column]: value } : row));
+    /* Compared against the validation currently on screen, not a re-derived
+       one: the number she is watching move is the one that must be explained.
+       `summarize` maps warnings one-for-one, so these lengths are the counts
+       printed in the section header. */
+    const before = validation?.warnings.length ?? 0;
+    const revalidated = validateCsv(next, mapping, context);
 
     generation.current += 1;
     setRows(next);
-    setValidation(validateCsv(next, mapping, context));
+    setValidation(revalidated);
     setRunId(null);
     setCommitErrors(null);
-    setFixedLines((lines) => new Set(lines).add(fix.line));
+    setWarningsAdded(Math.max(0, revalidated.warnings.length - before));
+    setApplied((list) => {
+      const entry: AppliedFix = { line: fix.line, field: fix.field, column: fix.column };
+      return list.some((a) => a.line === fix.line)
+        ? list.map((a) => (a.line === fix.line ? entry : a))
+        : [...list, entry];
+    });
   }
 
   const fixFor = useCallback(
@@ -250,7 +289,8 @@ export function ImportWizard({
     setFileError(null);
     setColumnsOpen(false);
     setColumnsReason(null);
-    setFixedLines(new Set());
+    setApplied([]);
+    setWarningsAdded(0);
   }
 
   /**
@@ -304,7 +344,8 @@ export function ImportWizard({
         onDownloadProblems={downloadProblems}
         fixFor={fixFor}
         onFix={applyRowFix}
-        fixedCount={fixedLines.size}
+        fixed={fixed}
+        warningsAdded={warningsAdded}
         columnMatches={
           <ColumnMatches
             open={columnsOpen}

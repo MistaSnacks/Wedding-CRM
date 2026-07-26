@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import type { ImportProblem, ImportSummary } from "@/lib/csv";
 import { ProblemList } from "./ProblemList";
-import type { RowFix } from "./fixable";
+import type { ResolvedFix, RowFix } from "./fixable";
 
 /**
  * The heart of the redesign: what we found, in her words, before any control.
@@ -24,7 +24,8 @@ export function ReviewStep({
   onDownloadProblems,
   fixFor,
   onFix,
-  fixedCount,
+  fixed,
+  warningsAdded,
   columnMatches,
 }: {
   summary: ImportSummary;
@@ -39,7 +40,10 @@ export function ReviewStep({
   /** The cell a problem can be repaired in, or null if we can't name one. */
   fixFor: (problem: ImportProblem) => RowFix | null;
   onFix: (fix: RowFix, value: string) => void;
-  fixedCount: number;
+  /** Rows already repaired here, still editable — her read-back of what she typed. */
+  fixed: ResolvedFix[];
+  /** Warnings the most recent repair added, so the count moving can be explained. */
+  warningsAdded: number;
   columnMatches: ReactNode;
 }) {
   const { invitations, namedGuests, unnamedSeats, extras, problems, preview } = summary;
@@ -108,7 +112,8 @@ export function ReviewStep({
             errors={problems.errors}
             warnings={problems.warnings}
             disabled={importing}
-            fixedCount={fixedCount}
+            fixed={fixed}
+            warningsAdded={warningsAdded}
             fixFor={fixFor}
             onFix={onFix}
             onDownload={onDownloadProblems}
