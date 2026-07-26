@@ -1,23 +1,32 @@
 import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
+import { liveResponses } from "@/lib/data/event-rules";
 import type { ResponseRow, MealOptionRow, EventRow, SeatAssignmentRow, SeatingTableRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function MealsPage() {
   const scope = defaultScope();
-  const [hhs, { data: responses }, { data: meals }, { data: events }, { data: seats }, { data: tables }] =
+  const [hhs, { data: responses }, { data: invites }, { data: meals }, { data: events }, { data: seats }, { data: tables }] =
     await Promise.all([
       households.list(scope),
       scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId),
+      scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
       scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId).order("sort_order"),
       scope.db.from("events").select("id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order").eq("wedding_id", scope.weddingId).order("sort_order"),
       scope.db.from("seat_assignments").select("guest_id, event_id, table_id, seat_number").eq("wedding_id", scope.weddingId),
       scope.db.from("seating_tables").select("id, event_id, name, capacity, shape, pos_x, pos_y").eq("wedding_id", scope.weddingId),
     ]);
 
-  const rs = (responses ?? []) as ResponseRow[];
   const guests = hhs.flatMap((h) => h.guests.map((g) => ({ ...g, household: h.display_name })));
+  // Only invite-backed responses feed the counts: a guest whose household was
+  // un-invited from an event keeps their old answer in the database (so
+  // re-inviting restores it), but the caterer must not cook for it.
+  const rs = liveResponses(
+    (responses ?? []) as ResponseRow[],
+    invites ?? [],
+    guests.map((g) => ({ id: g.id, household_id: g.household_id })),
+  );
   const tableOf = (guestId: string) => {
     const seat = ((seats ?? []) as SeatAssignmentRow[]).find((s) => s.guest_id === guestId);
     return seat ? ((tables ?? []) as SeatingTableRow[]).find((t) => t.id === seat.table_id)?.name ?? "—" : "—";

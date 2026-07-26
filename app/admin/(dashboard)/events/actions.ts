@@ -78,6 +78,10 @@ export async function setEventScope(eventId: string, everyone: boolean): Promise
     const scope = forWedding(admin.weddingId);
     const event = await events.get(scope, eventId);
 
+    // Idempotent by design: clicking the chip that is already chosen changes
+    // nothing. The invite replay lives *inside* this guard — replaying it on a
+    // re-click of "Everyone" would silently re-invite every household she has
+    // un-ticked by hand, the exact exception the banner tells her survives.
     if ((event.visibility === "all") !== everyone) {
       await events.update(
         scope,
@@ -94,10 +98,10 @@ export async function setEventScope(eventId: string, everyone: boolean): Promise
         },
         admin.userId,
       );
-    }
 
-    if (everyone) {
-      await events.setInvites(scope, eventId, await householdIds(scope), admin.userId);
+      if (everyone) {
+        await events.setInvites(scope, eventId, await householdIds(scope), admin.userId);
+      }
     }
 
     revalidatePath("/admin/events");
@@ -268,15 +272,21 @@ export async function reorderEvents(orderedIds: string[]): Promise<ActionResult>
   }
 }
 
-/** The matrix, from the event's side: the full list of who is invited. */
+/**
+ * The matrix, from the event's side. Takes the *change* the user made, not the
+ * whole selection: a full list is a snapshot of the page at render time, and
+ * committing a stale snapshot un-invites everyone added since it rendered —
+ * an import finishing in another tab, or a second editor. A delta only ever
+ * touches the boxes she actually ticked.
+ */
 export async function setEventInvites(
   eventId: string,
-  selectedHouseholdIds: string[],
+  delta: { add: string[]; remove: string[] },
 ): Promise<ActionResult> {
   try {
     const admin = await requireEditor();
     const scope = forWedding(admin.weddingId);
-    await events.setInvites(scope, eventId, selectedHouseholdIds, admin.userId);
+    await events.applyInviteDelta(scope, eventId, delta, admin.userId);
     revalidatePath("/admin/events");
     revalidatePath("/admin/guests");
     return { ok: true };
@@ -287,9 +297,9 @@ export async function setEventInvites(
 }
 
 /**
- * The same matrix from the household's side. It reads the event's current
- * invite list and hands back the whole list with one household added or
- * removed, so both directions go through the one tested write path.
+ * The same matrix from the household's side: one household, one event, one
+ * direction. Written as a delta directly — the old read-modify-write of the
+ * event's whole list could replay a stale list and clobber a concurrent edit.
  */
 export async function setHouseholdInvite(
   householdId: string,
@@ -300,12 +310,12 @@ export async function setHouseholdInvite(
     const admin = await requireEditor();
     const scope = forWedding(admin.weddingId);
 
-    const current = await events.invitedHouseholdIds(scope, eventId);
-    const next = invited
-      ? [...new Set([...current, householdId])]
-      : current.filter((id) => id !== householdId);
-
-    await events.setInvites(scope, eventId, next, admin.userId);
+    await events.applyInviteDelta(
+      scope,
+      eventId,
+      invited ? { add: [householdId], remove: [] } : { add: [], remove: [householdId] },
+      admin.userId,
+    );
     revalidatePath("/admin/events");
     revalidatePath(`/admin/guests/${householdId}`);
     return { ok: true };

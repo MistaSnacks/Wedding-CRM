@@ -158,7 +158,11 @@ export async function list(scope: WeddingScope): Promise<EventWithCounts[]> {
       .from("events")
       .select(EVENT_COLS)
       .eq("wedding_id", scope.weddingId)
-      .order("sort_order"),
+      // The id tiebreak keeps the list stable if two events ever land on the
+      // same sort_order (two concurrent creates can); without it their
+      // relative order could flip between page loads.
+      .order("sort_order")
+      .order("id"),
     readFacts(scope),
   ]);
   if (eventsResult.error) throw new Error(eventsResult.error.message);
@@ -320,17 +324,14 @@ export async function reorder(
   orderedIds: string[],
   actorId?: string,
 ): Promise<void> {
-  const results = await Promise.all(
-    orderedIds.map((id, index) =>
-      scope.db
-        .from("events")
-        .update({ sort_order: index })
-        .eq("wedding_id", scope.weddingId)
-        .eq("id", id),
-    ),
-  );
-  const failed = results.find((r) => r.error);
-  if (failed?.error) throw new Error(failed.error.message);
+  // One RPC, one statement (0009): the order applies entirely or not at all.
+  // Per-row updates left a half-applied mixture when one failed midway, which
+  // the client's optimistic rollback then misreported as unchanged.
+  const { error } = await scope.db.rpc("reorder_events", {
+    p_wedding_id: scope.weddingId,
+    p_ordered_ids: orderedIds,
+  });
+  if (error) throw new Error(error.message);
 
   await activity.log(scope, {
     actorType: "admin",
@@ -369,33 +370,47 @@ export async function invitedEventIds(
   return rows.map((r) => r.event_id);
 }
 
+export type InviteDelta = { add: string[]; remove: string[] };
+
 /**
- * Makes the invite list for an event exactly `householdIds`.
+ * Applies exactly the invite changes the caller names — nothing inferred.
  *
- * `inviteDiff` means an unchanged selection writes nothing at all — no churn,
- * no pointless cascade triggering.
+ * This is the write path for both directions of the matrix, and it takes a
+ * *delta* rather than a full selection on purpose: a full list is a snapshot
+ * of the page at render time, and diffing a stale snapshot against a fresh
+ * read turns everyone added since (say, by an import committing in another
+ * tab) into removals. A delta only ever touches what the user actually ticked.
  *
  * Newly invited households get a placeholder `guest_event_responses` row per
  * guest, matching what `guests.add()` already does for existing invites, so
- * both paths leave the same shape. The upsert ignores duplicates, so
- * re-inviting a household never resets a reply it already gave.
+ * both paths leave the same shape. Both upserts ignore duplicates, so inviting
+ * a household that a concurrent import just invited is a clean no-op instead
+ * of a duplicate-key error, and re-inviting never resets a reply.
  *
  * Un-inviting removes only the invite row. Existing responses are retained on
  * purpose: the spec requires invite changes to be reversible, and only
- * deleting the event itself may destroy replies.
+ * deleting the event itself may destroy replies. Because those retained rows
+ * no longer count anywhere (`liveResponses`, and the invite-joined status
+ * derivation in 0009), each removed household's `rsvp_status` is recomputed
+ * here — otherwise an orphaned placeholder would hold it on 'started' and the
+ * household would be reminded forever about questions it can no longer see.
  */
-export async function setInvites(
+export async function applyInviteDelta(
   scope: WeddingScope,
   eventId: string,
-  householdIds: string[],
+  delta: InviteDelta,
   actorId?: string,
 ): Promise<{ added: number; removed: number }> {
   await requireEvent(scope, eventId);
 
-  const current = await invitedHouseholdIds(scope, eventId);
-  const { toAdd, toRemove } = inviteDiff(current, householdIds);
+  // An id in both halves has no coherent intent; drop it from each.
+  const removeSet = new Set(delta.remove);
+  const toAdd = [...new Set(delta.add)].filter((id) => !removeSet.has(id));
+  const addSet = new Set(delta.add);
+  const toRemove = [...removeSet].filter((id) => !addSet.has(id));
   if (toAdd.length === 0 && toRemove.length === 0) return { added: 0, removed: 0 };
 
+  let addedIds: string[] = [];
   if (toAdd.length > 0) {
     // Only households in this wedding may be invited.
     const { data: valid, error: validError } = await scope.db
@@ -405,15 +420,16 @@ export async function setInvites(
       .in("id", toAdd);
     if (validError) throw new Error(validError.message);
     const validRows: Array<{ id: string }> = valid ?? [];
-    const validIds = validRows.map((h) => h.id);
+    addedIds = validRows.map((h) => h.id);
 
-    if (validIds.length > 0) {
-      const { error } = await scope.db.from("household_event_invites").insert(
-        validIds.map((householdId) => ({
+    if (addedIds.length > 0) {
+      const { error } = await scope.db.from("household_event_invites").upsert(
+        addedIds.map((householdId) => ({
           household_id: householdId,
           event_id: eventId,
           wedding_id: scope.weddingId,
         })),
+        { onConflict: "household_id,event_id", ignoreDuplicates: true },
       );
       if (error) throw new Error(error.message);
 
@@ -421,7 +437,7 @@ export async function setInvites(
         .from("guests")
         .select("id")
         .eq("wedding_id", scope.weddingId)
-        .in("household_id", validIds);
+        .in("household_id", addedIds);
       if (guestsError) throw new Error(guestsError.message);
       const guestRows: Array<{ id: string }> = guests ?? [];
 
@@ -447,15 +463,39 @@ export async function setInvites(
       .eq("event_id", eventId)
       .in("household_id", toRemove);
     if (error) throw new Error(error.message);
+
+    const { error: statusError } = await scope.db.rpc("recompute_rsvp_status", {
+      p_wedding_id: scope.weddingId,
+      p_household_ids: toRemove,
+    });
+    if (statusError) throw new Error(statusError.message);
   }
 
   await activity.log(scope, {
     actorType: "admin",
     actorId,
     action: "event.invites_changed",
-    payload: { eventId, added: toAdd, removed: toRemove },
+    payload: { eventId, added: addedIds, removed: toRemove },
   });
-  return { added: toAdd.length, removed: toRemove.length };
+  return { added: addedIds.length, removed: toRemove.length };
+}
+
+/**
+ * Makes the invite list for an event exactly `householdIds`, by reading the
+ * current list and applying the difference. Only for callers whose *intent*
+ * is the full list — the "everyone" scope flows — where the fresh read makes
+ * the snapshot problem moot. Matrix ticks must use `applyInviteDelta`.
+ */
+export async function setInvites(
+  scope: WeddingScope,
+  eventId: string,
+  householdIds: string[],
+  actorId?: string,
+): Promise<{ added: number; removed: number }> {
+  const current = await invitedHouseholdIds(scope, eventId);
+  const { toAdd, toRemove } = inviteDiff(current, householdIds);
+  if (toAdd.length === 0 && toRemove.length === 0) return { added: 0, removed: 0 };
+  return applyInviteDelta(scope, eventId, { add: toAdd, remove: toRemove }, actorId);
 }
 
 /**

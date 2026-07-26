@@ -116,6 +116,33 @@ export function inviteDiff(current: string[], selected: string[]): InviteDiff {
   };
 }
 
+/**
+ * The subset of response rows that are backed by a live invite.
+ *
+ * Un-inviting a household keeps its `guest_event_responses` rows on purpose
+ * (re-inviting restores the replies), so a response row's existence no longer
+ * implies the guest is coming. Anything that *counts* — meals, attendance,
+ * exports, seating — must count only responses whose household currently holds
+ * an invite for that event. Deletion impact is the deliberate exception: a
+ * delete destroys orphaned rows too, so it counts everything.
+ *
+ * Generic over the row type so `ResponseRow` (with `responded_via` etc.)
+ * passes through unchanged. A guest missing from `guests` cannot be traced to
+ * a household, so its rows are dropped rather than counted as live.
+ */
+export function liveResponses<R extends { guest_id: string; event_id: string }>(
+  responses: R[],
+  invites: EventInviteFact[],
+  guests: Array<{ id: string; household_id: string }>,
+): R[] {
+  const householdOf = new Map(guests.map((g) => [g.id, g.household_id]));
+  const invited = new Set(invites.map((i) => `${i.household_id} ${i.event_id}`));
+  return responses.filter((r) => {
+    const household = householdOf.get(r.guest_id);
+    return household !== undefined && invited.has(`${household} ${r.event_id}`);
+  });
+}
+
 /** Blank, whitespace-only, null and undefined all mean "not set". */
 function blankToNull(value: string | null | undefined): string | null {
   const trimmed = (value ?? "").trim();

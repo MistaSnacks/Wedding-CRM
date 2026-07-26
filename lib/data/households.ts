@@ -9,6 +9,7 @@ import type {
   HouseholdFilter,
 } from "@/lib/types";
 import * as activity from "./activity";
+import { liveResponses } from "./event-rules";
 
 const HOUSEHOLD_COLS =
   "id, wedding_id, display_name, primary_contact_name, email, phone, mailing_address, invite_code, access_token, max_party_size, plus_one_slots, rsvp_status, preferred_locale, tags, internal_notes";
@@ -70,15 +71,25 @@ export async function search(
   let responses: ResponseRow[] = [];
   let assignedGuestIds = new Set<string>();
   if (needsResponses) {
-    const { data: r } = await scope.db
-      .from("guest_event_responses")
-      .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
-      .eq("wedding_id", scope.weddingId);
-    responses = (r ?? []) as ResponseRow[];
-    const { data: seats } = await scope.db
-      .from("seat_assignments")
-      .select("guest_id")
-      .eq("wedding_id", scope.weddingId);
+    const [{ data: r }, { data: invites }, { data: seats }] = await Promise.all([
+      scope.db
+        .from("guest_event_responses")
+        .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
+        .eq("wedding_id", scope.weddingId),
+      scope.db
+        .from("household_event_invites")
+        .select("household_id, event_id")
+        .eq("wedding_id", scope.weddingId),
+      scope.db.from("seat_assignments").select("guest_id").eq("wedding_id", scope.weddingId),
+    ]);
+    // Only invite-backed responses: a retained "yes" from an event the
+    // household was since un-invited from must not surface it under
+    // "attending" or "missing a meal".
+    responses = liveResponses(
+      (r ?? []) as ResponseRow[],
+      invites ?? [],
+      rows.flatMap((h) => h.guests.map((g) => ({ id: g.id, household_id: h.id }))),
+    );
     assignedGuestIds = new Set((seats ?? []).map((s: { guest_id: string }) => s.guest_id));
   }
   const attendingGuestIds = new Set(

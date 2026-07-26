@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deletionImpact, inviteDiff, validateEvent } from "./event-rules";
+import { deletionImpact, inviteDiff, liveResponses, validateEvent } from "./event-rules";
 import type { EventInviteFact, EventResponseFact } from "./event-rules";
 
 const EVENT = "ev-target";
@@ -371,6 +371,93 @@ describe("validateEvent", () => {
     if (!result.ok) {
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors.every((e) => e.message.trim().length > 0)).toBe(true);
+    }
+  });
+});
+
+describe("liveResponses", () => {
+  const guests = [
+    { id: "g-smith-1", household_id: "hh-smith" },
+    { id: "g-smith-2", household_id: "hh-smith" },
+    { id: "g-jones-1", household_id: "hh-jones" },
+  ];
+
+  it("keeps a response whose household is invited to that event", () => {
+    const invites = [invite(EVENT, "hh-smith")];
+    const rows = [response(EVENT, "hh-smith", "g-smith-1", "yes")];
+    expect(liveResponses(rows, invites, guests)).toEqual(rows);
+  });
+
+  it("drops a response whose household lost its invite", () => {
+    const rows = [response(EVENT, "hh-smith", "g-smith-1", "yes")];
+    expect(liveResponses(rows, [], guests)).toEqual([]);
+  });
+
+  it("an invite to a different event does not keep a response alive", () => {
+    const invites = [invite(OTHER, "hh-smith")];
+    const rows = [response(EVENT, "hh-smith", "g-smith-1", "yes")];
+    expect(liveResponses(rows, invites, guests)).toEqual([]);
+  });
+
+  it("another household's invite does not keep a response alive", () => {
+    const invites = [invite(EVENT, "hh-jones")];
+    const rows = [response(EVENT, "hh-smith", "g-smith-1", "yes")];
+    expect(liveResponses(rows, invites, guests)).toEqual([]);
+  });
+
+  it("drops a response whose guest is unknown", () => {
+    const invites = [invite(EVENT, "hh-smith")];
+    const rows = [response(EVENT, "hh-smith", "g-vanished", "yes")];
+    expect(liveResponses(rows, invites, guests)).toEqual([]);
+  });
+
+  it("filters mixed rows without reordering the survivors", () => {
+    const invites = [invite(EVENT, "hh-smith"), invite(OTHER, "hh-jones")];
+    const kept1 = response(EVENT, "hh-smith", "g-smith-1", "no");
+    const dropped = response(EVENT, "hh-jones", "g-jones-1", "yes");
+    const kept2 = response(OTHER, "hh-jones", "g-jones-1", "pending");
+    expect(liveResponses([kept1, dropped, kept2], invites, guests)).toEqual([kept1, kept2]);
+  });
+
+  it("passes extra fields through untouched", () => {
+    const invites = [invite(EVENT, "hh-smith")];
+    const row = {
+      guest_id: "g-smith-1",
+      event_id: EVENT,
+      attending: "yes",
+      meal_option_id: "meal-1",
+      responded_via: "guest",
+    };
+    expect(liveResponses([row], invites, guests)).toEqual([row]);
+  });
+});
+
+describe("validateEvent endsAt parsing", () => {
+  it("rejects an unparseable end date", () => {
+    const result = validateEvent({
+      name: "Morning Brunch",
+      startsAt: "2027-06-12T16:00:00Z",
+      endsAt: "not-a-date",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.map((e) => e.field)).toEqual(["endsAt"]);
+    }
+  });
+
+  it("an unparseable end with no start is still an error", () => {
+    const result = validateEvent({ name: "Morning Brunch", endsAt: "nope" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.map((e) => e.field)).toEqual(["endsAt"]);
+    }
+  });
+
+  it("reports both ends unparseable as two field errors, not a range error", () => {
+    const result = validateEvent({ name: "Morning Brunch", startsAt: "bad", endsAt: "worse" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.map((e) => e.field).sort()).toEqual(["endsAt", "startsAt"]);
     }
   });
 });

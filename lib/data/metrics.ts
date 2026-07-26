@@ -1,5 +1,6 @@
 import type { WeddingScope } from "./scope";
 import type { OverviewMetrics, ResponseRow, GuestRow, HouseholdRow, MealOptionRow } from "@/lib/types";
+import { liveResponses } from "./event-rules";
 import { cache } from "@/lib/limiter";
 
 /**
@@ -28,17 +29,18 @@ export function mealCounts(
 
 export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
   return cache(`metrics:${scope.weddingId}:overview`, 60, async () => {
-    const [{ data: households }, { data: guests }, { data: responses }, { data: meals }, { data: tables }, { data: seats }] =
+    const [{ data: households }, { data: guests }, { data: responses }, { data: invites }, { data: meals }, { data: tables }, { data: seats }] =
       await Promise.all([
         scope.db.from("households").select("id, rsvp_status").eq("wedding_id", scope.weddingId),
         scope.db
           .from("guests")
-          .select("id, age_type, origin, dietary_restrictions, allergies, accessibility_needs")
+          .select("id, household_id, age_type, origin, dietary_restrictions, allergies, accessibility_needs")
           .eq("wedding_id", scope.weddingId),
         scope.db
           .from("guest_event_responses")
           .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
           .eq("wedding_id", scope.weddingId),
+        scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
         scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
         scope.db.from("seating_tables").select("id").eq("wedding_id", scope.weddingId),
         scope.db.from("seat_assignments").select("guest_id").eq("wedding_id", scope.weddingId),
@@ -46,7 +48,15 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
 
     const hh = (households ?? []) as Pick<HouseholdRow, "id" | "rsvp_status">[];
     const gs = (guests ?? []) as GuestRow[];
-    const rs = (responses ?? []) as ResponseRow[];
+    // Only invite-backed responses count. A household un-invited from an
+    // event keeps its old rows (so re-inviting restores them), and counting
+    // those orphans would report meals and attendance for guests the couple
+    // removed from the event.
+    const rs = liveResponses(
+      (responses ?? []) as ResponseRow[],
+      invites ?? [],
+      gs.map((g) => ({ id: g.id, household_id: g.household_id })),
+    );
     const ms = (meals ?? []) as MealOptionRow[];
     const seatSet = new Set((seats ?? []).map((s: { guest_id: string }) => s.guest_id));
 

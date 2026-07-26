@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forWedding, type WeddingScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
+import { liveResponses } from "@/lib/data/event-rules";
 import { mealCounts } from "@/lib/data/metrics";
 import type { ResponseRow, MealOptionRow, EventRow, SeatingTableRow, SeatAssignmentRow } from "@/lib/types";
 
@@ -26,18 +27,28 @@ function formatAddress(address: Record<string, string> | null): string {
 }
 
 async function loadShared(scope: WeddingScope) {
-  const [hhs, { data: responses }, { data: meals }, { data: events }, { data: tables }, { data: seats }] =
+  const [hhs, { data: responses }, { data: invites }, { data: meals }, { data: events }, { data: tables }, { data: seats }] =
     await Promise.all([
       households.list(scope),
       scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId),
+      scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
       scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
       scope.db.from("events").select("id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order").eq("wedding_id", scope.weddingId).order("sort_order"),
       scope.db.from("seating_tables").select("id, event_id, name, capacity, shape, pos_x, pos_y").eq("wedding_id", scope.weddingId),
       scope.db.from("seat_assignments").select("guest_id, event_id, table_id, seat_number").eq("wedding_id", scope.weddingId),
     ]);
+  const inviteRows = invites ?? [];
   return {
     hhs,
-    responses: (responses ?? []) as ResponseRow[],
+    // Reports state facts to caterers, mail houses and planners, so only
+    // invite-backed responses appear: a retained answer from an event the
+    // household was un-invited from is history, not an order.
+    responses: liveResponses(
+      (responses ?? []) as ResponseRow[],
+      inviteRows,
+      hhs.flatMap((h) => h.guests.map((g) => ({ id: g.id, household_id: h.id }))),
+    ),
+    invited: new Set(inviteRows.map((i) => `${i.household_id} ${i.event_id}`)),
     meals: (meals ?? []) as MealOptionRow[],
     events: (events ?? []) as EventRow[],
     tables: (tables ?? []) as SeatingTableRow[],
@@ -46,7 +57,7 @@ async function loadShared(scope: WeddingScope) {
 }
 
 async function buildReport(scope: WeddingScope, report: string): Promise<Table> {
-  const { hhs, responses, meals, events, tables, seats } = await loadShared(scope);
+  const { hhs, responses, invited, meals, events, tables, seats } = await loadShared(scope);
   const mealName = (id: string | null) => meals.find((m) => m.id === id)?.name ?? "";
   const eventName = (id: string) => events.find((e) => e.id === id)?.name ?? id;
   const tableName = (guestId: string) => {
@@ -68,7 +79,18 @@ async function buildReport(scope: WeddingScope, report: string): Promise<Table> 
           "Last Name": g.last_name,
           "Age Type": g.age_type,
           Origin: g.origin,
-          ...Object.fromEntries(events.map((e) => [e.name, rs.find((r) => r.event_id === e.id)?.attending ?? "pending"])),
+          // "not invited" and "pending" are different facts. Under the old
+          // everyone-goes-to-everything model a missing row meant pending;
+          // with curated events most missing rows mean the household simply
+          // is not on that event's list, and printing "pending" for them
+          // would drown the real pending column in noise.
+          ...Object.fromEntries(
+            events.map((e) => [
+              e.name,
+              rs.find((r) => r.event_id === e.id)?.attending ??
+                (invited.has(`${h.id} ${e.id}`) ? "pending" : "not invited"),
+            ]),
+          ),
           Meal: mealName(rs.find((r) => r.meal_option_id)?.meal_option_id ?? null),
           Dietary: g.dietary_restrictions ?? "",
           Allergies: g.allergies ?? "",
@@ -115,7 +137,9 @@ async function buildReport(scope: WeddingScope, report: string): Promise<Table> 
               ? attends(g.id)
               : report === "declined"
                 ? rs.length > 0 && rs.every((r) => r.attending === "no")
-                : rs.every((r) => r.attending === "pending"),
+                : // A guest with no live responses at all is invited to
+                  // nothing that collects RSVPs — there is nothing pending.
+                  rs.length > 0 && rs.every((r) => r.attending === "pending"),
           )
           .map(({ h, g, rs }) => ({
             Household: h.display_name,

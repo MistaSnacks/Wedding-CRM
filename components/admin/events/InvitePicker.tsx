@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { setEventInvites, setEventScope } from "@/app/admin/(dashboard)/events/actions";
+import { inviteDiff } from "@/lib/data/event-rules";
 
 /**
  * The invite matrix, from the event's side.
@@ -85,12 +86,17 @@ export function InvitePicker({
    */
   function apply(next: string[]) {
     const before = selected;
+    // Only what this gesture changed goes to the server. Sending the whole
+    // selection would commit a render-time snapshot — and un-invite anyone a
+    // concurrent import (or another editor) added since the page loaded.
+    const { toAdd, toRemove } = inviteDiff(before, next);
+    if (toAdd.length === 0 && toRemove.length === 0) return;
     setError(null);
     setRetry(null);
     onChange(next);
     startTransition(async () => {
       try {
-        const result = await setEventInvites(eventId, next);
+        const result = await setEventInvites(eventId, { add: toAdd, remove: toRemove });
         if (!result.ok) {
           onChange(before);
           setError(result.message ?? "That didn't save. Nothing was changed.");
@@ -105,6 +111,10 @@ export function InvitePicker({
   }
 
   function applyScope(next: boolean) {
+    // Choosing the rule that is already in force is a no-op, and must be:
+    // replaying "Everyone" would re-tick any household she has un-ticked by
+    // hand, which the banner promises stays out.
+    if (next === everyone) return;
     const before = everyone;
     const beforeSelected = selected;
     setError(null);
