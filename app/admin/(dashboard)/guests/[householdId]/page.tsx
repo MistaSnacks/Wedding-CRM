@@ -75,7 +75,7 @@ export default async function HouseholdDetailPage({
         <p className="text-[12.5px] font-medium text-muted">
           <Link href="/admin/guests" className="hover:text-rose">Guests</Link> / {detail.display_name}
         </p>
-        <div className="mt-3 flex items-center gap-3.5">
+        <div className="mt-3 flex items-center gap-3.5 max-md:flex-wrap max-md:gap-2">
           <h1 className="text-[22px] font-semibold text-ink">{detail.display_name}</h1>
           <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.05em] uppercase ${STATUS_BADGE[detail.rsvp_status]}`}>
             {detail.rsvp_status}
@@ -92,11 +92,11 @@ export default async function HouseholdDetailPage({
         </p>
       </div>
 
-      <div className="flex items-start gap-4">
-        <div className="flex flex-[1.6] flex-col gap-3">
+      <div className="flex items-start gap-4 max-md:flex-col">
+        <div className="flex w-full flex-[1.6] flex-col gap-3">
           {detail.guests.map((g) => (
-            <div key={g.id} className="flex items-center gap-4 rounded-xl border border-hairline px-4.5 p-4">
-              <div className="w-[170px] flex-shrink-0">
+            <div key={g.id} className="flex items-center gap-4 rounded-xl border border-hairline px-4.5 p-4 max-md:flex-wrap max-md:gap-3">
+              <div className="w-[170px] flex-shrink-0 max-md:w-full">
                 <p className="text-[14px] font-semibold text-ink">
                   {g.first_name} {g.last_name}
                   {g.origin === "plus_one" && <span className="ml-1.5 text-[11px] font-medium text-rose">plus one</span>}
@@ -147,7 +147,7 @@ export default async function HouseholdDetailPage({
           />
         </div>
 
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex w-full flex-1 flex-col gap-4">
           <HouseholdEvents
             householdId={detail.id}
             invited={invitedEventIds}

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { OverviewMetrics } from "@/lib/types";
 
 export function MetricCards({ m }: { m: OverviewMetrics }) {
@@ -36,14 +35,11 @@ export function MetricCards({ m }: { m: OverviewMetrics }) {
   ];
 
   return (
-    <div className="flex gap-4">
-      {cards.map((c, i) => (
-        <motion.div
+    <div className="grid grid-cols-4 gap-4 max-md:grid-cols-2 max-md:gap-2.5">
+      {cards.map((c) => (
+        <div
           key={c.label}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" }}
-          className="flex flex-1 flex-col gap-2 rounded-[14px] border border-hairline p-5"
+          className="flex flex-col gap-2 rounded-[14px] border border-hairline p-5 max-md:p-4"
         >
           <span className="text-[11.5px] font-semibold tracking-[0.09em] text-[#6b7167]">{c.label}</span>
           <span className="flex items-baseline gap-2">
@@ -53,7 +49,7 @@ export function MetricCards({ m }: { m: OverviewMetrics }) {
             <span className="text-[13px] font-medium text-olive">{c.accent}</span>
           </span>
           <span className="text-[12.5px] text-muted">{c.sub}</span>
-        </motion.div>
+        </div>
       ))}
     </div>
   );

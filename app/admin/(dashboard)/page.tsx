@@ -25,8 +25,8 @@ export default async function AdminOverviewPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-6 max-md:gap-4">
+      <div className="flex items-center gap-4 max-md:flex-wrap max-md:gap-2">
         <div className="flex-1">
           <h1 className="text-[22px] font-semibold text-ink">Overview</h1>
           <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
@@ -49,8 +49,8 @@ export default async function AdminOverviewPage() {
 
       <MetricCards m={m} />
 
-      <div className="flex items-start gap-4">
-        <div className="flex-[1.5] rounded-xl border border-hairline p-5">
+      <div className="flex items-start gap-4 max-md:flex-col">
+        <div className="flex-[1.5] rounded-xl border border-hairline p-5 max-md:w-full">
           <div className="flex items-center pb-2.5">
             <h2 className="flex-1 text-[14.5px] font-semibold text-ink">Recent RSVPs</h2>
             <Link href="/admin/guests" className="text-[12.5px] font-medium text-olive hover:text-rose">
@@ -60,7 +60,7 @@ export default async function AdminOverviewPage() {
           <RecentFeed items={recent.map((r) => ({ ...r, householdName: r.household_id ? (names[r.household_id] ?? "—") : "—" }))} />
         </div>
 
-        <div className="flex-1 rounded-xl border border-hairline p-5">
+        <div className="flex-1 rounded-xl border border-hairline p-5 max-md:w-full">
           <div className="flex items-center">
             <h2 className="flex-1 text-[14.5px] font-semibold text-ink">Meal counts</h2>
             <Link href="/admin/meals" className="text-[12.5px] font-medium text-olive hover:text-rose">

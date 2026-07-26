@@ -17,10 +17,10 @@ export function HouseholdEditor(props: {
   return (
     <form action={action} className="flex flex-col gap-3 rounded-xl bg-paper p-4.5 p-4">
       <p className="text-[11.5px] font-semibold tracking-[0.09em] text-[#6b7167]">HOUSEHOLD SETTINGS & NOTES</p>
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-md:flex-col">
         <input name="display_name" defaultValue={props.displayName} className="flex-1 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive" />
-        <input name="email" defaultValue={props.email ?? ""} placeholder="Email" className="w-56 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive" />
-        <input name="phone" defaultValue={props.phone ?? ""} placeholder="Phone" className="w-36 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive" />
+        <input name="email" defaultValue={props.email ?? ""} placeholder="Email" className="w-56 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive max-md:w-full" />
+        <input name="phone" defaultValue={props.phone ?? ""} placeholder="Phone" className="w-36 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive max-md:w-full" />
       </div>
       <div className="flex items-center gap-4">
         <label className="flex items-center gap-2 text-[12.5px] text-[#4a5147]">

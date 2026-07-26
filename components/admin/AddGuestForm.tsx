@@ -5,9 +5,9 @@ export function AddGuestForm(props: { householdId: string }) {
   const inputClass =
     "rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px] outline-none focus:border-olive";
   return (
-    <form action={action} className="flex items-center gap-2 rounded-xl border border-dashed border-[#d8d5c8] px-4.5 p-4">
-      <input name="first_name" required placeholder="First name" className={`w-32 ${inputClass}`} />
-      <input name="last_name" placeholder="Last name" className={`w-32 ${inputClass}`} />
+    <form action={action} className="flex items-center gap-2 rounded-xl border border-dashed border-[#d8d5c8] px-4.5 p-4 max-md:flex-wrap">
+      <input name="first_name" required placeholder="First name" className={`w-32 ${inputClass} max-md:w-full`} />
+      <input name="last_name" placeholder="Last name" className={`w-32 ${inputClass} max-md:w-full`} />
       <select name="age_type" defaultValue="adult" className={inputClass}>
         <option value="adult">Adult</option>
         <option value="child">Child</option>
