@@ -1,6 +1,6 @@
 import { defaultScope } from "@/lib/data/scope";
 import * as comms from "@/lib/data/comms";
-import { sendCampaign } from "./actions";
+import { CampaignComposer } from "@/components/admin/CampaignComposer";
 
 export const dynamic = "force-dynamic";
 
@@ -33,56 +33,7 @@ export default async function CommsPage() {
         </p>
       </div>
 
-      <form action={sendCampaign} className="flex flex-col gap-3 rounded-xl border border-hairline p-5">
-        <h2 className="text-[14.5px] font-semibold text-ink">Compose</h2>
-        <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-            TYPE
-            <select name="type" className="rounded-lg border border-[#dddbd0] bg-white px-3 py-2.5 text-[13.5px] font-normal">
-              <option value="reminder">RSVP reminder</option>
-              <option value="invitation">Invitation (magic link + code)</option>
-              <option value="save_the_date">Save the date</option>
-              <option value="thank_you">Thank you</option>
-              <option value="custom">Custom message</option>
-            </select>
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-            AUDIENCE
-            <select name="audience" className="rounded-lg border border-[#dddbd0] bg-white px-3 py-2.5 text-[13.5px] font-normal">
-              <option value="not_responded">Hasn&apos;t responded</option>
-              <option value="all">Everyone</option>
-              <option value="attending">Attending</option>
-              <option value="declined">Declined</option>
-            </select>
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-            CHANNEL
-            <select name="channel" className="rounded-lg border border-[#dddbd0] bg-white px-3 py-2.5 text-[13.5px] font-normal">
-              <option value="email">Email (Resend)</option>
-              <option value="manual">Log only (paper / offline send)</option>
-            </select>
-          </label>
-        </div>
-        <input
-          name="subject"
-          placeholder="Subject (custom messages — templates localize automatically)"
-          className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
-        />
-        <textarea
-          name="body"
-          rows={3}
-          placeholder="Body (custom messages only)"
-          className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
-        />
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] text-muted">
-            Templates send in each household&apos;s language (EN/ES/VI) with their magic link. Delivery tracked via webhooks.
-          </p>
-          <button className="rounded-lg bg-olive-deep px-5 py-2.5 text-[13.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] motion-reduce:transition-none">
-            Send campaign
-          </button>
-        </div>
-      </form>
+      <CampaignComposer />
 
       <div className="rounded-xl border border-hairline p-5">
         <h2 className="text-[14.5px] font-semibold text-ink">History</h2>
