@@ -3,8 +3,7 @@ import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import type { HouseholdFilter } from "@/lib/types";
 import { NewHouseholdForm } from "@/components/admin/NewHouseholdForm";
-import { ConfirmButton } from "@/components/admin/ConfirmButton";
-import { deleteHousehold } from "@/app/admin/(dashboard)/guests/actions";
+import { GuestList, type GuestListRow } from "@/components/admin/GuestList";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +23,6 @@ const FILTERS: Array<{ key: HouseholdFilter; label: string }> = [
   { key: "vip", label: "VIP" },
 ];
 
-const STATUS_BADGE: Record<string, string> = {
-  completed: "bg-sage-band text-olive-deep",
-  started: "bg-[#f3edd8] text-[#7a6420]",
-  declined: "bg-blush text-rose",
-  pending: "bg-[#f1f0ea] text-[#6b7167]",
-};
-
 export default async function GuestsPage({
   searchParams,
 }: {
@@ -39,42 +31,35 @@ export default async function GuestsPage({
   const params = await searchParams;
   const scope = defaultScope();
   const filter = (FILTERS.some((f) => f.key === params.filter) ? params.filter : "all") as HouseholdFilter;
-  const rows = await households.search(scope, { text: params.q, filter });
+  // Text filtering happens live in the client; the chip filter stays server-side.
+  const rows = await households.search(scope, { filter });
 
-  const totalGuests = rows.reduce((n, h) => n + h.guests.length, 0);
+  const listRows: GuestListRow[] = rows.map((h) => ({
+    id: h.id,
+    display_name: h.display_name,
+    guests: h.guests.map((g) => ({ first_name: g.first_name, last_name: g.last_name })),
+    email: h.email,
+    phone: h.phone,
+    max_party_size: h.max_party_size,
+    plus_one_slots: h.plus_one_slots,
+    rsvp_status: h.rsvp_status,
+    invite_code: h.invite_code,
+  }));
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <h1 className="text-[22px] font-semibold text-ink">Guests</h1>
-          <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
-            {rows.length} households · {totalGuests} guests
-          </p>
-        </div>
+        <h1 className="flex-1 text-[22px] font-semibold text-ink">Guests</h1>
       </div>
 
       {params.new === "1" && <NewHouseholdForm />}
 
-      <form className="flex items-center gap-2" action="/admin/guests" method="get">
-        <input
-          name="q"
-          defaultValue={params.q ?? ""}
-          placeholder="Search by name, household, email, phone…"
-          className="w-[340px] rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
-        />
-        <input type="hidden" name="filter" value={filter} />
-        <button className="rounded-lg border border-[#dddbd0] px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose">
-          Search
-        </button>
-      </form>
-
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 max-md:flex-nowrap max-md:overflow-x-auto max-md:pb-1">
         {FILTERS.map((f) => (
           <Link
             key={f.key}
             href={`/admin/guests?filter=${f.key}${params.q ? `&q=${encodeURIComponent(params.q)}` : ""}`}
-            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
               filter === f.key
                 ? "bg-olive-deep text-cream"
                 : "border border-[#dddbd0] text-[#4a5147] hover:border-rose hover:text-rose"
@@ -85,57 +70,7 @@ export default async function GuestsPage({
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-hairline">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-hairline bg-paper text-[11px] font-semibold tracking-[0.08em] text-[#6b7167]">
-              <th className="px-4 py-3">HOUSEHOLD</th>
-              <th className="px-4 py-3">GUESTS</th>
-              <th className="px-4 py-3">CONTACT</th>
-              <th className="px-4 py-3">RULES</th>
-              <th className="px-4 py-3">STATUS</th>
-              <th className="px-4 py-3 text-right">CODE</th>
-              <th className="px-4 py-3" />
-
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((h) => (
-              <tr key={h.id} className="border-b border-[#f1f0ea] last:border-0 hover:bg-paper/60">
-                <td className="px-4 py-3.5">
-                  <Link href={`/admin/guests/${h.id}`} className="font-semibold text-[13.5px] text-ink hover:text-rose">
-                    {h.display_name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3.5 text-[13px] text-[#4a5147]">
-                  {h.guests.map((g) => `${g.first_name} ${g.last_name}`).join(", ") || "—"}
-                </td>
-                <td className="px-4 py-3.5 text-[13px] text-[#4a5147]">{h.email ?? "—"}</td>
-                <td className="px-4 py-3.5 text-[13px] text-[#4a5147]">
-                  Max {h.max_party_size}
-                  {h.plus_one_slots > 0 ? ` · +${h.plus_one_slots}` : ""}
-                </td>
-                <td className="px-4 py-3.5">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.05em] uppercase ${STATUS_BADGE[h.rsvp_status]}`}>
-                    {h.rsvp_status}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5 text-right font-mono text-[12px] tracking-wider text-muted">{h.invite_code}</td>
-                <td className="px-4 py-3.5 text-right">
-                  <ConfirmButton label="Delete" confirmLabel="Delete all?" action={deleteHousehold.bind(null, h.id)} />
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-[13px] text-muted">
-                  No households match. Try a different filter, or import your guest list.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <GuestList rows={listRows} initialQuery={params.q ?? ""} filter={filter} canDelete />
     </div>
   );
 }
