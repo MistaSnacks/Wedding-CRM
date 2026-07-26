@@ -9,7 +9,10 @@ import { ResponseCell } from "@/components/admin/ResponseCell";
 import { HouseholdEditor } from "@/components/admin/HouseholdEditor";
 import { AddGuestForm } from "@/components/admin/AddGuestForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { HouseholdEvents } from "@/components/admin/events/HouseholdEvents";
+import { formatWhen } from "@/components/admin/events/when";
 import { removeGuest } from "@/app/admin/(dashboard)/guests/actions";
+import * as events from "@/lib/data/events";
 import type { MealOptionRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +53,16 @@ export default async function HouseholdDetailPage({
     .eq("wedding_id", scope.weddingId)
     .order("sort_order");
   const commHistory = await comms.historyForHousehold(scope, householdId);
+
+  // The invite matrix from the household's side. `detail.events` only carries
+  // the ones they're already invited to, so the full list is read separately —
+  // the unticked events are the whole point of the control.
+  const [allEvents, invitedEventIds, wedding] = await Promise.all([
+    events.list(scope),
+    events.invitedEventIds(scope, householdId),
+    scope.db.from("weddings").select("timezone").eq("id", scope.weddingId).single(),
+  ]);
+  const timeZone: string = wedding.data?.timezone ?? "America/Los_Angeles";
 
   const rsvpUrl = `${env().NEXT_PUBLIC_APP_URL}/rsvp/h/${detail.access_token}`;
   const invitationType =
@@ -133,6 +146,17 @@ export default async function HouseholdDetailPage({
         </div>
 
         <div className="flex flex-1 flex-col gap-4">
+          <HouseholdEvents
+            householdId={detail.id}
+            invited={invitedEventIds}
+            events={allEvents.map((e) => ({
+              id: e.id,
+              name: e.name,
+              whenLabel: formatWhen(e.starts_at, timeZone),
+              rsvpEnabled: e.rsvp_enabled,
+            }))}
+          />
+
           <div className="rounded-xl border border-hairline p-5">
             <h2 className="text-[14.5px] font-semibold text-ink">Activity</h2>
             <div className="mt-2 flex flex-col">
