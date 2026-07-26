@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import Papa from "papaparse";
 import {
   parseCsv,
@@ -18,6 +18,7 @@ import { UploadStep } from "./import/UploadStep";
 import { ReviewStep } from "./import/ReviewStep";
 import { DoneStep } from "./import/DoneStep";
 import { ColumnMatches, type SingleColumnKey } from "./import/ColumnMatches";
+import { resolveFix, type RowFix } from "./import/fixable";
 
 type Step = "upload" | "review" | "done";
 
@@ -57,6 +58,8 @@ export function ImportWizard({
   const [fileError, setFileError] = useState<string | null>(null);
   const [columnsOpen, setColumnsOpen] = useState(false);
   const [columnsReason, setColumnsReason] = useState<string | null>(null);
+  /** Sheet lines repaired in place on this screen — the numerator of "3 of 12 fixed". */
+  const [fixedLines, setFixedLines] = useState<Set<number>>(() => new Set());
   const [pending, startTransition] = useTransition();
 
   /**
@@ -106,6 +109,7 @@ export function ImportWizard({
       setRunId(null);
       setCommitErrors(null);
       setDone(null);
+      setFixedLines(new Set());
       setColumnsOpen(missingNames);
       setColumnsReason(
         missingNames
@@ -129,8 +133,55 @@ export function ImportWizard({
     setValidation(validateCsv(rows, next, context));
     setRunId(null);
     setCommitErrors(null);
+    // Inline fixes were written into the previously mapped name column. Point
+    // either name column somewhere else and those repairs no longer apply to
+    // what is being validated, so the tally that counts them must reset too —
+    // otherwise "11 of 22 fixed" appears above eleven errors that are back.
+    if (next.firstName !== mapping?.firstName || next.lastName !== mapping?.lastName) {
+      setFixedLines(new Set());
+    }
     if (next.firstName && next.lastName) setColumnsReason(null);
   }
+
+  /**
+   * Repairs one cell in place and re-derives the whole screen from it.
+   *
+   * An edit changes the data being imported, which makes it exactly as
+   * dangerous to an in-flight dry run as a mapping change: bumping
+   * `generation` and clearing `runId` together is what stops a slow dry-run
+   * response, validated against the pre-edit rows, from landing afterwards and
+   * re-arming Commit for data that run never saw. Both are required — `runId`
+   * alone would still be resurrected by the stale response's `setRunId`.
+   *
+   * Re-running `validateCsv` wholesale rather than striking the problem out of
+   * the summary is deliberate. A restored surname is a grouping input: it can
+   * move that guest onto a different invitation, close a "someone may be
+   * missing" warning, or change the household totals. Re-validation gets all of
+   * that right for free; patching a list would get only the list right.
+   */
+  function applyRowFix(fix: RowFix, raw: string) {
+    if (!mapping) return;
+    const value = raw.trim();
+    if (!value) return;
+
+    const index = fix.line - 2; // line 1 is the header
+    if (index < 0 || index >= rows.length) return;
+    if ((rows[index]?.[fix.column] ?? "").trim() === value) return;
+
+    const next = rows.map((row, i) => (i === index ? { ...row, [fix.column]: value } : row));
+
+    generation.current += 1;
+    setRows(next);
+    setValidation(validateCsv(next, mapping, context));
+    setRunId(null);
+    setCommitErrors(null);
+    setFixedLines((lines) => new Set(lines).add(fix.line));
+  }
+
+  const fixFor = useCallback(
+    (problem: ImportProblem) => (mapping ? resolveFix(problem, rows, mapping) : null),
+    [rows, mapping],
+  );
 
   function remap(key: SingleColumnKey, value: string) {
     if (!mapping) return;
@@ -199,6 +250,7 @@ export function ImportWizard({
     setFileError(null);
     setColumnsOpen(false);
     setColumnsReason(null);
+    setFixedLines(new Set());
   }
 
   /**
@@ -250,6 +302,9 @@ export function ImportWizard({
         onImport={importNow}
         onStartOver={startOver}
         onDownloadProblems={downloadProblems}
+        fixFor={fixFor}
+        onFix={applyRowFix}
+        fixedCount={fixedLines.size}
         columnMatches={
           <ColumnMatches
             open={columnsOpen}

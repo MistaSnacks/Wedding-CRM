@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { ImportProblem, ImportSummary } from "@/lib/csv";
 import { ProblemList } from "./ProblemList";
+import type { RowFix } from "./fixable";
 
 /**
  * The heart of the redesign: what we found, in her words, before any control.
@@ -21,6 +22,9 @@ export function ReviewStep({
   onImport,
   onStartOver,
   onDownloadProblems,
+  fixFor,
+  onFix,
+  fixedCount,
   columnMatches,
 }: {
   summary: ImportSummary;
@@ -32,9 +36,14 @@ export function ReviewStep({
   onImport: () => void;
   onStartOver: () => void;
   onDownloadProblems: (problems: ImportProblem[], filename: string) => void;
+  /** The cell a problem can be repaired in, or null if we can't name one. */
+  fixFor: (problem: ImportProblem) => RowFix | null;
+  onFix: (fix: RowFix, value: string) => void;
+  fixedCount: number;
   columnMatches: ReactNode;
 }) {
   const { invitations, namedGuests, unnamedSeats, extras, problems, preview } = summary;
+  const fixableHere = problems.errors.filter((e) => fixFor(e) !== null).length;
 
   return (
     <section className="rounded-2xl border border-hairline bg-white/60 p-6 sm:p-8">
@@ -98,6 +107,10 @@ export function ReviewStep({
           <ProblemList
             errors={problems.errors}
             warnings={problems.warnings}
+            disabled={importing}
+            fixedCount={fixedCount}
+            fixFor={fixFor}
+            onFix={onFix}
             onDownload={onDownloadProblems}
           />
         </>
@@ -134,12 +147,8 @@ export function ReviewStep({
               : `Import ${namedGuests.toLocaleString()} ${namedGuests === 1 ? "guest" : "guests"}`}
           </button>
           {problems.errors.length > 0 && (
-            <p className="max-w-[44ch] text-[12.5px] leading-relaxed text-[#6b7167]">
-              {`${problems.errors.length === 1 ? "That row" : `Those ${problems.errors.length} rows`} won’t be included. Fixing ${
-                problems.errors.length === 1 ? "it" : "them"
-              } in your spreadsheet and uploading again brings everyone in at once — if you import now, you’ll need to add ${
-                problems.errors.length === 1 ? "that guest" : "those guests"
-              } by hand afterwards, because uploading the same file twice would duplicate the rest.`}
+            <p className="max-w-[46ch] text-[12.5px] leading-relaxed text-[#6b7167]">
+              {leftBehindNote(problems.errors.length, fixableHere)}
             </p>
           )}
         </div>
@@ -148,6 +157,30 @@ export function ReviewStep({
       {columnMatches}
     </section>
   );
+}
+
+/**
+ * What it costs to import with rows still outstanding.
+ *
+ * The old wording sent her back to the spreadsheet — fix it there, upload
+ * again, everyone arrives together. That was never true after a first import:
+ * re-uploading duplicates every guest already in, because nothing merges. Now
+ * that the missing names can be typed in above, the honest trade is between
+ * filling them in here and adding those guests by hand later. Neither branch
+ * promises a second upload will tidy anything up.
+ */
+function leftBehindNote(total: number, fixable: number): string {
+  if (fixable === total) {
+    return total === 1
+      ? "That row just needs a name. Fill it in above and that guest comes in with everyone else — import now and you’ll be adding them by hand later."
+      : `Those ${total} rows just need a name. Fill them in above and everyone comes in at once — import now and you’ll be adding those guests by hand later.`;
+  }
+  if (fixable > 0) {
+    return `Those ${total} rows won’t be included as they stand. The ones with a blank above can be filled in here and will join this import; anything left over you’d be adding by hand later.`;
+  }
+  return total === 1
+    ? "That row won’t be included. You can add that guest by hand after importing, or start over with a corrected file first."
+    : `Those ${total} rows won’t be included. You can add those guests by hand after importing, or start over with a corrected file first.`;
 }
 
 /**

@@ -38,16 +38,21 @@ export function DoneStep({
 
       {skipped.length > 0 && (
         <div className="mt-4 rounded-xl border border-blush-border bg-blush/60 px-4 py-3">
+          {/* Not "fix and re-upload": uploading the same sheet again would
+              duplicate every guest that just came in, because nothing merges.
+              The honest route now is adding the stragglers by hand — the
+              download is the checklist for doing it. */}
           <p className="text-[13px] leading-relaxed text-rose-deep">
             {skipped.length} {skipped.length === 1 ? "row was" : "rows were"} skipped and{" "}
-            {skipped.length === 1 ? "is" : "are"} not in the numbers above.
+            {skipped.length === 1 ? "is" : "are"} not in the numbers above. You can add{" "}
+            {skipped.length === 1 ? "that guest" : "those guests"} by hand from your guest list.
           </p>
           <button
             type="button"
             onClick={() => onDownloadSkipped(skipped, "skipped-rows.csv")}
             className="mt-2 rounded-lg border border-blush-border bg-white/60 px-3.5 py-2 text-[12.5px] font-medium text-rose-deep transition-colors hover:bg-white"
           >
-            Download {skipped.length === 1 ? "it" : "them"} to fix and re-upload
+            Download {skipped.length === 1 ? "the row" : "the rows"} to work from
           </button>
         </div>
       )}
