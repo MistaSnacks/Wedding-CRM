@@ -77,6 +77,14 @@ describe("scoreCandidates", () => {
   it("does not crash on an empty master list", () => {
     expect(scoreCandidates(sub("Anyone", "Atall"), [])).toEqual([]);
   });
+
+  it("never offers a candidate it cannot explain", () => {
+    // Short names collide by chance often enough to clear the score floor. A
+    // suggestion with no stated reason must not reach the review screen, where
+    // it would sit beside a one-click apply button.
+    const all = scoreCandidates(sub("Jobye-Kyle", "Karmaker"), MASTER);
+    expect(all.every((c) => c.reasons.length > 0)).toBe(true);
+  });
 });
 
 describe("classify", () => {

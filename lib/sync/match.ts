@@ -176,7 +176,11 @@ export function scoreCandidates(
         reasons,
       };
     })
-    .filter((c) => c.score >= CANDIDATE_FLOOR)
+    // A candidate we cannot explain is not a candidate. Short names collide by
+    // chance often enough to clear the floor on raw score alone, and offering
+    // an unexplained suggestion next to a one-click "this is them" button is
+    // how a stranger's address ends up on somebody's household.
+    .filter((c) => c.score >= CANDIDATE_FLOOR && c.reasons.length > 0)
     .sort((a, b) => b.score - a.score);
 
   // Ambiguity is a property of the *set*, so it is annotated after sorting:

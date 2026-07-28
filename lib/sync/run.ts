@@ -36,6 +36,21 @@ export function assertNotSuddenlyEmpty(rowsRead: number, knownRows: number): voi
   }
 }
 
+/**
+ * Whether the job may decide this row on its own.
+ *
+ * Yes for a row we've never seen, and for one still waiting that nobody has
+ * ruled on. No for anything a human has already resolved — including a row
+ * they resolved and then undid, which is back in the inbox precisely because
+ * they want to decide it differently.
+ */
+export function isOpenForAutoApply(
+  seen: { status: string; everResolved: boolean } | undefined,
+): boolean {
+  if (!seen) return true;
+  return seen.status === "pending" && !seen.everResolved;
+}
+
 /** Everything the matcher compares against, flattened once per run. */
 export async function loadCandidatePool(scope: WeddingScope): Promise<MatchCandidateInput[]> {
   const rows = await households.list(scope);
@@ -80,10 +95,11 @@ export async function runSync(
     );
   }
 
-  // Newly-seen rows plus anything still sitting in the inbox. A resolved
-  // submission is never reconsidered, which is what stops an undone decision
-  // from being re-applied by the next run.
-  const open = keyed.filter((r) => !known.has(r.key) || known.get(r.key)!.status === "pending");
+  // Auto-apply considers newly-seen rows and rows still waiting that no human
+  // has ever ruled on. A row someone resolved and then undid stays in the inbox
+  // for them to decide again, but the job will not quietly re-apply the
+  // decision they just reversed.
+  const open = keyed.filter((r) => isOpenForAutoApply(known.get(r.key)));
   const ids = opts.dryRun ? new Map<string, string>() : await idsByKey(scope);
   const pool = await loadCandidatePool(scope);
 

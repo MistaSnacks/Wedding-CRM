@@ -44,18 +44,27 @@ export async function upsertMany(scope: WeddingScope, rows: NewSubmission[]): Pr
   return fresh.length;
 }
 
-/** Row keys already stored, with the state of each — the basis for "what's new". */
+/**
+ * Row keys already stored, with the state of each — the basis for "what's new".
+ *
+ * `everResolved` is what makes undo stick: an undone item goes back to
+ * `pending` so it can be decided again, but the sync must not quietly re-apply
+ * the decision a human just reversed.
+ */
 export async function listKeys(
   scope: WeddingScope,
-): Promise<Map<string, { id: string; status: SheetSubmissionStatus }>> {
+): Promise<Map<string, { id: string; status: SheetSubmissionStatus; everResolved: boolean }>> {
   const { data, error } = await scope.db
     .from("sheet_submissions")
-    .select("id, row_key, status")
+    .select("id, row_key, status, resolved_at")
     .eq("wedding_id", scope.weddingId)
     .eq("source", "save_the_date");
   if (error) throw new Error(error.message);
   return new Map(
-    (data ?? []).map((r) => [r.row_key as string, { id: r.id as string, status: r.status as SheetSubmissionStatus }]),
+    (data ?? []).map((r) => [
+      r.row_key as string,
+      { id: r.id as string, status: r.status as SheetSubmissionStatus, everResolved: r.resolved_at !== null },
+    ]),
   );
 }
 
@@ -90,7 +99,7 @@ export async function listApplied(scope: WeddingScope): Promise<SheetSubmissionR
     .eq("wedding_id", scope.weddingId)
     .in("status", ["matched", "created"])
     .order("resolved_at", { ascending: false })
-    .limit(50);
+    .limit(12);
   if (error) throw new Error(error.message);
   return (data ?? []) as SheetSubmissionRow[];
 }
@@ -130,11 +139,17 @@ export async function markResolved(
   if (error) throw new Error(error.message);
 }
 
-/** Undo returns an item to the inbox so the decision can be made again. */
+/**
+ * Undo returns an item to the inbox so the decision can be made again.
+ *
+ * `resolved_at` is deliberately left set. It is the record that a human has
+ * already ruled on this row, which stops the next sync from re-applying the
+ * very decision they just reversed.
+ */
 export async function reopen(scope: WeddingScope, id: string): Promise<void> {
   const { error } = await scope.db
     .from("sheet_submissions")
-    .update({ status: "pending", household_id: null, applied: null, resolved_by: null, resolved_at: null })
+    .update({ status: "pending", household_id: null, applied: null })
     .eq("wedding_id", scope.weddingId)
     .eq("id", id);
   if (error) throw new Error(error.message);

@@ -10,6 +10,7 @@ import type {
 } from "@/lib/types";
 import * as activity from "./activity";
 import { liveResponses } from "./event-rules";
+import { newAccessToken, newInviteCode } from "./imports";
 
 const HOUSEHOLD_COLS =
   "id, wedding_id, display_name, primary_contact_name, email, phone, mailing_address, invite_code, access_token, max_party_size, plus_one_slots, rsvp_status, preferred_locale, tags, internal_notes";
@@ -255,6 +256,93 @@ export async function update(
     action: "household.updated",
     payload: { fields: Object.keys(patch) },
   });
+}
+
+/**
+ * Creates one household with its named guests — the review inbox's "this is
+ * somebody new" path.
+ *
+ * Crucially it also writes `household_event_invites` for every event marked
+ * `visibility = 'all'`. Skipping that is a silent failure: the household exists,
+ * looks fine in the list, and simply never appears on any event — which is what
+ * happened to three households during the one-off merge and had to be repaired
+ * by hand afterwards.
+ */
+export async function createWithGuests(
+  scope: WeddingScope,
+  input: {
+    displayName: string;
+    email?: string | null;
+    phone?: string | null;
+    mailingAddress?: Record<string, string> | null;
+    preferredLocale?: string;
+    internalNotes?: string | null;
+    rsvpStatus?: "pending" | "declined";
+    guests: Array<{ firstName: string; lastName: string }>;
+  },
+  actorId?: string,
+): Promise<{ id: string }> {
+  const { data: household, error } = await scope.db
+    .from("households")
+    .insert({
+      wedding_id: scope.weddingId,
+      display_name: input.displayName,
+      primary_contact_name: input.displayName,
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      mailing_address: input.mailingAddress ?? null,
+      preferred_locale: input.preferredLocale ?? "en",
+      internal_notes: input.internalNotes ?? null,
+      rsvp_status: input.rsvpStatus ?? "pending",
+      invite_code: newInviteCode(),
+      access_token: newAccessToken(),
+      max_party_size: Math.max(1, input.guests.length),
+      plus_one_slots: 0,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (input.guests.length) {
+    const { error: guestErr } = await scope.db.from("guests").insert(
+      input.guests.map((g) => ({
+        wedding_id: scope.weddingId,
+        household_id: household.id,
+        first_name: g.firstName,
+        last_name: g.lastName || "—",
+        origin: "named" as const,
+      })),
+    );
+    if (guestErr) throw new Error(guestErr.message);
+  }
+
+  const { data: openEvents, error: eventErr } = await scope.db
+    .from("events")
+    .select("id")
+    .eq("wedding_id", scope.weddingId)
+    .eq("visibility", "all");
+  if (eventErr) throw new Error(eventErr.message);
+
+  if (openEvents?.length) {
+    const { error: inviteErr } = await scope.db.from("household_event_invites").upsert(
+      openEvents.map((e) => ({
+        household_id: household.id,
+        event_id: e.id,
+        wedding_id: scope.weddingId,
+      })),
+    );
+    if (inviteErr) throw new Error(inviteErr.message);
+  }
+
+  await activity.log(scope, {
+    householdId: household.id,
+    actorType: "admin",
+    actorId,
+    action: "household.created",
+    payload: { source: "save_the_date", events: openEvents?.length ?? 0 },
+  });
+
+  return { id: household.id };
 }
 
 export async function remove(scope: WeddingScope, id: string, actorId?: string): Promise<void> {

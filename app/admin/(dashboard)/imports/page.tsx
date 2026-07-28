@@ -4,6 +4,11 @@ import { forWedding } from "@/lib/data/scope";
 import { loadImportContext } from "@/lib/data/imports";
 import { ImportWizard } from "@/components/admin/ImportWizard";
 import { ExportCenter, type ExportReport } from "@/components/admin/ExportCenter";
+import { ReviewInbox, type AppliedItem, type InboxItem } from "@/components/admin/ReviewInbox";
+import * as submissions from "@/lib/data/submissions";
+import { classify, scoreCandidates } from "@/lib/sync/match";
+import { parseSubmission } from "@/lib/sync/sheet";
+import { configuredReader, loadCandidatePool } from "@/lib/sync/run";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +32,57 @@ export default async function ImportsPage() {
   // whole Export center, which viewers are entitled to (see the export route's
   // own requireAdmin gate). Only the write surface below is editor-gated.
   const admin = await requireAdmin();
-  const context = await loadImportContext(forWedding(admin.weddingId));
+  const scope = forWedding(admin.weddingId);
+  const context = await loadImportContext(scope);
   const canImport = admin.role !== "viewer";
+
+  // The review inbox: score each waiting response against the guest list here,
+  // server-side, so the browser never sees the whole directory.
+  const [pending, applied, pool] = await Promise.all([
+    submissions.listByStatus(scope, "pending"),
+    submissions.listApplied(scope),
+    loadCandidatePool(scope),
+  ]);
+
+  const inboxItems: InboxItem[] = pending.map((row) => {
+    const s = parseSubmission(row.raw);
+    const decision = classify(s, scoreCandidates(s, pool), pool);
+    return {
+      id: row.id,
+      name: `${s.first} ${s.last}`.trim(),
+      email: s.email,
+      phone: s.phone,
+      address: s.address,
+      notes: s.notes,
+      receivedAt: s.receivedAt,
+      optOut: s.optOut,
+      multiPerson: decision.bucket === "review" ? decision.multiPerson : false,
+      candidates:
+        decision.bucket === "review"
+          ? decision.candidates.map((c) => ({
+              householdId: c.householdId,
+              householdName: c.householdName,
+              guestName: c.guestName,
+              score: c.score,
+              reasons: c.reasons,
+            }))
+          : [],
+    };
+  });
+
+  const householdNames = new Map(pool.map((c) => [c.householdId, c.householdName]));
+  const appliedItems: AppliedItem[] = applied.map((row) => {
+    const s = parseSubmission(row.raw);
+    return {
+      id: row.id,
+      name: `${s.first} ${s.last}`.trim() || s.email,
+      householdName: (row.household_id && householdNames.get(row.household_id)) || "a household",
+      fields: Object.keys(row.applied ?? {}),
+      status: row.status === "created" ? "created" : "matched",
+    };
+  });
+
+  const connected = configuredReader() !== null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,6 +96,15 @@ export default async function ImportsPage() {
       {/* Real enforcement is requireEditor() inside the server actions; this
           only hides a surface a viewer could not use anyway. */}
       {canImport && <ImportWizard events={context.events} mealOptions={context.mealOptions} />}
+
+      {(inboxItems.length > 0 || appliedItems.length > 0) && (
+        <ReviewInbox
+          items={inboxItems}
+          applied={appliedItems}
+          connected={connected}
+          canEdit={canImport}
+        />
+      )}
 
       <div className="rounded-xl border border-hairline p-5">
         <h2 className="text-[14.5px] font-semibold text-ink">Export center</h2>

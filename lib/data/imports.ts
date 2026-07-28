@@ -7,12 +7,12 @@ import { randomBytes } from "crypto";
 /** Unambiguous alphabet (no 0/O/1/I/L) for human-typed invite codes. */
 const codeAlphabet = customAlphabet("23456789ABCDEFGHJKMNPQRSTUVWXYZ", 8);
 
-function newInviteCode(): string {
+export function newInviteCode(): string {
   const raw = codeAlphabet();
   return `${raw.slice(0, 4)}-${raw.slice(4)}`;
 }
 
-function newAccessToken(): string {
+export function newAccessToken(): string {
   return randomBytes(16).toString("hex");
 }
 
