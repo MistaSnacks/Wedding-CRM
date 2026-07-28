@@ -3,6 +3,7 @@ import { defaultScope } from "@/lib/data/scope";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { HeaderSearch } from "@/components/admin/HeaderSearch";
 import { FilmBackdrop } from "@/components/FilmBackdrop";
+import { formatCalendarDate, daysUntilCalendarDate } from "@/lib/format/wedding-date";
 import Link from "next/link";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -10,12 +11,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const scope = defaultScope();
   const { data: wedding } = await scope.db
     .from("weddings")
-    .select("couple_names, wedding_date, rsvp_deadline")
+    .select("couple_names, wedding_date, rsvp_deadline, timezone")
     .eq("id", scope.weddingId)
     .single();
 
+  // The venue's zone, not the server's: a Vercel function runs in UTC and
+  // would otherwise count a sleep that hasn't happened yet.
+  const timeZone: string = wedding?.timezone ?? "America/Los_Angeles";
   const daysOut = wedding?.wedding_date
-    ? Math.max(0, Math.ceil((new Date(wedding.wedding_date).getTime() - Date.now()) / 86400_000))
+    ? daysUntilCalendarDate(wedding.wedding_date, new Date(), timeZone)
     : null;
   const deadlineDays = wedding?.rsvp_deadline
     ? Math.max(0, Math.ceil((new Date(wedding.rsvp_deadline).getTime() - Date.now()) / 86400_000))
@@ -23,12 +27,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const initials = admin.email.slice(0, 2).toUpperCase();
 
-  const dateLabel =
-    wedding?.wedding_date && daysOut !== null
-      ? `${new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(
-          new Date(wedding.wedding_date),
-        )} · ${daysOut} days out`
-      : null;
+  const weddingDay = formatCalendarDate(wedding?.wedding_date ?? null);
+  const dateLabel = weddingDay && daysOut !== null ? `${weddingDay} · ${daysOut} days out` : null;
 
   return (
     <div className="relative flex min-h-dvh watercolor-bg overflow-hidden">
