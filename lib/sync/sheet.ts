@@ -83,6 +83,38 @@ export function csvReader(text: string): SheetReader {
   return async () => parseCsv(text);
 }
 
+export type ParsedSubmission = {
+  first: string;
+  last: string;
+  email: string;
+  phone: string;
+  address: string;
+  notes: string;
+  /** "" means English; only es/vi are meaningful overrides. */
+  language: string;
+  receivedAt: string;
+  /** Confirmed present in real data (`Ty Huynh`); honoured immediately. */
+  optOut: boolean;
+};
+
+const cell = (row: SheetRow, key: string): string => (row[key] ?? "").trim();
+
+export function parseSubmission(row: SheetRow): ParsedSubmission {
+  const notes = cell(row, "Notes");
+  const language = cell(row, "Language").toLowerCase();
+  return {
+    first: cell(row, "First Name"),
+    last: cell(row, "Last Name"),
+    email: cell(row, "Email"),
+    phone: cell(row, "Phone"),
+    address: cell(row, "Mailing Address"),
+    notes,
+    language: language === "es" || language === "vi" ? language : "en",
+    receivedAt: cell(row, "Received At"),
+    optOut: /opt.?out/i.test(notes),
+  };
+}
+
 export type GoogleSheetConfig = {
   clientEmail: string;
   /** PEM private key. Vercel env mangles newlines, so `\n` escapes are accepted. */
