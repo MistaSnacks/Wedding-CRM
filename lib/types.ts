@@ -21,6 +21,24 @@ export type HouseholdRow = {
   internal_notes: string | null;
 };
 
+export type SheetSubmissionStatus = "pending" | "matched" | "created" | "ignored";
+
+export type SheetSubmissionRow = {
+  id: string;
+  wedding_id: string;
+  source: "save_the_date";
+  row_key: string;
+  raw: Record<string, string>;
+  received_at: string | null;
+  status: SheetSubmissionStatus;
+  household_id: string | null;
+  /** Prior value of every field a match wrote, so undo restores rather than guesses. */
+  applied: Record<string, { from: unknown; to: unknown }> | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
 export type GuestRow = {
   id: string;
   household_id: string;
