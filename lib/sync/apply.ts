@@ -1,4 +1,5 @@
 import type { ParsedSubmission } from "./sheet";
+import type { Locale, RsvpStatus } from "@/lib/types";
 
 /**
  * Turning a matched submission into a household update.
@@ -27,18 +28,18 @@ export type ApplyTarget = {
   email: string | null;
   phone: string | null;
   mailing_address: AddressValue | null;
-  preferred_locale: string;
+  preferred_locale: Locale;
   internal_notes: string | null;
-  rsvp_status: string;
+  rsvp_status: RsvpStatus;
 };
 
 export type HouseholdPatch = Partial<{
   email: string | null;
   phone: string | null;
   mailing_address: AddressValue | null;
-  preferred_locale: string;
+  preferred_locale: Locale;
   internal_notes: string | null;
-  rsvp_status: string;
+  rsvp_status: RsvpStatus;
 }>;
 
 export type AppliedRecord = Record<string, { from: unknown; to: unknown }>;

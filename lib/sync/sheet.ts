@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import Papa from "papaparse";
 import { SignJWT, importPKCS8 } from "jose";
+import type { Locale } from "@/lib/types";
 
 /**
  * Reading the Save-the-Date response sheet.
@@ -90,8 +91,8 @@ export type ParsedSubmission = {
   phone: string;
   address: string;
   notes: string;
-  /** "" means English; only es/vi are meaningful overrides. */
-  language: string;
+  /** Blank means English; only es/vi are meaningful overrides. */
+  language: Locale;
   receivedAt: string;
   /** Confirmed present in real data (`Ty Huynh`); honoured immediately. */
   optOut: boolean;

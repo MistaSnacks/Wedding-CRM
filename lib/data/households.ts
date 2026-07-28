@@ -237,6 +237,7 @@ export async function update(
       | "tags"
       | "internal_notes"
       | "mailing_address"
+      | "rsvp_status"
     >
   >,
   actorId?: string,

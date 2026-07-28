@@ -44,6 +44,21 @@ export async function upsertMany(scope: WeddingScope, rows: NewSubmission[]): Pr
   return fresh.length;
 }
 
+/** Row keys already stored, with the state of each — the basis for "what's new". */
+export async function listKeys(
+  scope: WeddingScope,
+): Promise<Map<string, { id: string; status: SheetSubmissionStatus }>> {
+  const { data, error } = await scope.db
+    .from("sheet_submissions")
+    .select("id, row_key, status")
+    .eq("wedding_id", scope.weddingId)
+    .eq("source", "save_the_date");
+  if (error) throw new Error(error.message);
+  return new Map(
+    (data ?? []).map((r) => [r.row_key as string, { id: r.id as string, status: r.status as SheetSubmissionStatus }]),
+  );
+}
+
 export async function countAll(scope: WeddingScope): Promise<number> {
   const { count, error } = await scope.db
     .from("sheet_submissions")

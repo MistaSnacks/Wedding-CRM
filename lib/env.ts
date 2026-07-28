@@ -13,6 +13,14 @@ const schema = z.object({
   RESEND_REPLY_TO: z.string().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  /** Save-the-Date sync. All optional: without them the sync reports that it is
+   *  not configured yet instead of crashing the app at boot. */
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+  GOOGLE_PRIVATE_KEY: z.string().optional(),
+  SAVE_THE_DATE_SHEET_ID: z.string().optional(),
+  SAVE_THE_DATE_RANGE: z.string().default("Save My Spot!A:Z"),
+  /** Shared secret for the Vercel cron GET. */
+  CRON_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 });
 
