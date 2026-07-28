@@ -1,6 +1,54 @@
 # Guest CRM — Delivery Handoff
 
-_Last updated: 2026-07-26 (usability blockers: safe sends, addresses, live search, mobile admin)._
+_Last updated: 2026-07-28 (Save-the-Date sync shipped; auth email templates confirmed live)._
+
+## What shipped 2026-07-28 — Save-the-Date sync
+
+Spec `docs/superpowers/specs/2026-07-26-save-the-date-sync-design.md`, plan
+`docs/superpowers/plans/2026-07-27-save-the-date-sync.md` (which records three amendments
+learned from running the one-off merge).
+
+- **`sheet_submissions`** (migration `0010`) — one row per sheet response, unique on a
+  content hash (`row_key`), RLS matching every other tenant table. Verified with the anon
+  key: rows are invisible and writes are rejected (`42501`).
+- **`lib/sync/match.ts`** — pure matcher. **Only an exact email match auto-applies**; a name
+  match at any score, including 1.0, goes to review. It also never offers a candidate it
+  can't explain in words, because an unexplainable suggestion beside a one-click apply is
+  how a stranger's address ends up on a household.
+- **`lib/sync/apply.ts`** — source precedence `admin > save_the_date > csv`, so a guest's
+  own address replaces spreadsheet junk but never a hand edit, and never another guest's
+  answer. Every write records its prior value for undo.
+- **`lib/sync/run.ts`** — reconciles the whole sheet each run (not a delta), so a skipped
+  cron week self-heals and a double-fire is a no-op. Zero rows read after previously reading
+  many is treated as an outage, not as "no new responses". Has a dry-run mode.
+- **Review inbox** on `/admin/imports` — four actions, one decision at a time, no bulk
+  approve, each suggestion shown with its reasoning; applied items are reversible. Undo
+  keeps `resolved_at` set so the weekly job cannot re-apply a decision a human reversed.
+- **Weekly cron** — `vercel.json`, Mondays 15:00 UTC, `CRON_SECRET`-guarded.
+
+Verified against the real 72-response export: 73 rows read, 67 auto-matched on email
+identity **writing zero fields** (the one-off had already applied the same data — the two
+systems agree exactly), 6 left for review, and a second run inserted and applied nothing.
+
+### Still needed to run live: a Google service account
+
+The sync cannot read the sheet until these exist in Vercel env (Production):
+
+| Variable | Where it comes from |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | the service account's address, `…@….iam.gserviceaccount.com` |
+| `GOOGLE_PRIVATE_KEY` | `private_key` from its JSON key (paste whole, `\n` escapes are handled) |
+| `SAVE_THE_DATE_SHEET_ID` | `1UC5eOijap5kTmpN5hiMi7vgwoABe6sJuATEw0q-5UNU` |
+| `SAVE_THE_DATE_RANGE` | optional; defaults to `Save My Spot!A:Z` |
+| `CRON_SECRET` | any long random string |
+
+Setup: in Google Cloud Console create (or reuse) a project → enable the **Google Sheets
+API** → **Create service account** → **Keys → Add key → JSON** → then share the
+Save-the-Date sheet with that service-account address as **Viewer**. Read-only by design;
+the app never writes to the sheet.
+
+Until then the inbox says it isn't connected, and existing responses can still be reviewed.
+`importSheetCsv()` in `imports/review-actions.ts` accepts a CSV export as a manual fallback.
 
 ## What shipped 2026-07-26 — admin usability blockers
 
@@ -75,7 +123,7 @@ Supabase grants `EXECUTE` on new `public`-schema functions to `anon` and `authen
 
 1. **Run the master guest import.** The importer is built and tested but the real import has not been run — it needs a CSV export of the MASTER WEDDING LIST *Guest List* tab (sheet owned by julietle24@gmail.com). Full mapping instructions are in Task 13 of `docs/superpowers/plans/2026-07-24-tenant-agnostic-csv-importer.md`, including the expected dry-run sanity checks. That task also adds the Rehearsal Dinner event, which must be migration `0007` now that `0006` is taken.
 2. **Save-the-Date weekly sync not built.** Design is approved in `docs/superpowers/specs/2026-07-24-guest-data-migration-design.md` (Google service account + Sheets API, Vercel Cron, a `sheet_submissions` table, a fuzzy matcher, and an admin review inbox for ambiguous matches). This is Plan B and has no implementation plan yet. Note the two sheets share no identifier and names do not match (`Alison Aw` → `Alison Aw-Irwin`, `Amadeo Guiao` → `Amadeo Cruz`), so the join needs human review by design.
-3. **Invite email template not yet live.** `supabase/config.toml` + `supabase/templates/invite.html` still need `supabase config push`. The blocker recorded here previously — "the CLI is linked to the wrong Supabase project" — **no longer applies**; the CLI is correctly linked, so this should just work. Until pushed, invites use the default Supabase template.
+3. ~~**Invite email template not yet live.**~~ **DONE** — confirmed 2026-07-28: `supabase config push` reports Remote Auth config up to date, so the branded templates are live. Original note: `supabase/config.toml` + `supabase/templates/invite.html` still need `supabase config push`. The blocker recorded here previously — "the CLI is linked to the wrong Supabase project" — **no longer applies**; the CLI is correctly linked, so this should just work. Until pushed, invites use the default Supabase template.
 4. **Event management UI.** The schema supports arbitrary events with per-household invite lists, and the importer can now populate them, but there is no admin UI to create/edit/delete events. Spec'd as the follow-up to the migration design.
 5. **Seating roadmap deferred** until this client is live — spec in `docs/seating-roadmap.md`.
 
