@@ -1,6 +1,31 @@
 # Guest CRM — Delivery Handoff
 
-_Last updated: 2026-07-28 (Save-the-Date sync shipped; auth email templates confirmed live)._
+_Last updated: 2026-07-28 (deployed to production; Save-the-Date sync + "what's new" note shipped)._
+
+## Deployed 2026-07-28
+
+Live at **https://rsvp.julietandjuan.com**. Everything below through the Save-the-Date sync
+is in production. Juliet (`julietle24@gmail.com`) already has `owner` access and last signed
+in on 2026-07-11, so she can log straight in.
+
+- **"What's new" note** — a one-time, dismissible summary of what changed since someone last
+  signed in (`lib/changelog.ts` holds the entries, newest first; add to the top and never
+  reuse an `id`). Read state lives in `activity_log` under `changelog.seen`, so it is
+  per-account rather than per-browser and is filtered out of the couple's activity feed.
+- **`CRON_SECRET`** is set in Vercel Production. The weekly cron endpoint verified live:
+  401 without the secret, and with it returns a plain "not connected to Google yet" message
+  rather than failing.
+
+**Two things to know before the next session:**
+
+1. **The Supabase CLI switched accounts mid-session** — `supabase projects list` started
+   returning a different organisation with `guest-crm` absent, and `db push` began failing
+   with `unexpected login role status 403`. Check `supabase projects list | grep guest-crm`
+   before attempting any migration, and re-run `supabase login` if it's missing. (The
+   changelog feature was deliberately built without a migration for this reason.)
+2. **The wedding timezone is unresolved** — the record says `America/Los_Angeles` while the
+   venue and emails say Guadalajara. Every displayed event time may be an hour off. Left
+   untouched pending confirmation from Juliet.
 
 ## What shipped 2026-07-28 — Save-the-Date sync
 
