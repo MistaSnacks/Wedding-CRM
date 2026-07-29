@@ -24,11 +24,15 @@ export async function log(
   if (error) console.error("activity.log failed:", error.message);
 }
 
+/** Bookkeeping we write to activity_log but never want in the couple's feed. */
+const HIDDEN_ACTIONS = ["changelog.seen"];
+
 export async function recent(scope: WeddingScope, limit = 20): Promise<ActivityRow[]> {
   const { data, error } = await scope.db
     .from("activity_log")
     .select("id, household_id, guest_id, actor_type, action, payload, created_at")
     .eq("wedding_id", scope.weddingId)
+    .not("action", "in", `(${HIDDEN_ACTIONS.join(",")})`)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);

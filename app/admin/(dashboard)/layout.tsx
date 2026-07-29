@@ -4,6 +4,9 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { HeaderSearch } from "@/components/admin/HeaderSearch";
 import { FilmBackdrop } from "@/components/FilmBackdrop";
 import { formatCalendarDate, daysUntilCalendarDate } from "@/lib/format/wedding-date";
+import { WhatsNew } from "@/components/admin/WhatsNew";
+import { unseenEntries } from "@/lib/changelog";
+import { readChangelogMark } from "@/lib/data/changelog-seen";
 import Link from "next/link";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -27,12 +30,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const initials = admin.email.slice(0, 2).toUpperCase();
 
+  const whatsNew = unseenEntries(await readChangelogMark(admin.userId, admin.weddingId));
+
   const weddingDay = formatCalendarDate(wedding?.wedding_date ?? null);
   const dateLabel = weddingDay && daysOut !== null ? `${weddingDay} · ${daysOut} days out` : null;
 
   return (
     <div className="relative flex min-h-dvh watercolor-bg overflow-hidden">
       <FilmBackdrop />
+      <WhatsNew entries={whatsNew} />
       {/* Sidebar — translucent so the film shows through; collapsible */}
       <AdminSidebar coupleNames={wedding?.couple_names ?? "Wedding"} dateLabel={dateLabel} role={admin.role} />
 
