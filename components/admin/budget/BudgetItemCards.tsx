@@ -23,6 +23,10 @@ export function BudgetItemCards(props: {
   benchmarkLabel: string;
   vendorName: (item: ItemRollup) => string | null;
   onOpen: (itemId: string) => void;
+  canEdit: boolean;
+  pending: boolean;
+  /** Adds an empty line to this category and opens it. */
+  onAddLine: (categoryId: string, categoryName: string) => void;
 }) {
   const anyItems = props.categories.some((category) => category.items.length > 0);
 
@@ -48,12 +52,23 @@ export function BudgetItemCards(props: {
           {category.items.length === 0 && (
             <p className="rounded-xl border border-hairline px-4 py-5 text-center text-[12.5px] text-muted">Nothing here yet</p>
           )}
+
+          {props.canEdit && (
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() => props.onAddLine(category.category.id, category.category.name)}
+              className="rounded-lg border border-dashed border-[#dddbd0] px-4 py-3 text-[12.5px] font-medium text-[#6b7167] transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
+            >
+              {`Add a line to ${category.category.name}`}
+            </button>
+          )}
         </section>
       ))}
 
       {!anyItems && (
         <p className="rounded-xl border border-hairline px-4 py-8 text-center text-[13px] text-muted">
-          {"Nothing in the budget yet. Add your first line on a bigger screen, or start from the reference wedding."}
+          {"Nothing in the budget yet. Add a line to any category below to start."}
         </p>
       )}
 

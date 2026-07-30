@@ -122,3 +122,27 @@ export function rsvpDeadlineNotice(
   if (delta === 1) return { label: "RSVPs close in 1 day", closed: false };
   return { label: `RSVPs close in ${delta} days`, closed: false };
 }
+
+/**
+ * The calendar day `days` before `date`, as `YYYY-MM-DD`.
+ *
+ * Pure calendar arithmetic on UTC-midnight anchors, like its neighbours here:
+ * a Postgres `date` has no zone, and `new Date("2027-06-12")` parsed in a
+ * negative-offset zone lands on the 11th. Used for defaults such as "the
+ * balance is due a month before the wedding" — a payment with no due date at
+ * all drops out of the overdue rollup, the next-30-days card and the cash-flow
+ * strip, which is exactly the forgotten final balance the schedule exists to
+ * catch.
+ *
+ * Returns null when the input is not a calendar date.
+ */
+export function calendarDaysBefore(date: string | null, days: number): string | null {
+  if (!date) return null;
+  const anchor = Date.parse(`${date}T00:00:00Z`);
+  if (Number.isNaN(anchor)) return null;
+  const shifted = new Date(anchor - days * 86_400_000);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth() + 1;
+  const day = shifted.getUTCDate();
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}

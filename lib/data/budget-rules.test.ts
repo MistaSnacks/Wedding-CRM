@@ -18,6 +18,7 @@ import {
   rollUpCategory,
   rollUpItem,
   splitDeposit,
+  sumKnown,
   upcomingPayments,
   validateCategory,
   validateItem,
@@ -1324,5 +1325,86 @@ describe("the grand STILL TO PAY equals the column above it", () => {
     const totals = rollUpBudget(tree, null);
     const columnSum = tree.reduce((sum, cat) => sum + cat.remainingCents, 0);
     expect(totals.dueCents).toBe(columnSum);
+  });
+});
+
+describe("unknown money renders as unknown, not as zero", () => {
+  const now = new Date("2026-07-30T12:00:00Z");
+
+  test("sumKnown stays null until something real contributes", () => {
+    expect(sumKnown([null, null])).toBeNull();
+    expect(sumKnown([])).toBeNull();
+    expect(sumKnown([null, 500, null])).toBe(500);
+    expect(sumKnown([0])).toBe(0); // a real zero is a real answer
+    expect(sumKnown([null, 0, 250])).toBe(250);
+  });
+
+  // "Linen Rental" on the couple's real budget: a reference figure, no price of
+  // their own, nothing paid. Its STILL TO PAY cell used to read "$0", asserting
+  // nobody owes anything on a line nobody has priced.
+  test("an unpriced, unpaid line does not claim nothing is owed", () => {
+    const r = rollOne(item({ benchmark_cents: 127_700 }), [], now);
+    expect(r.remainingCents).toBe(0); // still summable
+    expect(r.known.remainingCents).toBeNull(); // but not shown as $0
+  });
+
+  test("a line becomes known as soon as it is priced or paid", () => {
+    expect(rollOne(item({ estimated_cents: 50_000 }), [], now).known.remainingCents).toBe(50_000);
+
+    // Paying against a line with no recorded price makes what is owed *known*,
+    // and the honest answer is zero: the forecast rises to meet the payment, so
+    // nothing further is outstanding. That is a real zero, not the unknown one.
+    const paidOnly = rollOne(
+      item(),
+      [payment({ amount_cents: 20_000, paid: true, paid_on: "2026-07-30" })],
+      now,
+    );
+    expect(paidOnly.known.remainingCents).toBe(0);
+    expect(paidOnly.forecastCents).toBe(20_000);
+  });
+
+  test("a genuine zero stays a zero", () => {
+    const r = rollOne(item({ estimated_cents: 0 }), [], now);
+    expect(r.known.remainingCents).toBe(0);
+  });
+
+  test("a category nobody has quoted shows no quote total, not $0", () => {
+    const c = category();
+    const tree = assembleTree(
+      [c],
+      [item({ category_id: c.id, estimated_cents: 50_000 }), item({ category_id: c.id })],
+      [],
+      now,
+      VENUE,
+    );
+    expect(tree[0].known.quotedCents).toBeNull();
+    expect(tree[0].known.contractedCents).toBeNull();
+    expect(tree[0].known.estimatedCents).toBe(50_000);
+
+    const totals = rollUpBudget(tree, null);
+    expect(totals.known.quotedCents).toBeNull();
+    expect(totals.known.estimatedCents).toBe(50_000);
+  });
+
+  // The target of a category with no lines in it used to reach the grand total
+  // through the forecast fallback while appearing in no row on the page.
+  test("an item-less category's target shows up in its own row, not just the total", () => {
+    const withItems = category({ target_cents: 100_000 });
+    const empty = category({ target_cents: 50_000 });
+    const tree = assembleTree(
+      [withItems, empty],
+      [item({ category_id: withItems.id, estimated_cents: 100_000 })],
+      [],
+      now,
+      VENUE,
+    );
+    const emptyRow = tree.find((c) => c.category.id === empty.id)!;
+    expect(emptyRow.remainingCents).toBe(50_000);
+    expect(emptyRow.known.remainingCents).toBe(50_000);
+
+    const totals = rollUpBudget(tree, null);
+    const columnSum = tree.reduce((sum, c) => sum + c.remainingCents, 0);
+    expect(totals.dueCents).toBe(columnSum);
+    expect(totals.dueCents).toBe(150_000);
   });
 });

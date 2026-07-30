@@ -213,6 +213,7 @@ export default async function BudgetPage() {
             currency={tree.currency}
             canEdit={canEdit}
             timeZone={timeZone}
+            weddingDay={wedding?.wedding_date ?? null}
           />
 
           <CategoryBars categories={categories} benchmarkLabel={tree.benchmarkLabel} />

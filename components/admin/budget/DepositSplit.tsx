@@ -23,13 +23,15 @@ export function DepositSplit(props: {
   defaultTotalCents: number | null;
   /** Today at the venue, `YYYY-MM-DD` — the honest default for a deposit paid now. */
   todayAtVenue: string;
+  /** A month before the wedding. A balance with no due date is one nothing chases. */
+  defaultBalanceDue: string | null;
   pending: boolean;
   onCreate: (values: { total: string; deposit: string; depositDue: string | null; balanceDue: string | null }) => void;
 }) {
   const [total, setTotal] = useState(() => centsToInputValue(props.defaultTotalCents));
   const [deposit, setDeposit] = useState("");
   const [depositDue, setDepositDue] = useState(props.todayAtVenue);
-  const [balanceDue, setBalanceDue] = useState("");
+  const [balanceDue, setBalanceDue] = useState(props.defaultBalanceDue ?? "");
 
   const totalParse = tryParseMoney(total);
   const depositParse = tryParseMoney(deposit);

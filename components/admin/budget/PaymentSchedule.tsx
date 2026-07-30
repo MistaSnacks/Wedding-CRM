@@ -27,6 +27,7 @@ export function PaymentSchedule(props: {
   canEdit: boolean;
   pending: boolean;
   todayAtVenue: string;
+  defaultBalanceDue: string | null;
   /** Receipt links by payment id, once the drawer's detail read has landed. */
   receiptUrls: Record<string, string | null> | null;
   onAdd: (values: { label: string; amount: string; dueDate: string | null }) => void;
@@ -78,6 +79,7 @@ export function PaymentSchedule(props: {
         <DepositSplit
           defaultTotalCents={rollup.forecastStage === null ? null : rollup.forecastCents}
           todayAtVenue={props.todayAtVenue}
+          defaultBalanceDue={props.defaultBalanceDue}
           pending={props.pending}
           onCreate={props.onSplit}
         />

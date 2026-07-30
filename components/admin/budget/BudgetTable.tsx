@@ -3,7 +3,7 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { formatMoney, tryParseMoney } from "@/lib/format/money";
-import { calendarDayIn } from "@/lib/format/wedding-date";
+import { calendarDayIn, calendarDaysBefore } from "@/lib/format/wedding-date";
 import {
   assembleTree,
   rollUpBudget,
@@ -19,6 +19,7 @@ import {
   deleteBudgetItem,
   deleteBudgetPayment,
   loadBudgetItemDetail,
+  moveItem,
   saveBudgetItemCost,
   setPaymentPaid,
   splitIntoDeposit,
@@ -40,6 +41,8 @@ export type BudgetTableProps = {
   currency: string;
   canEdit: boolean;
   timeZone: string;
+  /** `weddings.wedding_date`, for defaulting a final balance to a month before it. */
+  weddingDay: string | null;
 };
 
 /** Nine columns: the name, the reference, three cost stages, two derived, the delta, the chevron. */
@@ -103,6 +106,7 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
   const [status, setStatus] = useState<SaveState>({ kind: "idle" });
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [, startDetail] = useTransition();
 
@@ -170,6 +174,11 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
   // venue's calendar day, not the machine's: "paid today" means today in
   // Guadalajara even when the server is already on tomorrow in UTC.
   const todayAtVenue = openItemId === null ? "" : calendarDayIn(new Date(), timeZone);
+  // A balance with no due date falls out of the overdue rollup, the next-30-days
+  // card and the cash-flow strip — it becomes the forgotten final payment the
+  // schedule exists to catch. A month before the wedding is the usual answer and
+  // is always editable.
+  const defaultBalanceDue = calendarDaysBefore(props.weddingDay, 30);
 
   const commit = useCallback(
     (step: CommitStep) => {
@@ -184,7 +193,14 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
             return;
           }
           step.onSaved?.();
-          setStatus({ kind: "saved", message: `Saved · ${step.subject}` });
+          // Four actions return a warning on their success branch — a payment
+          // schedule that now exceeds the price, for one. Reading only `ok` threw
+          // those away, so the one sentence telling her the numbers no longer add
+          // up was written and never shown.
+          setStatus({
+            kind: "saved",
+            message: result.message ? `Saved · ${step.subject} — ${result.message}` : `Saved · ${step.subject}`,
+          });
         } catch {
           step.rollback?.();
           setStatus({ kind: "error", message: `${step.failed} The connection dropped, so nothing was changed.` });
@@ -221,12 +237,17 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
       setErrorKey((current) => (current === key ? null : current));
       setCostOverrides((current) => ({ ...current, [key]: parsed.cents }));
 
+      setSavingKey(key);
       commit({
         subject: `${itemName} ${COST_FIELD_LABEL[field].toLowerCase()} ${formatMoney(parsed.cents)}`,
         failed: `${itemName} didn't save.`,
         attempt: () => saveBudgetItemCost(itemId, field, raw),
-        onSaved: () => flashSaved(key),
+        onSaved: () => {
+          setSavingKey(null);
+          flashSaved(key);
+        },
         rollback: () => {
+          setSavingKey(null);
           setErrorKey(key);
           setCostOverrides((current) => {
             const next = { ...current };
@@ -244,9 +265,12 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
     (itemId: string) =>
       (field: CostField): CellFlags => {
         const key = cellKey(itemId, field);
-        return { pending: false, justSaved: savedKey === key, errored: errorKey === key };
+        // Was hardcoded false, which made `MoneyCell`'s disabled/dimmed saving
+        // state dead code — there was no per-cell signal at all while a write
+        // was in flight, only the page-wide transition.
+        return { pending: savingKey === key, justSaved: savedKey === key, errored: errorKey === key };
       },
-    [savedKey, errorKey],
+    [savedKey, errorKey, savingKey],
   );
 
   /**
@@ -419,11 +443,11 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
               <tr>
                 <td className="px-4 py-3 text-[13px] font-semibold text-ink">Everything</td>
                 <td className={`${footCell} text-muted`}>{formatMoney(totals.benchmark.benchmarkCents)}</td>
-                <td className={footCell}>{formatMoney(totals.estimatedCents)}</td>
-                <td className={footCell}>{formatMoney(totals.quotedCents)}</td>
-                <td className={footCell}>{formatMoney(totals.contractedCents)}</td>
+                <td className={footCell}>{formatMoney(totals.known.estimatedCents)}</td>
+                <td className={footCell}>{formatMoney(totals.known.quotedCents)}</td>
+                <td className={footCell}>{formatMoney(totals.known.contractedCents)}</td>
                 <td className={footCell}>{formatMoney(totals.paidCents)}</td>
-                <td className={`${footCell} ${totals.overdueCents > 0 ? "text-rose" : ""}`}>{formatMoney(totals.dueCents)}</td>
+                <td className={`${footCell} ${totals.overdueCents > 0 ? "text-rose" : ""}`}>{formatMoney(totals.known.remainingCents)}</td>
                 <td className="px-3 py-3 text-right">
                   <DeltaCell delta={totals.benchmark} benchmarkLabel={benchmarkLabel} />
                 </td>
@@ -443,6 +467,15 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
         benchmarkLabel={benchmarkLabel}
         vendorName={(rollup) => vendorNameOf(rollup.item.vendor_id)}
         onOpen={(itemId) => openDrawer(itemId, null)}
+        canEdit={canEdit}
+        pending={pending}
+        onAddLine={(categoryId, categoryName) =>
+          commit({
+            subject: `New line added to ${categoryName}`,
+            failed: "That line wasn't added.",
+            attempt: () => createBudgetItem(categoryId, "New line"),
+          })
+        }
       />
 
       {openRollup !== null && (
@@ -453,6 +486,7 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
           benchmarkLabel={benchmarkLabel}
           currency={currency}
           todayAtVenue={todayAtVenue}
+          defaultBalanceDue={defaultBalanceDue}
           canEdit={canEdit}
           pending={pending}
           detail={detail}
@@ -468,6 +502,20 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
             const unitPrice = patch.unitPriceRaw === undefined ? undefined : tryParseMoney(patch.unitPriceRaw);
             if (unitPrice !== undefined && !unitPrice.ok) {
               setStatus({ kind: "error", message: unitPrice.message });
+              return;
+            }
+
+            // A category change goes through `moveItem`, which also settles the
+            // line's `sort_order` in its new home. `updateBudgetItem` writes
+            // `category_id` alone, so a moved line landed in the middle of the
+            // target category's list.
+            if (patch.categoryId !== undefined && Object.keys(patch).length === 1) {
+              const categoryId = patch.categoryId;
+              commit({
+                subject: describePatch(patch, name, categoryOptions, vendorNameOf),
+                failed: `${name} didn't move.`,
+                attempt: () => moveItem(itemId, categoryId),
+              });
               return;
             }
 

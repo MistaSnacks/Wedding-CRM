@@ -85,7 +85,7 @@ export function BudgetItemRow(props: {
         {formatMoney(rollup.paidCents)}
       </td>
       <td className={`px-3 py-2.5 text-right text-[13px] tabular-nums ${rollup.hasOverdue ? "font-semibold text-rose" : "text-[#4a5147]"}`}>
-        {formatMoney(rollup.remainingCents)}
+        {formatMoney(rollup.known.remainingCents)}
       </td>
       <td className="px-3 py-2.5 text-right">
         <DeltaCell delta={rollup.benchmark} benchmarkLabel={props.benchmarkLabel} />

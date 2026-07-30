@@ -47,6 +47,8 @@ export function ItemDrawer(props: {
   benchmarkLabel: string;
   currency: string;
   todayAtVenue: string;
+  /** A month before the wedding, or null when no date is set. */
+  defaultBalanceDue: string | null;
   canEdit: boolean;
   pending: boolean;
   /** `null` until the detail read lands. */
@@ -92,7 +94,13 @@ export function ItemDrawer(props: {
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") close.current();
+      if (event.key !== "Escape") return;
+      // A field that already handled Escape calls preventDefault to revert
+      // itself, and React forwards that to the native event. Without this
+      // check, reverting one number closed the whole drawer instead — which
+      // made "Escape undoes this field" unreachable on every input in here.
+      if (event.defaultPrevented) return;
+      close.current();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -102,7 +110,7 @@ export function ItemDrawer(props: {
   const readBack = [
     `Forecast ${formatMoney(rollup.forecastStage === null ? null : rollup.forecastCents)}`,
     `paid ${formatMoney(rollup.paidCents)}`,
-    `still to pay ${formatMoney(rollup.remainingCents)}`,
+    `still to pay ${formatMoney(rollup.known.remainingCents)}`,
     delta === null ? `no ${props.benchmarkLabel} comparison yet` : `${formatMoneySigned(delta)} vs ${props.benchmarkLabel}`,
   ].join(" · ");
 
@@ -286,6 +294,7 @@ export function ItemDrawer(props: {
           canEdit={canEdit}
           pending={props.pending}
           todayAtVenue={props.todayAtVenue}
+          defaultBalanceDue={props.defaultBalanceDue}
           onAdd={props.onAddPayment}
           onSplit={props.onSplitDeposit}
           onSetPaid={props.onSetPaymentPaid}

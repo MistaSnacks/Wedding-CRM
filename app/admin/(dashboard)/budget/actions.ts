@@ -74,8 +74,12 @@ function readableError(error: unknown): string {
   if (error instanceof BudgetValidationError) return error.errors.map((e) => e.message).join(" ");
   if (error instanceof AllocationError) return error.message;
   if (error instanceof MoneyParseError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Something went wrong. Nothing was changed.";
+  // Deliberately not `error.message`. `lib/data/budget.ts` rethrows PostgREST
+  // errors verbatim, so that branch printed raw Postgres — a violated check
+  // constraint, an RLS denial, a bare "TypeError: fetch failed" — into a rose
+  // panel addressed to a bride. The three classes above are the ones written in
+  // her language; anything else is written in Postgres's.
+  return "Something went wrong, and nothing was changed. Try again in a moment.";
 }
 
 /**
@@ -892,33 +896,48 @@ export async function splitItemDeposit(
 
     const split = splitDeposit(total.cents, deposit.cents);
     if (!split.ok) return { ok: false, message: split.message };
+    if (split.deposit <= 0) {
+      return { ok: false, message: "A deposit needs an amount. Add the whole cost as one payment instead." };
+    }
     if (split.balance === 0) {
       return { ok: false, message: "That’s the whole thing — add it as a single payment instead." };
     }
 
-    // The recorded cost moves with the schedule, so a line's forecast and its
-    // payments can never describe two different prices.
-    const { item } = await budget.updateItem(
-      scope,
-      itemId,
-      { contractedCents: total.cents },
-      admin.userId,
-    );
-
+    // Payments before the price, and the first one is undone if the second
+    // fails. Writing the price first meant a rejected payment left the line
+    // showing a new cost with no schedule behind it — and because the failure
+    // path never revalidated, the screen kept displaying the old number while
+    // the database held the new one.
     const first = await budget.createPayment(
       scope,
       { itemId, label: "Deposit", kind: "deposit", amountCents: split.deposit, dueDate: depositDue },
       admin.userId,
     );
-    const second = await budget.createPayment(
+
+    let second;
+    try {
+      second = await budget.createPayment(
+        scope,
+        {
+          itemId,
+          label: "Final balance",
+          kind: "final",
+          amountCents: split.balance,
+          dueDate: balanceDue,
+        },
+        admin.userId,
+      );
+    } catch (error) {
+      unstable_rethrow(error);
+      await budget.removePayment(scope, first.payment.id, admin.userId).catch(() => {});
+      revalidateBudget(null);
+      return { ok: false, message: readableError(error) };
+    }
+
+    const { item } = await budget.updateItem(
       scope,
-      {
-        itemId,
-        label: "Final balance",
-        kind: "final",
-        amountCents: split.balance,
-        dueDate: balanceDue,
-      },
+      itemId,
+      { contractedCents: total.cents },
       admin.userId,
     );
 

@@ -66,23 +66,38 @@ export type SaveState =
   | { kind: "saved"; message: string }
   | { kind: "error"; message: string };
 
+/**
+ * Anchored to the viewport, not to the top of the page.
+ *
+ * In normal flow this line sat above a ledger that is its own 720px scroll box
+ * inside a page that also scrolls. Working anywhere below the fold — the
+ * ordinary case with 79 rows — put the cell's blush highlight on screen and the
+ * sentence explaining it at `top: -1`, so a rejected amount showed a pink box
+ * and no reason. On a phone it was worse: the item drawer is `inset-0` at
+ * `z-50` and the drawer is the only way to edit anything there, so every
+ * confirmation *and* every failure was painted behind it.
+ *
+ * `z-[60]` clears the drawer. It is not a toast — it never fades on a timer and
+ * never stacks; it is still one line that replaces itself, just one that stays
+ * where she can see it.
+ */
 export function SaveStatus(props: { state: SaveState }) {
   const { state } = props;
+  if (state.kind === "idle") return <span role="status" aria-live="polite" className="sr-only" />;
+
+  const shell = "fixed bottom-5 left-1/2 z-[60] max-w-[min(92vw,32rem)] -translate-x-1/2 rounded-lg px-3.5 py-2.5 text-[12.5px] shadow-[0_8px_24px_rgba(28,35,27,0.14)]";
 
   if (state.kind === "error") {
     return (
-      <p
-        role="alert"
-        className="rounded-lg border border-blush-border bg-blush px-3.5 py-2.5 text-[12.5px] text-rose-deep"
-      >
+      <p role="alert" className={`${shell} border border-blush-border bg-blush text-rose-deep`}>
         {state.message}
       </p>
     );
   }
 
   return (
-    <p role="status" aria-live="polite" className="min-h-[18px] text-[12.5px] text-[#6b7167]">
-      {state.kind === "idle" ? "" : state.message}
+    <p role="status" aria-live="polite" className={`${shell} border border-hairline bg-white text-[#4a5147]`}>
+      {state.message}
     </p>
   );
 }

@@ -58,11 +58,11 @@ export function BudgetCategoryRow(props: {
       </td>
 
       <td className={`${cell} font-medium text-muted`}>{formatMoney(rollup.benchmark.benchmarkCents)}</td>
-      <td className={cell}>{formatMoney(rollup.estimatedCents)}</td>
-      <td className={cell}>{formatMoney(rollup.quotedCents)}</td>
-      <td className={cell}>{formatMoney(rollup.contractedCents)}</td>
+      <td className={cell}>{formatMoney(rollup.known.estimatedCents)}</td>
+      <td className={cell}>{formatMoney(rollup.known.quotedCents)}</td>
+      <td className={cell}>{formatMoney(rollup.known.contractedCents)}</td>
       <td className={cell}>{formatMoney(rollup.paidCents)}</td>
-      <td className={`${cell} ${rollup.overdueCents > 0 ? "text-rose" : ""}`}>{formatMoney(rollup.remainingCents)}</td>
+      <td className={`${cell} ${rollup.overdueCents > 0 ? "text-rose" : ""}`}>{formatMoney(rollup.known.remainingCents)}</td>
       <td className="px-3 py-2 text-right">
         <DeltaCell delta={rollup.benchmark} benchmarkLabel={props.benchmarkLabel} />
       </td>

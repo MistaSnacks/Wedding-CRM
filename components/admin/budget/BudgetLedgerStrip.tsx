@@ -35,7 +35,7 @@ export function BudgetLedgerStrip({
   const overBudget = remaining !== null && remaining < 0;
 
   const entries: Array<{ label: string; value: string; tone?: "rose" | "muted" }> = [
-    { label: "Contracted", value: formatMoney(totals.contractedCents) },
+    { label: "Contracted", value: formatMoney(totals.known.contractedCents) },
     {
       label: "Still estimated",
       value: formatMoney(totals.forecastCents - totals.contractedCents),

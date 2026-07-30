@@ -5,6 +5,7 @@ import {
   calendarDayIn,
   calendarDayDelta,
   rsvpDeadlineNotice,
+  calendarDaysBefore,
 } from "./wedding-date";
 
 /**
@@ -162,5 +163,32 @@ describe("rsvpDeadlineNotice", () => {
 
   test("renders nothing when no deadline is set", () => {
     expect(rsvpDeadlineNotice(null, new Date("2027-04-12T18:00:00Z"), LA)).toBeNull();
+  });
+});
+
+describe("calendarDaysBefore", () => {
+  test("counts back in whole calendar days", () => {
+    expect(calendarDaysBefore("2027-06-12", 30)).toBe("2027-05-13");
+    expect(calendarDaysBefore("2027-06-12", 0)).toBe("2027-06-12");
+  });
+
+  test("crosses a month and a year boundary", () => {
+    expect(calendarDaysBefore("2027-01-10", 30)).toBe("2026-12-11");
+  });
+
+  test("crosses a leap day", () => {
+    expect(calendarDaysBefore("2028-03-01", 1)).toBe("2028-02-29");
+  });
+
+  // A DST transition must not shift the answer: these are calendar days, not
+  // instants, and the venue's clock changing does not move a due date.
+  test("is unaffected by a daylight-saving transition in between", () => {
+    expect(calendarDaysBefore("2027-03-20", 14)).toBe("2027-03-06");
+  });
+
+  test("returns null for a missing or malformed date", () => {
+    expect(calendarDaysBefore(null, 30)).toBeNull();
+    expect(calendarDaysBefore("", 30)).toBeNull();
+    expect(calendarDaysBefore("not-a-date", 30)).toBeNull();
   });
 });

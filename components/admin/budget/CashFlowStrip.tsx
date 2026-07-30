@@ -74,7 +74,12 @@ export function CashFlowStrip({ payments, todayCalendarDay, weddingDay }: CashFl
     weddingIndex ?? start,
     ...(dueIndexes.length > 0 ? dueIndexes : [start]),
   );
-  const end = Math.min(wanted, start + MAX_MONTHS - 1);
+  // Clamped forward from *this* month, not from `start`. Anchoring the cap to
+  // the oldest overdue payment meant one payment mistyped a year early — 2025
+  // for 2026 — pulled `start` back far enough that the window closed before
+  // today, so the wedding month, every future payment and the whole point of
+  // the strip were drawn nowhere, and the heaviest month named was in the past.
+  const end = Math.max(thisMonth, Math.min(wanted, thisMonth + MAX_MONTHS - 1));
 
   const months = [];
   for (let index = start; index <= end; index += 1) {

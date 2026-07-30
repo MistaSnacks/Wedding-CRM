@@ -109,9 +109,41 @@ export type PaymentView = PaymentFact & {
   label_due: string;
 };
 
+/**
+ * The same figures as their numeric siblings, but `null` wherever nothing is
+ * actually known — for rendering, never for arithmetic.
+ *
+ * The numeric fields have to be numbers so they can be summed without a `null`
+ * poisoning a total into `NaN`. But a number is the wrong thing to *show*: an
+ * unpriced line summing to `0` renders "$0" under STILL TO PAY, which asserts
+ * that nobody owes anything on a line nobody has priced. 41 of the couple's 79
+ * lines are in exactly that state, and every category currently prints "$0"
+ * under QUOTE and CONTRACT because no vendor has quoted yet — a claim that
+ * everything came in free. `formatMoney(null)` already renders an em dash;
+ * these fields are what let the UI reach it.
+ */
+export type KnownMoney = {
+  estimatedCents: number | null;
+  quotedCents: number | null;
+  contractedCents: number | null;
+  remainingCents: number | null;
+};
+
+/** Sum that stays `null` until at least one real value contributes to it. */
+export function sumKnown(values: (number | null)[]): number | null {
+  let total: number | null = null;
+  for (const value of values) {
+    if (value === null) continue;
+    total = (total ?? 0) + value;
+  }
+  return total;
+}
+
 export type ItemRollup = {
   item: ItemFact;
   payments: PaymentView[];
+  /** The figures above, nulled where unknown. Render from this, sum from the others. */
+  known: KnownMoney;
   /** Σ of ALL payment rows, paid or not. */
   scheduledCents: number;
   /** Σ of paid payments. This IS "actual spend" — nothing stores it. */
@@ -134,6 +166,8 @@ export type ItemRollup = {
 export type CategoryRollup = {
   category: CategoryFact;
   items: ItemRollup[];
+  /** The figures above, nulled where unknown. Render from this, sum from the others. */
+  known: KnownMoney;
   /** Resolved benchmark with unknowns as 0, for summing. The nullable one is in `benchmark`. */
   benchmarkCents: number;
   estimatedCents: number;
@@ -155,6 +189,8 @@ export type CategoryRollup = {
 
 export type BudgetTotals = {
   maxSpendCents: number | null;
+  /** The figures above, nulled where unknown. Render from this, sum from the others. */
+  known: KnownMoney;
   benchmarkCents: number;
   estimatedCents: number;
   quotedCents: number;
@@ -568,6 +604,14 @@ export function rollUpItem(
   return {
     item,
     payments: views,
+    known: {
+      estimatedCents: item.estimated_cents,
+      quotedCents: item.quoted_cents,
+      contractedCents: item.contracted_cents,
+      // Nothing priced and nothing paid means we do not know what is owed —
+      // which is a different statement from knowing that nothing is.
+      remainingCents: forecastStage === null && paidCents === 0 ? null : remainingCents,
+    },
     scheduledCents,
     paidCents,
     outstandingScheduledCents,
@@ -672,13 +716,31 @@ export function rollUpCategory(
   return {
     category,
     items,
+    known: {
+      estimatedCents: sumKnown(items.map((i) => i.item.estimated_cents)),
+      quotedCents: sumKnown(items.map((i) => i.item.quoted_cents)),
+      contractedCents: sumKnown(items.map((i) => i.item.contracted_cents)),
+      // An item-less category still owes its allocation, so the target stands in
+      // — otherwise the money the fallback puts in the grand total appears in no
+      // row on the page.
+      remainingCents:
+        items.length === 0
+          ? category.target_cents
+          : sumKnown(items.map((i) => i.known.remainingCents)),
+    },
     benchmarkCents: n(benchmarkOrNull),
     estimatedCents: items.reduce((sum, i) => sum + n(i.item.estimated_cents), 0),
     quotedCents: items.reduce((sum, i) => sum + n(i.item.quoted_cents), 0),
     contractedCents: items.reduce((sum, i) => sum + n(i.item.contracted_cents), 0),
     forecastCents,
     paidCents,
-    remainingCents: items.reduce((sum, i) => sum + i.remainingCents, 0),
+    // Mirrors `categoryForecastCents`: an item-less category's target is its
+    // forecast, so it is also what is still owed. Summing only the items left
+    // that money in the grand total while it appeared in no row on the page.
+    remainingCents:
+      items.length === 0
+        ? n(category.target_cents)
+        : items.reduce((sum, i) => sum + i.remainingCents, 0),
     outstandingScheduledCents: items.reduce((sum, i) => sum + i.outstandingScheduledCents, 0),
     unscheduledCents: items.reduce((sum, i) => sum + i.unscheduledCents, 0),
     benchmark: benchmarkDelta(benchmarkOrNull, pricedForecast),
@@ -726,6 +788,12 @@ export function rollUpBudget(
 
   return {
     maxSpendCents,
+    known: {
+      estimatedCents: sumKnown(categories.map((c) => c.known.estimatedCents)),
+      quotedCents: sumKnown(categories.map((c) => c.known.quotedCents)),
+      contractedCents: sumKnown(categories.map((c) => c.known.contractedCents)),
+      remainingCents: sumKnown(categories.map((c) => c.known.remainingCents)),
+    },
     benchmarkCents,
     estimatedCents: sum((c) => c.estimatedCents),
     quotedCents: sum((c) => c.quotedCents),
