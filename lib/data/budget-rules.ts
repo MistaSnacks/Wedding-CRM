@@ -553,7 +553,14 @@ export function rollUpItem(
   const paidCents = mine.filter((p) => p.paid).reduce((sum, p) => sum + p.amount_cents, 0);
   const outstandingScheduledCents = scheduledCents - paidCents;
 
-  const { cents: forecastCents, stage: forecastStage } = effectiveCostCents(item);
+  const { cents: costCents, stage: forecastStage } = effectiveCostCents(item);
+  // Money that has already left the account is part of the forecast, whatever
+  // the cost columns say. The normal order of events is that she pays a deposit
+  // and only later learns the total, so 41 of the 79 seeded lines have no price
+  // at all — and without this clamp a $500 deposit against one of them moves
+  // PAID SO FAR while the forecast sits unchanged, which reads as money
+  // vanishing.
+  const forecastCents = Math.max(costCents, paidCents);
   const remainingCents = Math.max(0, forecastCents - paidCents);
   const unscheduledCents = Math.max(0, remainingCents - outstandingScheduledCents);
   const hasOverdue = views.some((v) => v.status === "overdue");
@@ -725,7 +732,12 @@ export function rollUpBudget(
     contractedCents: sum((c) => c.contractedCents),
     forecastCents,
     paidCents,
-    dueCents: Math.max(0, forecastCents - paidCents),
+    // Sum the column, don't re-derive it. `forecastCents - paidCents` nets an
+    // overpayment on one line against what is still owed on another, so the
+    // grand total stops equalling the STILL TO PAY cells printed directly above
+    // it — and the two disagreeing on the same screen is exactly what sends
+    // someone back to a spreadsheet.
+    dueCents: sum((c) => c.remainingCents),
     outstandingScheduledCents: sum((c) => c.outstandingScheduledCents),
     unscheduledCents: sum((c) => c.unscheduledCents),
     remainingAfterForecastCents: maxSpendCents === null ? null : maxSpendCents - forecastCents,

@@ -33,6 +33,19 @@ export function DeltaCell(props: { delta: BenchmarkDelta; benchmarkLabel: string
     );
   }
 
+  // A benchmark of exactly zero is not a budget to beat — it means the reference
+  // wedding never bought this at all. Rendering "+$3,500" in rose against a
+  // planner Alison never hired reads as an overspend when it is simply a choice
+  // she didn't make, and this column's whole claim is that it informs rather
+  // than judges.
+  if (delta.benchmarkCents === 0) {
+    return (
+      <span className="text-[12.5px] text-muted" title={`${benchmarkLabel} didn't spend anything here`}>
+        —
+      </span>
+    );
+  }
+
   if (delta.direction === "even") {
     return (
       <span className="text-[12.5px] text-muted" title={`The same as ${benchmarkLabel}`}>

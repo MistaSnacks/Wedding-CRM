@@ -1262,7 +1262,16 @@ export async function updatePayment(
   }
   if (input.currency !== undefined) patch.currency = input.currency;
   if (input.dueDate !== undefined) patch.due_date = validation.value.dueDate;
-  if (input.paid !== undefined || input.paidOn !== undefined) patch.paid_at = validation.value.paidOn;
+  // `paid_at` is both the date and the only paid flag, so a cleared date used to
+  // read as "not paid": emptying the field to retype it silently un-recorded the
+  // payment, reported "Saved", and dropped the amount out of PAID SO FAR with
+  // nothing on screen admitting it. A date edit may move *when* it was paid;
+  // only an explicit `paid` may change *whether* it was.
+  if (input.paid !== undefined) {
+    patch.paid_at = validation.value.paidOn;
+  } else if (input.paidOn !== undefined && validation.value.paidOn !== null) {
+    patch.paid_at = validation.value.paidOn;
+  }
   if (input.method !== undefined) patch.method = orNull(input.method);
   if (input.reference !== undefined) patch.reference = orNull(input.reference);
   if (input.receiptUrl !== undefined) patch.receipt_url = orNull(input.receiptUrl);

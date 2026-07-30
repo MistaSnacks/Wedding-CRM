@@ -110,6 +110,11 @@ export function CategoryBars({ categories, benchmarkLabel }: CategoryBarsProps) 
                 <span className="text-[11.5px] tabular-nums">
                   {c.benchmark.deltaCents === null ? (
                     <span className="text-muted">{`${benchmarkLabel} — no figure`}</span>
+                  ) : c.benchmark.benchmarkCents === 0 ? (
+                    // Zero is "they never bought this", not a budget she blew.
+                    // Must match DeltaCell in the table above, or the same
+                    // category reads two different verdicts on one screen.
+                    <span className="text-muted">{`${benchmarkLabel} didn’t spend anything here`}</span>
                   ) : c.benchmark.deltaCents === 0 ? (
                     <span className="text-muted">{`Even with ${benchmarkLabel}`}</span>
                   ) : (

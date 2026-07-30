@@ -1242,3 +1242,87 @@ describe("validatePayment — overspending warns, it never blocks", () => {
     if (result.ok) expect(result.warning).toBeUndefined();
   });
 });
+
+// ===========================================================================
+// Regressions from the adversarial review of /admin/budget. Each of these was
+// reproduced live in the browser against the couple's real seeded data.
+// ===========================================================================
+
+describe("money already paid cannot fall out of the forecast", () => {
+  const now = new Date("2026-07-30T12:00:00Z");
+
+  // The normal order of events is that she pays a deposit and only later learns
+  // the total, so most lines are unpriced when the first money moves.
+  test("an unpriced line forecasts at least what has been paid against it", () => {
+    const i = item(); // no estimate, no quote, no contract
+    const r = rollOne(i, [payment({ amount_cents: 50_000, paid: true, paid_on: "2026-07-30" })], now);
+    expect(r.paidCents).toBe(50_000);
+    expect(r.forecastCents).toBe(50_000);
+    expect(r.remainingCents).toBe(0);
+  });
+
+  test("paying more than the recorded price raises the forecast to what was paid", () => {
+    const i = item({ estimated_cents: 30_000 });
+    const r = rollOne(i, [payment({ amount_cents: 45_000, paid: true, paid_on: "2026-07-30" })], now);
+    expect(r.forecastCents).toBe(45_000);
+    expect(r.remainingCents).toBe(0);
+  });
+
+  test("an unpaid payment does not inflate the forecast", () => {
+    const i = item({ estimated_cents: 30_000 });
+    const r = rollOne(i, [payment({ amount_cents: 45_000, paid: false, paid_on: null })], now);
+    expect(r.forecastCents).toBe(30_000);
+  });
+
+  test("a recorded price still wins while it is larger than what has been paid", () => {
+    const i = item({ contracted_cents: 80_000 });
+    const r = rollOne(i, [payment({ amount_cents: 20_000, paid: true, paid_on: "2026-07-30" })], now);
+    expect(r.forecastCents).toBe(80_000);
+    expect(r.remainingCents).toBe(60_000);
+  });
+});
+
+describe("the grand STILL TO PAY equals the column above it", () => {
+  const now = new Date("2026-07-30T12:00:00Z");
+
+  // The footer used to re-derive this as forecast − paid across the whole
+  // budget, which nets an overpayment on one line against what is still owed on
+  // another. Two disagreeing figures on one screen is what sends someone back
+  // to a spreadsheet.
+  test("an overpaid line does not cancel out what another line still owes", () => {
+    const c = category();
+    const overpaid = item({ category_id: c.id, estimated_cents: 10_000 });
+    const owing = item({ category_id: c.id, estimated_cents: 100_000 });
+    const tree = assembleTree(
+      [c],
+      [overpaid, owing],
+      [payment({ item_id: overpaid.id, amount_cents: 40_000, paid: true, paid_on: "2026-07-30" })],
+      now,
+      VENUE,
+    );
+    const totals = rollUpBudget(tree, null);
+    const columnSum = tree.reduce((sum, cat) => sum + cat.remainingCents, 0);
+
+    expect(totals.dueCents).toBe(columnSum);
+    expect(totals.dueCents).toBe(100_000); // the second line, in full
+  });
+
+  test("the footer matches the column across a mixed budget", () => {
+    const c1 = category();
+    const c2 = category();
+    const tree = assembleTree(
+      [c1, c2],
+      [
+        item({ category_id: c1.id, contracted_cents: 200_000 }),
+        item({ category_id: c1.id, estimated_cents: 50_000 }),
+        item({ category_id: c2.id }),
+      ],
+      [payment({ item_id: "unmatched", amount_cents: 10_000, paid: true, paid_on: "2026-07-30" })],
+      now,
+      VENUE,
+    );
+    const totals = rollUpBudget(tree, null);
+    const columnSum = tree.reduce((sum, cat) => sum + cat.remainingCents, 0);
+    expect(totals.dueCents).toBe(columnSum);
+  });
+});
