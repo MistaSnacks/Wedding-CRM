@@ -66,6 +66,20 @@ const NAV: NavItem[] = [
       </>
     ),
   },
+  // Budget sits with the planning pages, not with execution: she moves between
+  // meals, seating and money in one sitting, and between Communications and the
+  // rest only when something is about to be sent.
+  {
+    href: "/admin/budget",
+    label: "Budget",
+    icon: (
+      <>
+        <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a1 1 0 0 1 1 1v1.5" />
+        <rect x="3" y="7.5" width="18" height="12" rx="2.5" />
+        <path d="M16.5 13.5h2.5" />
+      </>
+    ),
+  },
   {
     href: "/admin/comms",
     label: "Communications",

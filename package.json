@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3006",
     "dev:login": "node scripts/dev-login.mjs",
+    "seed:budget": "node scripts/seed-budget.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
