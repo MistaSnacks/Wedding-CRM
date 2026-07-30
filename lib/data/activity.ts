@@ -1,5 +1,6 @@
 import type { WeddingScope } from "./scope";
 import type { ActivityRow } from "@/lib/types";
+import { selectGuestFeed } from "./activity-rules";
 
 export async function log(
   scope: WeddingScope,
@@ -37,6 +38,23 @@ export async function recent(scope: WeddingScope, limit = 20): Promise<ActivityR
     .limit(limit);
   if (error) throw new Error(error.message);
   return (data ?? []) as ActivityRow[];
+}
+
+/**
+ * The Overview's "Recent RSVPs" feed: guest activity only, never money.
+ *
+ * Over-fetches and then narrows in `selectGuestFeed`, rather than expressing the
+ * allowlist as a PostgREST filter string. A busy week of budget edits can bury
+ * the replies, so `WINDOW` is deliberately much larger than any `limit` the page
+ * asks for — and building an `or=(action.like.…)` string by interpolation is the
+ * same pattern that already produced a live bug elsewhere in this file's
+ * neighbours.
+ */
+const GUEST_FEED_WINDOW = 200;
+
+export async function recentGuestActivity(scope: WeddingScope, limit = 20): Promise<ActivityRow[]> {
+  const rows = await recent(scope, GUEST_FEED_WINDOW);
+  return selectGuestFeed(rows, limit);
 }
 
 export async function forHousehold(scope: WeddingScope, householdId: string, limit = 50): Promise<ActivityRow[]> {

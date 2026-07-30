@@ -12,7 +12,7 @@ export default async function AdminOverviewPage() {
   const scope = defaultScope();
   const [m, recent, needReminder] = await Promise.all([
     metrics.overview(scope),
-    activity.recent(scope, 8),
+    activity.recentGuestActivity(scope, 8),
     comms.needsReminder(scope),
   ]);
 
