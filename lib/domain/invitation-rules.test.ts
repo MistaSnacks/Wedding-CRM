@@ -5,6 +5,7 @@ import {
   dedupePlusOnes,
   openPlusOneSlots,
   normalizeHouseholdRules,
+  normalizeInviteCode,
   type HouseholdRules,
   type KnownGuest,
   type SubmissionGuest,
@@ -206,5 +207,39 @@ describe("computeHouseholdStatus", () => {
   });
   it("empty responses → pending", () => {
     expect(computeHouseholdStatus([], false)).toBe("pending");
+  });
+});
+
+describe("normalizeInviteCode", () => {
+  it("accepts a real generated code and preserves it", () => {
+    expect(normalizeInviteCode("K7QR-3MTX")).toBe("K7QR-3MTX");
+  });
+  it("trims surrounding whitespace", () => {
+    expect(normalizeInviteCode("  K7QR-3MTX  ")).toBe("K7QR-3MTX");
+  });
+  it("accepts lowercase, since the lookup is case-insensitive", () => {
+    expect(normalizeInviteCode("k7qr-3mtx")).toBe("k7qr-3mtx");
+  });
+
+  // Regression: these reached a SQL ILIKE unescaped, so a pattern matching
+  // exactly one household logged the caller straight into it.
+  it("rejects SQL LIKE wildcards", () => {
+    expect(normalizeInviteCode("AB%%")).toBeNull();
+    expect(normalizeInviteCode("%%%%")).toBeNull();
+    expect(normalizeInviteCode("AB__")).toBeNull();
+    expect(normalizeInviteCode("K7QR-3MT_")).toBeNull();
+  });
+  it("rejects PostgREST's * wildcard alias, which escaping cannot reach", () => {
+    expect(normalizeInviteCode("AB**")).toBeNull();
+    expect(normalizeInviteCode("****")).toBeNull();
+  });
+  it("rejects the LIKE escape character", () => {
+    expect(normalizeInviteCode("AB\\_")).toBeNull();
+  });
+  it("rejects codes outside the accepted length range", () => {
+    expect(normalizeInviteCode("ABC")).toBeNull();
+    expect(normalizeInviteCode("")).toBeNull();
+    expect(normalizeInviteCode("   ")).toBeNull();
+    expect(normalizeInviteCode("K7QR-3MTX-EXTRA")).toBeNull();
   });
 });

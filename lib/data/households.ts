@@ -11,6 +11,7 @@ import type {
 import * as activity from "./activity";
 import { liveResponses } from "./event-rules";
 import { newAccessToken, newInviteCode } from "./imports";
+import { normalizeInviteCode } from "@/lib/domain/invitation-rules";
 
 const HOUSEHOLD_COLS =
   "id, wedding_id, display_name, primary_contact_name, email, phone, mailing_address, invite_code, access_token, max_party_size, plus_one_slots, rsvp_status, preferred_locale, tags, internal_notes";
@@ -173,11 +174,14 @@ export async function getDetail(scope: WeddingScope, id: string): Promise<Househ
 }
 
 export async function byInviteCode(scope: WeddingScope, code: string): Promise<HouseholdRow | null> {
+  const normalized = normalizeInviteCode(code);
+  if (!normalized) return null;
+
   const { data } = await scope.db
     .from("households")
     .select(HOUSEHOLD_COLS)
     .eq("wedding_id", scope.weddingId)
-    .ilike("invite_code", code.trim())
+    .ilike("invite_code", normalized)
     .maybeSingle();
   return (data as HouseholdRow) ?? null;
 }

@@ -116,6 +116,24 @@ export function dedupePlusOnes<R>(
   return { existing, fresh };
 }
 
+/**
+ * Invite codes are drawn from an unambiguous alphabet (see newInviteCode) and
+ * are looked up case-insensitively, so the lookup is a SQL ILIKE. In a LIKE
+ * pattern `%`, `_` and `\` are wildcards, and PostgREST additionally treats `*`
+ * as an alias for `%` — meaning an unfiltered code like "AB%%" matches every
+ * household whose code starts with AB, and authenticates the caller whenever
+ * exactly one does. Reject those characters here rather than escaping them:
+ * no real code contains any of them, and escaping cannot reach PostgREST's `*`.
+ *
+ * Returns the trimmed code, or null when it could not be a real one.
+ */
+export function normalizeInviteCode(raw: string): string | null {
+  const code = raw.trim();
+  if (code.length < 4 || code.length > 12) return null;
+  if (!/^[A-Za-z0-9-]+$/.test(code)) return null;
+  return code;
+}
+
 export function computeHouseholdStatus(
   responses: Array<"pending" | "yes" | "no">,
   submittedComplete: boolean,
