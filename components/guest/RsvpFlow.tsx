@@ -34,6 +34,16 @@ export function RsvpFlow(props: {
   responses: ResponseRow[];
   deadline: string | null;
   deadlinePassed: boolean;
+  /**
+   * The wedding's own timezone. The deadline is a real instant, so the day it
+   * falls on depends entirely on where you stand — without this the server
+   * renders in UTC and the browser re-renders in whatever zone the guest is
+   * sitting in, which is both a hydration mismatch and the wrong date for
+   * anyone outside UTC. Falls back to UTC so the two halves at least agree
+   * until `page.tsx` passes the stored value.
+   */
+  /** The venue's zone. Required: a default here would silently render a wrong date. */
+  timeZone: string;
   tableInfo: GuestTableInfo;
 }) {
   const t = useTranslations("flow");
@@ -65,14 +75,16 @@ export function RsvpFlow(props: {
   const [plusOnes, setPlusOnes] = useState<PlusOneState[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
 
+  const timeZone = props.timeZone;
   const deadlineText = useMemo(() => {
     if (!props.deadline) return "";
     return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : locale === "es" ? "es-MX" : "en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
+      timeZone,
     }).format(new Date(props.deadline));
-  }, [props.deadline, locale]);
+  }, [props.deadline, locale, timeZone]);
 
   const eventNames = props.events.map((e) => e.name).join(t("and"));
 

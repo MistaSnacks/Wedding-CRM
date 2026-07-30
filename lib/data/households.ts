@@ -12,6 +12,16 @@ import * as activity from "./activity";
 import { liveResponses } from "./event-rules";
 import { newAccessToken, newInviteCode } from "./imports";
 import { normalizeInviteCode } from "@/lib/domain/invitation-rules";
+import { invalidateCache } from "@/lib/limiter";
+
+/**
+ * Overview's numbers are cached for 60s (`metrics.overview`). Clearing that
+ * cache lives beside the write rather than in the server action, so no future
+ * call site can add a household and leave the dashboard a minute stale.
+ */
+function invalidateMetrics(scope: WeddingScope): void {
+  invalidateCache(`metrics:${scope.weddingId}`);
+}
 
 const HOUSEHOLD_COLS =
   "id, wedding_id, display_name, primary_contact_name, email, phone, mailing_address, invite_code, access_token, max_party_size, plus_one_slots, rsvp_status, preferred_locale, tags, internal_notes";
@@ -148,14 +158,17 @@ export async function getDetail(scope: WeddingScope, id: string): Promise<Househ
     scope.db
       .from("household_event_invites")
       .select("event_id, events(id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order)")
+      .eq("wedding_id", scope.weddingId)
       .eq("household_id", id),
     scope.db
       .from("guest_event_responses")
       .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
+      .eq("wedding_id", scope.weddingId)
       .in("guest_id", household.guests.map((g) => g.id)),
     scope.db
       .from("rsvp_answers")
       .select("question_id, household_id, guest_id, value")
+      .eq("wedding_id", scope.weddingId)
       .eq("household_id", id),
     activity.forHousehold(scope, id),
   ]);
@@ -253,6 +266,7 @@ export async function update(
     .eq("wedding_id", scope.weddingId)
     .eq("id", id);
   if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
   await activity.log(scope, {
     householdId: id,
     actorType: "admin",
@@ -338,6 +352,7 @@ export async function createWithGuests(
     if (inviteErr) throw new Error(inviteErr.message);
   }
 
+  invalidateMetrics(scope);
   await activity.log(scope, {
     householdId: household.id,
     actorType: "admin",
@@ -358,6 +373,7 @@ export async function remove(scope: WeddingScope, id: string, actorId?: string):
     .select("display_name")
     .single();
   if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
   // Wedding-level log: the household's own activity rows cascade away with it.
   await activity.log(scope, {
     actorType: "admin",

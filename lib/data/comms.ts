@@ -33,9 +33,14 @@ export async function create(
   const commId = data.id as string;
 
   if (c.householdIds.length) {
+    // Scoped on purpose: the id list arrives from a page's selection, so an
+    // id from another wedding would otherwise be read here and written into
+    // this wedding's recipient rows — mailing a stranger, and leaking their
+    // address into our data in the process. Foreign ids simply match nothing.
     const { data: hhs } = await scope.db
       .from("households")
       .select("id, email")
+      .eq("wedding_id", scope.weddingId)
       .in("id", c.householdIds);
     const rows = (hhs ?? []).map((h: { id: string; email: string | null }) => ({
       wedding_id: scope.weddingId,
@@ -66,11 +71,19 @@ export async function setRecipientMessageId(
   await scope.db
     .from("communication_recipients")
     .update({ resend_message_id: resendMessageId, status: "sent", updated_at: new Date().toISOString() })
+    .eq("wedding_id", scope.weddingId)
     .eq("communication_id", commId)
     .eq("household_id", householdId);
 }
 
-/** Idempotent webhook update keyed on the Resend message id. */
+/**
+ * Idempotent webhook update keyed on the Resend message id.
+ *
+ * The message id arrives from an inbound webhook payload, which is the least
+ * trustworthy input in the app, so both the lookup and the write are scoped:
+ * a delivery event for another wedding's message must read as "not ours"
+ * (`false`, so the caller can decide) rather than silently marking a row.
+ */
 export async function markByMessageId(
   scope: WeddingScope,
   resendMessageId: string,
@@ -82,6 +95,7 @@ export async function markByMessageId(
   const { data } = await scope.db
     .from("communication_recipients")
     .select("id, status")
+    .eq("wedding_id", scope.weddingId)
     .eq("resend_message_id", resendMessageId)
     .maybeSingle();
   if (!data) return false;
@@ -89,6 +103,7 @@ export async function markByMessageId(
   await scope.db
     .from("communication_recipients")
     .update({ status, updated_at: new Date().toISOString() })
+    .eq("wedding_id", scope.weddingId)
     .eq("id", data.id);
   return true;
 }

@@ -3,7 +3,7 @@ import { defaultScope } from "@/lib/data/scope";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { HeaderSearch } from "@/components/admin/HeaderSearch";
 import { FilmBackdrop } from "@/components/FilmBackdrop";
-import { formatCalendarDate, daysUntilCalendarDate } from "@/lib/format/wedding-date";
+import { formatCalendarDate, daysUntilCalendarDate, rsvpDeadlineNotice } from "@/lib/format/wedding-date";
 import { WhatsNew } from "@/components/admin/WhatsNew";
 import { unseenEntries } from "@/lib/changelog";
 import { readChangelogMark } from "@/lib/data/changelog-seen";
@@ -24,9 +24,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const daysOut = wedding?.wedding_date
     ? daysUntilCalendarDate(wedding.wedding_date, new Date(), timeZone)
     : null;
-  const deadlineDays = wedding?.rsvp_deadline
-    ? Math.max(0, Math.ceil((new Date(wedding.rsvp_deadline).getTime() - Date.now()) / 86400_000))
-    : null;
+  // Sleeps at the venue, not elapsed hours: dividing milliseconds by a day
+  // rounded four remaining hours up to "1 days" and then stuck on "0 days".
+  const deadline = rsvpDeadlineNotice(wedding?.rsvp_deadline ?? null, new Date(), timeZone);
 
   const initials = admin.email.slice(0, 2).toUpperCase();
 
@@ -47,10 +47,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <header className="flex items-center gap-3.5 border-b border-blush-border bg-blush px-9 py-3 no-print max-md:gap-2 max-md:pl-14 max-md:pr-3">
           <HeaderSearch />
           <div className="flex-1" />
-          {deadlineDays !== null && (
-            <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-rose-deep max-md:hidden">
-              <span className="h-[7px] w-[7px] rounded-full bg-rose" />
-              RSVPs close in {deadlineDays} days
+          {deadline !== null && (
+            <span
+              className={`flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold max-md:hidden ${
+                deadline.closed ? "text-muted" : "text-rose-deep"
+              }`}
+            >
+              <span className={`h-[7px] w-[7px] rounded-full ${deadline.closed ? "bg-muted" : "bg-rose"}`} />
+              {deadline.label}
             </span>
           )}
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-rose text-xs font-semibold text-blush">

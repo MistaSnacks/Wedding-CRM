@@ -133,6 +133,28 @@ export async function getDeadline(scope: WeddingScope): Promise<string | null> {
   return data?.rsvp_deadline ?? null;
 }
 
+/**
+ * The deadline together with the zone it should be read in.
+ *
+ * They travel as a pair because the deadline alone cannot be formatted: it is
+ * an instant, and 06:59Z is the evening of the twelfth in Los Angeles but the
+ * morning of the thirteenth in UTC. Showing a guest the wrong one of those tells
+ * them to reply on a day the form has already stopped accepting.
+ */
+export async function getDeadlineContext(
+  scope: WeddingScope,
+): Promise<{ deadline: string | null; timeZone: string }> {
+  const { data } = await scope.db
+    .from("weddings")
+    .select("rsvp_deadline, timezone")
+    .eq("id", scope.weddingId)
+    .single();
+  return {
+    deadline: data?.rsvp_deadline ?? null,
+    timeZone: data?.timezone ?? "America/Los_Angeles",
+  };
+}
+
 export async function deadlinePassed(scope: WeddingScope): Promise<boolean> {
   const deadline = await getDeadline(scope);
   if (!deadline) return false;

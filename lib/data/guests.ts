@@ -1,6 +1,18 @@
 import type { WeddingScope } from "./scope";
 import type { GuestRow, AgeType } from "@/lib/types";
 import * as activity from "./activity";
+import { invalidateCache } from "@/lib/limiter";
+
+/**
+ * Overview's numbers are cached for 60s (`metrics.overview`). Dropping that
+ * cache belongs here, next to the write, rather than in the server actions:
+ * a data-layer call site cannot be forgotten by the next feature that adds a
+ * guest, and a dashboard that is a minute behind the edit the user just made
+ * reads as a bug in the edit.
+ */
+function invalidateMetrics(scope: WeddingScope): void {
+  invalidateCache(`metrics:${scope.weddingId}`);
+}
 
 export async function create(
   scope: WeddingScope,
@@ -33,6 +45,7 @@ export async function create(
   const { data: invites } = await scope.db
     .from("household_event_invites")
     .select("event_id")
+    .eq("wedding_id", scope.weddingId)
     .eq("household_id", g.householdId);
   if (invites?.length) {
     await scope.db.from("guest_event_responses").insert(
@@ -44,6 +57,7 @@ export async function create(
     );
   }
 
+  invalidateMetrics(scope);
   await activity.log(scope, {
     householdId: g.householdId,
     guestId: data.id,
@@ -93,6 +107,7 @@ export async function update(
     .select("household_id")
     .single();
   if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
   await activity.log(scope, {
     householdId: data.household_id,
     guestId: id,
@@ -112,6 +127,7 @@ export async function remove(scope: WeddingScope, id: string, actorId?: string):
     .select("household_id, first_name, last_name")
     .single();
   if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
   await activity.log(scope, {
     householdId: data.household_id,
     actorType: "admin",

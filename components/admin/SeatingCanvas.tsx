@@ -23,6 +23,7 @@ import {
   removeTable,
   saveTablePosition,
   setSeatingPublished,
+  type ActionResult,
 } from "@/app/admin/(dashboard)/seating/actions";
 import type { EventRow, SeatingTableRow, SeatAssignmentRow, ResponseRow, MealOptionRow } from "@/lib/types";
 import { MobileAssignSheet } from "@/components/admin/MobileAssignSheet";
@@ -38,6 +39,9 @@ type DragState = { type: "guest" | "household" | "table"; label: string; count: 
 type AssignmentAction =
   | { kind: "assign"; guestIds: string[]; tableId: string; eventId: string }
   | { kind: "unassign"; guestId: string };
+
+/** One refused write, in her words, plus the way to attempt the same thing again. */
+type Failure = { message: string; retry: () => void };
 
 const GRID = 16;
 const RECT_DIMS = { w: 280, h: 96 };
@@ -75,6 +79,7 @@ export function SeatingCanvas(props: {
   const [adding, setAdding] = useState(false);
   const [openTableId, setOpenTableId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTableDragEnd = useRef(0);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -147,6 +152,96 @@ export function SeatingCanvas(props: {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }
 
+  /**
+   * Runs one seating write and, if it is refused, says so.
+   *
+   * The room is optimistic in two ways that fail differently. Seats live in
+   * `useOptimistic`, so a rejected assignment un-seats itself when the
+   * transition settles — the guest simply slid back with no explanation, which
+   * reads as the app eating the drag. A dragged table is ordinary state and
+   * would sit at its new spot forever, describing a room the database has never
+   * heard of; those pass a `rollback`. Either way the sentence and the retry
+   * are the same, on one line above the room.
+   *
+   * A refusal arrives two ways: `ok:false` when the server declined, and a
+   * rejected promise when the connection dropped. Left uncaught inside a
+   * transition, that rejection reaches the route's error boundary and replaces
+   * the whole chart. Both land here instead.
+   */
+  function commit(step: {
+    attempt: () => Promise<ActionResult>;
+    failed: string;
+    retry: () => void;
+    optimistic?: () => void;
+    rollback?: () => void;
+  }) {
+    setFailure(null);
+    startTransition(async () => {
+      // Optimistic seat updates are only legal inside the transition.
+      step.optimistic?.();
+      function fail(message: string) {
+        step.rollback?.();
+        setFailure({ message, retry: step.retry });
+      }
+      try {
+        const result = await step.attempt();
+        if (!result.ok) fail(result.message ?? step.failed);
+      } catch {
+        fail(`${step.failed} The connection dropped, so nothing was changed.`);
+      }
+    });
+  }
+
+  function moveTableTo(table: SeatingTableRow, x: number, y: number) {
+    const before = posOverrides[table.id];
+    // Outside the transition on purpose: the table follows her hand now, not
+    // when the round-trip settles.
+    setPosOverrides((p) => ({ ...p, [table.id]: { x, y } }));
+    commit({
+      attempt: () => saveTablePosition(table.id, x, y),
+      failed: `${table.name} didn't stay where you put it.`,
+      retry: () => moveTableTo(table, x, y),
+      rollback: () =>
+        setPosOverrides((p) => {
+          const next = { ...p };
+          if (before) next[table.id] = before;
+          else delete next[table.id];
+          return next;
+        }),
+    });
+  }
+
+  function seat(kind: "guest" | "household", guestIds: string[], table: SeatingTableRow) {
+    commit({
+      optimistic: () =>
+        applyAssignment({ kind: "assign", guestIds, tableId: table.id, eventId: props.event.id }),
+      attempt: () =>
+        kind === "guest"
+          ? assignGuest(guestIds[0], props.event.id, table.id)
+          : assignHousehold(guestIds, props.event.id, table.id),
+      failed: `Nobody was seated at ${table.name} — that change didn't save.`,
+      retry: () => seat(kind, guestIds, table),
+    });
+  }
+
+  function deleteTable(table: SeatingTableRow) {
+    commit({
+      attempt: () => removeTable(table.id),
+      failed: `${table.name} is still here — it wasn't deleted.`,
+      retry: () => deleteTable(table),
+    });
+  }
+
+  function publish(next: boolean) {
+    commit({
+      attempt: () => setSeatingPublished(props.event.id, next),
+      failed: next
+        ? "The chart is still hidden from guests — that didn't save."
+        : "The chart is still visible to guests — that didn't save.",
+      retry: () => publish(next),
+    });
+  }
+
   function onDragStart(e: DragStartEvent) {
     const data = e.active.data.current as
       | { type: "guest"; label: string }
@@ -179,8 +274,7 @@ export function SeatingCanvas(props: {
       const maxY = canvas ? Math.max(0, canvas.clientHeight - dims.h) : Infinity;
       const nx = clamp(Math.round((cur.x + e.delta.x) / GRID) * GRID, 0, maxX);
       const ny = clamp(Math.round((cur.y + e.delta.y) / GRID) * GRID, 0, maxY);
-      setPosOverrides((p) => ({ ...p, [t.id]: { x: nx, y: ny } }));
-      startTransition(() => saveTablePosition(t.id, nx, ny));
+      moveTableTo(t, nx, ny);
       return;
     }
 
@@ -200,25 +294,23 @@ export function SeatingCanvas(props: {
       return;
     }
 
-    startTransition(async () => {
-      applyAssignment({ kind: "assign", guestIds, tableId: table.id, eventId: props.event.id });
-      if (data.type === "guest") await assignGuest(data.guestId, props.event.id, table.id);
-      else await assignHousehold(data.guestIds, props.event.id, table.id);
-    });
+    seat(data.type, guestIds, table);
   }
 
   function handleUnassign(guestId: string) {
-    startTransition(async () => {
-      applyAssignment({ kind: "unassign", guestId });
-      await unassignGuest(guestId, props.event.id);
+    const who = guestById.get(guestId)?.name ?? "That guest";
+    commit({
+      optimistic: () => applyAssignment({ kind: "unassign", guestId }),
+      attempt: () => unassignGuest(guestId, props.event.id),
+      failed: `${who} still has that seat — the change didn't save.`,
+      retry: () => handleUnassign(guestId),
     });
   }
 
   function handleMobileAssign(guestIds: string[], tableId: string) {
-    startTransition(async () => {
-      applyAssignment({ kind: "assign", guestIds, tableId, eventId: props.event.id });
-      await assignHousehold(guestIds, props.event.id, tableId);
-    });
+    const table = props.tables.find((t) => t.id === tableId);
+    if (!table) return;
+    seat("household", guestIds, table);
   }
 
   function handleTableClick(tableId: string) {
@@ -252,6 +344,7 @@ export function SeatingCanvas(props: {
             ))}
           </div>
         )}
+        {failure && <SeatingAlert failure={failure} />}
         <p className="rounded-[10px] bg-blush px-3.5 py-3 text-[12px] leading-relaxed text-rose-deep">
           Arrange tables on a computer — here you can seat people. Tap a table to start.
         </p>
@@ -334,7 +427,7 @@ export function SeatingCanvas(props: {
 
           <button
             type="button"
-            onClick={() => startTransition(() => setSeatingPublished(props.event.id, !props.event.seating_published_at))}
+            onClick={() => publish(!props.event.seating_published_at)}
             className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-[12.5px] font-semibold transition-colors ${
               props.event.seating_published_at ? "bg-sage-band text-olive-deep" : "border border-[#dddbd0] text-[#6b7167]"
             }`}
@@ -364,7 +457,16 @@ export function SeatingCanvas(props: {
           </button>
         </div>
 
-        {adding && <AddTableForm eventId={props.event.id} nextNumber={props.tables.length + 1} onDone={() => setAdding(false)} />}
+        {failure && <SeatingAlert failure={failure} />}
+
+        {adding && (
+          <AddTableForm
+            eventId={props.event.id}
+            nextNumber={props.tables.length + 1}
+            onDone={() => setAdding(false)}
+            report={setFailure}
+          />
+        )}
 
         <div className="flex items-start gap-4">
           <div
@@ -390,10 +492,10 @@ export function SeatingCanvas(props: {
                   flip={canvasW > 0 && pos.x + dims.w + POPOVER_W + 16 > canvasW}
                   onToggle={() => handleTableClick(t.id)}
                   onUnassign={handleUnassign}
-                  onDelete={() => startTransition(async () => {
+                  onDelete={() => {
                     setOpenTableId(null);
-                    await removeTable(t.id);
-                  })}
+                    deleteTable(t);
+                  }}
                   assignments={seated}
                   guestById={guestById}
                 />
@@ -456,6 +558,30 @@ export function SeatingCanvas(props: {
         )}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+/**
+ * The one place a refused write shows up, above the room on both layouts. Same
+ * block as the events screen, deliberately: one pink line, one sentence, and a
+ * way to try it again, so a failure never has to be inferred from a seat that
+ * quietly slid back.
+ */
+function SeatingAlert(props: { failure: Failure }) {
+  return (
+    <p
+      role="alert"
+      className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-blush-border bg-blush px-3.5 py-2.5 text-[12.5px] text-rose-deep"
+    >
+      <span>{props.failure.message}</span>
+      <button
+        type="button"
+        onClick={props.failure.retry}
+        className="font-semibold underline decoration-rose-deep/40 underline-offset-2 transition-colors hover:decoration-rose-deep"
+      >
+        Try again
+      </button>
+    </p>
   );
 }
 
@@ -622,10 +748,44 @@ function TableNode(props: {
   );
 }
 
-function AddTableForm(props: { eventId: string; nextNumber: number; onDone: () => void }) {
+function AddTableForm(props: {
+  eventId: string;
+  nextNumber: number;
+  onDone: () => void;
+  /** Hands a refusal up to the one alert line; `null` clears it. */
+  report: (failure: Failure | null) => void;
+}) {
   const [pending, startTransition] = useTransition();
   const [name, setName] = useState(`Table ${props.nextNumber}`);
   const [capacity, setCapacity] = useState(10);
+  // "Try again" fires long after the click that failed, so it reads what is in
+  // the fields now rather than what was in them then — she may well have
+  // shortened the name in between, which is the obvious thing to try next.
+  const draft = useRef({ name, capacity });
+  draft.current = { name, capacity };
+
+  function add() {
+    props.report(null);
+    startTransition(async () => {
+      const { name: tableName, capacity: seats } = draft.current;
+      function fail(message: string) {
+        props.report({ message, retry: add });
+      }
+      try {
+        const result = await createTable(props.eventId, tableName, seats);
+        if (!result.ok) {
+          fail(result.message ?? `${tableName} wasn't added.`);
+          return;
+        }
+        // Only on success: a failed add leaves the form open, filled in, ready
+        // to try again rather than making her type it all a second time.
+        props.onDone();
+      } catch {
+        fail(`${tableName} wasn't added. The connection dropped, so nothing was changed.`);
+      }
+    });
+  }
+
   return (
     <div className="flex items-center gap-2 rounded-xl border border-hairline bg-paper p-3.5">
       <input value={name} onChange={(e) => setName(e.target.value)} className="w-48 rounded-lg border border-[#dddbd0] bg-white px-3 py-2 text-[13px]" />
@@ -642,12 +802,7 @@ function AddTableForm(props: { eventId: string; nextNumber: number; onDone: () =
       <button
         type="button"
         disabled={pending}
-        onClick={() =>
-          startTransition(async () => {
-            await createTable(props.eventId, name, capacity);
-            props.onDone();
-          })
-        }
+        onClick={add}
         className="rounded-lg bg-olive-deep px-4 py-2 text-[12.5px] font-semibold text-cream hover:bg-rose disabled:opacity-50"
       >
         {pending ? "Adding…" : "Add"}

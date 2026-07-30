@@ -21,9 +21,9 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
   // NOTE: no cookie writes here — Server Components can't set cookies.
   // Every RSVP action re-verifies the URL token instead (see actions.ts).
 
-  const [context, deadline, locale] = await Promise.all([
+  const [context, { deadline, timeZone }, locale] = await Promise.all([
     rsvp.getRsvpContext(scope, household.id),
-    rsvp.getDeadline(scope),
+    rsvp.getDeadlineContext(scope),
     getLocale(),
   ]);
   const deadlinePassed = deadline ? new Date(deadline).getTime() < Date.now() : false;
@@ -57,6 +57,7 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
       questions={context.questions as QuestionRow[]}
       responses={context.responses as ResponseRow[]}
       deadline={deadline}
+      timeZone={timeZone}
       deadlinePassed={deadlinePassed}
       tableInfo={tableInfo}
     />

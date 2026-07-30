@@ -1,6 +1,7 @@
 import type { WeddingScope } from "./scope";
 import type { ImportContext, MailingAddress } from "@/lib/csv";
 import * as activity from "./activity";
+import { invalidateCache } from "@/lib/limiter";
 import { customAlphabet } from "nanoid";
 import { randomBytes } from "crypto";
 
@@ -104,6 +105,9 @@ export async function commitHouseholds(
   if (error) throw new Error(error.message);
 
   const result = data as { households: number; guests: number };
+  // An import is the largest single change to the guest list there is; the
+  // Overview must not spend the next minute reporting the pre-import counts.
+  invalidateCache(`metrics:${scope.weddingId}`);
   await activity.log(scope, {
     actorType: "admin",
     actorId,
