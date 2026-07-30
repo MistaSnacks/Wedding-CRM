@@ -5054,9 +5054,40 @@ and never let one of these block a milestone.
 
 ## Blocked
 
-Items that failed twice and were routed around. Each needs a human decision or an unblock.
+**The monthly API spend limit was reached at 2026-07-30 ~09:20.** Two agents in the Milestone 3
+workflow (`m3:grid`, `m3:review`) died on it mid-run, and the loop was stopped deliberately rather
+than left to grind against a hard external limit. Raise the limit at
+claude.ai/settings/usage, then restart with `/loop` and the same prompt — `GOAL.md` is the
+contract and the ledger, so a new session resumes from the first unchecked box with no context loss.
 
-*(none yet)*
+- [!] **The budget screen has never been adversarially reviewed.** `m3:grid` wrote its files and then
+      died; `m3:review` never ran at all. The orchestrator verified the screen by hand — gates green,
+      totals reconciled against the database, every number cross-checked between the cards, the ledger
+      strip and the table footer, actions confirmed guarded, benchmark name confirmed unhardcoded — but
+      **no independent pass has hunted it for defects.** Given that the adversarial pass refuted 2 of 3
+      implementers in Milestone 0 and caught a wrong reading of the spreadsheet in Milestone 2, assume
+      this surface still holds bugs. Re-run it before trusting the screen.
+- [!] **Mobile was never visually confirmed.** `resize_window` reported success but the viewport never
+      reflowed — screenshots came back byte-identical at desktop width. The responsive markup is
+      present and correct by inspection (`max-md:hidden` on the table, `md:hidden` card list,
+      `max-md:grid-cols-2` on the cards) and the CHROME agent reports measuring
+      `scrollWidth === clientWidth === 390` via a same-origin iframe, but the orchestrator did not see
+      it. Treat 390px as unverified.
+
+### Decisions the CHROME agent left open
+
+- `cashFlowByMonth` and the setup screen's starting percentages are computed in components, not in
+  `budget-rules.ts`, so vitest cannot see them. They are presentation-only (every apportionment that
+  reaches the database goes through `allocateByPercent` on the server), but they should move into the
+  rules module to be tested.
+- `actions.ts` exports five alias names (`createBudgetItem`, `deleteBudgetItem`, `deleteBudgetPayment`,
+  `setPaymentPaid`, `splitIntoDeposit`) that duplicate their real counterparts, added so GRID would
+  compile under either naming. **These are live POST endpoints.** Pick one name per action and delete
+  the aliases.
+- `BudgetSetup` step 2 deliberately omits category rename and remove, because `seedAllocation` matches
+  by name and a rename there would create a duplicate while orphaning the original's target. Worth a
+  better fix than an omission.
+- No `Export budget` button yet — `/api/export/budget` is Milestone 6.
 
 ---
 
@@ -5070,4 +5101,5 @@ One line per iteration: what got built, what proved it, what was decided. Append
 | 0b | 2026-07-29 22:34 | **Security fix, pre-loop:** invite-code lookup accepted SQL LIKE wildcards, so `AB%%` logged the caller into any household with a unique two-character prefix. Added `normalizeInviteCode` + 7 regression tests. Commit `e5716cf` on `feat/budget-vendors`. | `npm test` 257 passed / 26 files; `npx tsc --noEmit` clean | **257 is the regression tripwire from here on.** Milestone 0's first box is therefore already checked. Production stays vulnerable until this branch merges — flag it first thing. |
 | 1 | 2026-07-29 23:00 | **Milestone 0 complete.** Scoping sweep (seating + comms + 4 others), seven seating actions guarded with typed results and a working alert, cache invalidation moved into the data layer, both deadline/timezone bugs fixed. | `npm test` **289 passed / 28 files**; `npx tsc --noEmit` clean; `npm run build` clean; greps 14 / 10 / 7 (gates ≥8 / ≥5 / =7). Browser at 1280px: admin pill reads "RSVPs close in 257 days" — hand-checked, 2026-07-29 → 2027-04-12 venue-local is 257 days. Guest page reads "12 de abril de 2027", no console errors. | **The adversarial verify pass earned its keep — it refuted 2 of 3 implementers and I fixed both myself.** (1) `rsvpDeadlineNotice` treated `delta <= 0` as closed, so for the *entire* final day — the real deadline is 23:59 Apr 12 venue-local — the header said "RSVPs closed" while the guest form kept accepting. The agent's own test pinned that wrong behaviour at 12 hours before cutoff. Now: closed is driven by the **instant**, wording by **calendar days**, and `delta === 0` renders "RSVPs close today". (2) `RsvpFlow` defaulted `timeZone ?? "UTC"` and the page never passed the prop, so the guest page rendered **April 13** — a date on which submissions are already rejected. Added `rsvp.getDeadlineContext()` (deadline + zone in one query), threaded it through, and made the prop **required** so a missing zone is now a compile error. Also fixed the Milestone 0 gate itself: `grep -c unstable_rethrow … is 7` is arithmetically unreachable (the import line makes 8 the floor) and had pushed an agent to reword a doc comment to satisfy it. |
 | 2 | 2026-07-30 00:50 | **Milestone 1 complete.** Migration `0012_budget_vendors` applied to the live DB; `lib/format/money.ts`, `lib/data/budget-rules.ts`, `lib/data/vendor-rules.ts`, and the `budget.ts` / `vendors.ts` I/O shells written. | `npm test` **637 passed / 31 files** (from 289); `npx tsc --noEmit` clean. DB verified by the orchestrator directly, not from the agent's report: 4 tables × RLS on × 4 policies each; `apply_payment_schedule` and `set_vendor_contracted_price` both `anon`/`authenticated` execute = **false**; 248 guests and 161 households unchanged across the migration; 12 categories seeded with exactly 1 contingency. | Money is integer cents with `null` ("not priced") kept distinct from `0` ("spent nothing") throughout — conflating them distorts every delta. Composite FKs carry `wedding_id`, so cross-wedding parenting is impossible at the DB level even if app code has a bug. `weddings.budget_total_cents` is deliberately **null** — that is Open Question 4 and the UI must prompt rather than invent a ceiling. **Gate corrected:** the "no hardcoded benchmark name" check was a repo-wide grep for `alison`, which matches 18 legitimate guest-name fixtures (she is an invited guest as well as the benchmark). Rescoped to non-test source, where it correctly returns 0. |
+| 4 | 2026-07-30 09:25 | **Loop stopped: monthly spend limit reached.** Working tree clean, everything committed on `feat/budget-vendors`. | `npm test` **695 passed / 32 files**; `npx tsc --noEmit` clean; `npm run build` clean. | Milestones 0–3 complete and verified. Milestone 3 shipped **without** its adversarial review — see Blocked. Next unchecked work is Milestone 4 (vendors). Nothing pushed, merged, deployed, or emailed all night. |
 | 3 | 2026-07-30 01:35 | **Milestones 2 and 3.** Real spreadsheet parsed and seeded (79 items, 11 categories); `/admin/budget` built — 22 components, the ledger table, item drawer, payment schedule, deposit split, category bars, cash-flow strip. | `npm test` **695 passed / 32 files**; `tsc` and `npm run build` clean. Browser at 1280px: benchmark **$40,962** exact, forecast **$62,970**, grand-total delta **+$22,008** — all three reconcile, and the cards, ledger strip and table footer agree. No console errors. | **Corrected a seed misreading myself.** CSV lines 22 (`Harp - ceremony`) and 24 (`Other Vendors`) are structurally identical — same empty qty/each, same single estimate — so the parser guessed "item" for both, then papered over the mismatch with a phantom `Spreadsheet reconciliation −$1,000` row, and left an empty `other-vendors` category whose `target_cents` fallback double-counted its $500. The arithmetic disambiguates decisively: reading line 24 as a **category** makes Music + Photography's four items sum to exactly its own $8,300 header, and makes Lion Dance its single $500 item. Moved Lion Dance, deleted the header-as-item and the phantom row. 81 → 79 items; forecast still $62,970 but now derived from real lines instead of a double-count. **The disambiguation rule — prefer the reading under which a category header equals the sum of its items — is not yet in the parser, so a re-seed reintroduces this.** Filed below. | 
