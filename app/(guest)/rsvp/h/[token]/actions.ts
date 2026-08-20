@@ -5,6 +5,7 @@ import * as households from "@/lib/data/households";
 import * as rsvpData from "@/lib/data/rsvp";
 import { RsvpValidationError } from "@/lib/data/rsvp";
 import { sendConfirmationEmail } from "@/lib/email/send";
+import { env } from "@/lib/env";
 import { rateLimit } from "@/lib/limiter";
 import type { SubmitRsvpPayload } from "@/lib/types";
 
@@ -33,10 +34,14 @@ export async function saveRsvp(
   try {
     const result = await rsvpData.submit(scope, household.id, { ...payload, via: "guest" });
     if (payload.complete && household.email) {
+      // Read the stored answer rather than the payload: autosaves may have
+      // carried the hotel answer in an earlier call than the final submit.
+      const hotel = await rsvpData.wantsHotelRecs(scope, household.id);
       await sendConfirmationEmail({
         to: household.email,
         accessToken: household.access_token,
         locale: household.preferred_locale,
+        hotelRecsUrl: hotel ? env().HOTEL_RECS_URL : null,
       });
     }
     return { ok: true, status: result.status };

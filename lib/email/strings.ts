@@ -14,6 +14,8 @@ export const emailStrings: Record<
     confirmBody: string;
     confirmEditNote: string;
     confirmCta: string;
+    confirmHotelBody: string;
+    confirmHotelCta: string;
     inviteSubject: string;
     inviteHeading: string;
     inviteBody: string;
@@ -36,6 +38,8 @@ export const emailStrings: Record<
     confirmBody: "Your response for Juliet & Juan's wedding on June 12, 2027 has been recorded.",
     confirmEditNote: "Need to make a change? You can edit your response any time before April 12, 2027 using your RSVP link.",
     confirmCta: "View or edit my RSVP",
+    confirmHotelBody: "You mentioned you'd like hotel recommendations — we've put together our picks for where to stay in Guadalajara.",
+    confirmHotelCta: "See hotel recommendations",
     inviteSubject: "You're invited — Juliet & Juan, June 12, 2027",
     inviteHeading: "Juliet & Juan are getting married",
     inviteBody: "We would be honored to have you with us in Guadalajara, México on June 12, 2027. Please RSVP by April 12, 2027.",
@@ -57,6 +61,8 @@ export const emailStrings: Record<
     confirmBody: "Tu respuesta para la boda de Juliet & Juan el 12 de junio de 2027 ha sido registrada.",
     confirmEditNote: "¿Necesitas hacer un cambio? Puedes editar tu respuesta hasta el 12 de abril de 2027 con tu enlace de RSVP.",
     confirmCta: "Ver o editar mi RSVP",
+    confirmHotelBody: "Nos dijiste que te gustaría recibir recomendaciones de hotel — aquí están nuestras sugerencias de dónde hospedarte en Guadalajara.",
+    confirmHotelCta: "Ver recomendaciones de hotel",
     inviteSubject: "Estás invitado — Juliet & Juan, 12 de junio de 2027",
     inviteHeading: "Juliet & Juan se casan",
     inviteBody: "Sería un honor tenerte con nosotros en Guadalajara, México el 12 de junio de 2027. Por favor confirma antes del 12 de abril de 2027.",
@@ -78,6 +84,8 @@ export const emailStrings: Record<
     confirmBody: "Phản hồi của bạn cho đám cưới của Juliet & Juan ngày 12 tháng 6, 2027 đã được ghi nhận.",
     confirmEditNote: "Cần thay đổi? Bạn có thể chỉnh sửa phản hồi bất cứ lúc nào trước ngày 12 tháng 4, 2027 bằng liên kết của bạn.",
     confirmCta: "Xem hoặc chỉnh sửa phản hồi",
+    confirmHotelBody: "Bạn cho biết muốn nhận gợi ý khách sạn — chúng tôi đã chọn sẵn vài nơi lưu trú ở Guadalajara cho bạn.",
+    confirmHotelCta: "Xem gợi ý khách sạn",
     inviteSubject: "Trân trọng kính mời — Juliet & Juan, 12/06/2027",
     inviteHeading: "Juliet & Juan sắp kết hôn",
     inviteBody: "Chúng tôi rất hân hạnh được đón tiếp bạn tại Guadalajara, México vào ngày 12 tháng 6, 2027. Vui lòng phản hồi trước ngày 12 tháng 4, 2027.",

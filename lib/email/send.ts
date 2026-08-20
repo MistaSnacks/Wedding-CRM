@@ -42,7 +42,14 @@ export async function sendEmail(args: {
 }
 
 /** Shared shell: cream ground, serif heading, olive button. Inline styles only. */
-export function emailShell(opts: { heading: string; body: string; cta?: { label: string; url: string }; footer?: string }): string {
+export function emailShell(opts: {
+  heading: string;
+  body: string;
+  cta?: { label: string; url: string };
+  /** A second, quieter call to action under the button — e.g. hotel recommendations. */
+  secondary?: { label: string; url: string };
+  footer?: string;
+}): string {
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f9f7ee;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f9f7ee;padding:32px 16px;">
@@ -57,6 +64,10 @@ ${
     : ""
 }
 ${
+  opts.secondary
+    ? `<tr><td align="center" style="padding-bottom:24px;"><a href="${opts.secondary.url}" style="display:inline-block;border:1px solid #3b4823;color:#3b4823;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;text-decoration:none;padding:12px 26px;border-radius:999px;">${opts.secondary.label}</a></td></tr>`
+    : ""
+}${
   opts.footer
     ? `<tr><td align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#8a8f86;">${opts.footer}</td></tr>`
     : ""
@@ -76,14 +87,38 @@ export async function sendVerificationEmail(args: { to: string; accessToken: str
   });
 }
 
-export async function sendConfirmationEmail(args: { to: string; accessToken: string; locale: string }) {
+/**
+ * The RSVP-received email. When the household asked for hotel recommendations,
+ * the body says so and a second button sends them to the wedding site's
+ * hotel page — the one place the couple maintains that list.
+ */
+export function confirmationHtml(args: {
+  accessToken: string;
+  locale: string;
+  hotelRecsUrl?: string | null;
+}): { subject: string; html: string } {
   const s = emailStrings[localeOf(args.locale)];
   const url = `${env().NEXT_PUBLIC_APP_URL}/rsvp/h/${args.accessToken}`;
-  return sendEmail({
-    to: args.to,
+  return {
     subject: s.confirmSubject,
-    html: emailShell({ heading: s.confirmHeading, body: s.confirmBody, cta: { label: s.confirmCta, url }, footer: s.confirmEditNote }),
-  });
+    html: emailShell({
+      heading: s.confirmHeading,
+      body: args.hotelRecsUrl ? `${s.confirmBody}<br/><br/>${s.confirmHotelBody}` : s.confirmBody,
+      cta: { label: s.confirmCta, url },
+      secondary: args.hotelRecsUrl ? { label: s.confirmHotelCta, url: args.hotelRecsUrl } : undefined,
+      footer: s.confirmEditNote,
+    }),
+  };
+}
+
+export async function sendConfirmationEmail(args: {
+  to: string;
+  accessToken: string;
+  locale: string;
+  hotelRecsUrl?: string | null;
+}) {
+  const { subject, html } = confirmationHtml(args);
+  return sendEmail({ to: args.to, subject, html });
 }
 
 export function invitationHtml(args: { accessToken: string; inviteCode: string; locale: string }): { subject: string; html: string } {

@@ -22,6 +22,9 @@ const schema = z.object({
   /** Shared secret for the Vercel cron GET. */
   CRON_SECRET: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  /** Where the RSVP confirmation sends guests who asked for hotel recommendations —
+   *  the public wedding site, not this app. Point it at an anchor once the site has one. */
+  HOTEL_RECS_URL: z.string().url().default("https://www.julietandjuan.com/details"),
 });
 
 let cached: z.infer<typeof schema> | null = null;

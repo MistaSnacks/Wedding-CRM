@@ -124,6 +124,41 @@ export async function submit(
   return data as { status: string };
 }
 
+/**
+ * "Will you need hotel recommendations?" has no stable key — the question bank
+ * is free-form and the couple can reword it in the admin — so the English label
+ * containing "hotel" is the signal. Type must be boolean: a text answer that
+ * merely mentions a hotel is not a request for recommendations.
+ */
+export function isHotelQuestion(q: { type: string; label: Record<string, string> | null }): boolean {
+  return q.type === "boolean" && /hotel/i.test(q.label?.en ?? "");
+}
+
+export function hotelRecsRequested(
+  questions: Array<{ id: string; type: string; label: Record<string, string> | null }>,
+  answers: Array<{ question_id: string; value: unknown }>,
+): boolean {
+  const ids = new Set(questions.filter(isHotelQuestion).map((q) => q.id));
+  return answers.some((a) => ids.has(a.question_id) && (a.value === true || a.value === "true"));
+}
+
+/** Whether this household answered yes to the hotel-recommendations question. */
+export async function wantsHotelRecs(scope: WeddingScope, householdId: string): Promise<boolean> {
+  const [{ data: questions }, { data: answers }] = await Promise.all([
+    scope.db
+      .from("rsvp_questions")
+      .select("id, type, label")
+      .eq("wedding_id", scope.weddingId)
+      .eq("is_active", true),
+    scope.db
+      .from("rsvp_answers")
+      .select("question_id, value")
+      .eq("wedding_id", scope.weddingId)
+      .eq("household_id", householdId),
+  ]);
+  return hotelRecsRequested(questions ?? [], answers ?? []);
+}
+
 export async function getDeadline(scope: WeddingScope): Promise<string | null> {
   const { data } = await scope.db
     .from("weddings")
