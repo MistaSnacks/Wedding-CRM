@@ -18,16 +18,9 @@ insert into meal_options (id, wedding_id, name, is_kids_meal, sort_order) values
   ('33333333-3333-3333-3333-333333333305', '11111111-1111-1111-1111-111111111111', 'Vegan', false, 4),
   ('33333333-3333-3333-3333-333333333306', '11111111-1111-1111-1111-111111111111', 'Kids Meal', true, 5);
 
-insert into rsvp_questions (wedding_id, label, type, scope, sort_order) values
-  ('11111111-1111-1111-1111-111111111111',
-   '{"en":"Song request — what gets you dancing?","es":"Pide una canción — ¿qué te hace bailar?","vi":"Yêu cầu bài hát — bài nào khiến bạn muốn nhảy?"}',
-   'text', 'guest', 0),
-  ('11111111-1111-1111-1111-111111111111',
-   '{"en":"Will you need hotel recommendations?","es":"¿Necesitas recomendaciones de hotel?","vi":"Bạn có cần gợi ý khách sạn không?"}',
-   'boolean', 'household', 1),
-  ('11111111-1111-1111-1111-111111111111',
-   '{"en":"A message for the couple","es":"Un mensaje para los novios","vi":"Lời nhắn gửi cô dâu chú rể"}',
-   'text', 'household', 3);
+-- The guest flow currently runs with no custom questions: the extras step
+-- (song request, hotel recommendations, message for the couple) was retired in
+-- migration 0014. Seed none so dev matches production.
 
 -- Household 1: named-guests-only couple
 insert into households (id, wedding_id, display_name, primary_contact_name, email, invite_code, access_token, max_party_size, plus_one_slots) values
