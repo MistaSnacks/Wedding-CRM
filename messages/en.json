@@ -3,15 +3,17 @@
     "eyebrow": "YOU ARE INVITED TO THE WEDDING OF",
     "date": "June 12, 2027 · Guadalajara, México",
     "rsvp": "RSVP",
-    "searchPrompt": "Enter your full name as it appears on your invitation — or your email address — to find your party.",
-    "queryPlaceholder": "Your full name",
+    "searchPrompt": "Enter your full name as it appears on your invitation to find your party.",
+    "namePlaceholder": "Your full name",
+    "or": "or",
+    "emailPlaceholder": "Email address",
     "find": "Find my invitation",
     "confirmTitle": "Is this your party?",
     "confirmHint": "Tap your household to open your RSVP.",
     "searchAgain": "Not you? Search again",
     "errors": {
       "too_short": "Please enter your first and last name.",
-      "none": "We couldn't find that name. Try it exactly as it appears on your invitation.",
+      "none": "We couldn't find you. Try your full name exactly as it appears on your invitation.",
       "not_found": "Something went wrong — please search again.",
       "rate_limited": "Too many attempts — please wait a minute and try again."
     }

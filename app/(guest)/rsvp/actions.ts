@@ -33,14 +33,30 @@ async function clientKey(prefix: string): Promise<string> {
 }
 
 export async function findParty(_prev: FindPartyResult | null, formData: FormData): Promise<FindPartyResult> {
-  const query = String(formData.get("query") ?? "").slice(0, 120);
+  const name = String(formData.get("name") ?? "").slice(0, 120).trim();
+  const email = String(formData.get("email") ?? "").slice(0, 120).trim();
 
   const limit = await rateLimit(await clientKey("find"), { limit: 10, windowSec: 60 });
   if (!limit.ok) return { status: "rate_limited" };
 
+  // Two boxes, either works. Try the email first (exact match), then the
+  // name; a non-email string in the email box falls back to name matching so
+  // a name typed in the wrong box still finds its party.
+  const tries: string[] = [];
+  if (email.includes("@")) tries.push(email);
+  if (name) tries.push(name);
+  if (email && !email.includes("@")) tries.push(email);
+  if (tries.length === 0) return { status: "too_short" };
+
   const scope = defaultScope();
   const all = await households.list(scope);
-  return matchHouseholds(query, all);
+
+  let last: FindPartyResult = { status: "none" };
+  for (const q of tries) {
+    last = matchHouseholds(q, all);
+    if (last.status === "matches") return last;
+  }
+  return last;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

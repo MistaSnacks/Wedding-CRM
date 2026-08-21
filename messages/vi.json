@@ -3,15 +3,17 @@
     "eyebrow": "TRÂN TRỌNG KÍNH MỜI ĐẾN LỄ CƯỚI CỦA",
     "date": "Ngày 12 tháng 6, 2027 · Guadalajara, México",
     "rsvp": "PHẢN HỒI",
-    "searchPrompt": "Nhập họ tên đầy đủ như trên thiệp mời — hoặc địa chỉ email — để tìm nhóm của bạn.",
-    "queryPlaceholder": "Họ và tên của bạn",
+    "searchPrompt": "Nhập họ tên đầy đủ như trên thiệp mời để tìm nhóm của bạn.",
+    "namePlaceholder": "Họ và tên của bạn",
+    "or": "hoặc",
+    "emailPlaceholder": "Địa chỉ email",
     "find": "Tìm thiệp mời của tôi",
     "confirmTitle": "Đây có phải nhóm của bạn?",
     "confirmHint": "Chạm vào nhóm của bạn để mở phần phản hồi.",
     "searchAgain": "Không phải bạn? Tìm lại",
     "errors": {
       "too_short": "Vui lòng nhập cả họ và tên.",
-      "none": "Không tìm thấy tên đó. Vui lòng nhập đúng như trên thiệp mời.",
+      "none": "Không tìm thấy bạn. Vui lòng nhập họ tên đúng như trên thiệp mời.",
       "not_found": "Đã có lỗi xảy ra — vui lòng tìm lại.",
       "rate_limited": "Quá nhiều lần thử — vui lòng đợi một phút rồi thử lại."
     }

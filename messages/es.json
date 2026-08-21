@@ -3,15 +3,17 @@
     "eyebrow": "ESTÁS INVITADO A LA BODA DE",
     "date": "12 de junio de 2027 · Guadalajara, México",
     "rsvp": "RSVP",
-    "searchPrompt": "Escribe tu nombre completo tal como aparece en tu invitación — o tu correo electrónico — para encontrar a tu grupo.",
-    "queryPlaceholder": "Tu nombre completo",
+    "searchPrompt": "Escribe tu nombre completo tal como aparece en tu invitación para encontrar a tu grupo.",
+    "namePlaceholder": "Tu nombre completo",
+    "or": "o",
+    "emailPlaceholder": "Correo electrónico",
     "find": "Buscar mi invitación",
     "confirmTitle": "¿Es este tu grupo?",
     "confirmHint": "Toca tu grupo para abrir tu RSVP.",
     "searchAgain": "¿No eres tú? Busca de nuevo",
     "errors": {
       "too_short": "Por favor escribe tu nombre y apellido.",
-      "none": "No encontramos ese nombre. Escríbelo tal como aparece en tu invitación.",
+      "none": "No te encontramos. Escribe tu nombre completo tal como aparece en tu invitación.",
       "not_found": "Algo salió mal — intenta buscar de nuevo.",
       "rate_limited": "Demasiados intentos — espera un minuto e inténtalo de nuevo."
     }

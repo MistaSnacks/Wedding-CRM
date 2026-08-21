@@ -38,9 +38,21 @@ export function EntryCard() {
             <p className="mt-1.5 text-sm leading-relaxed text-[#5c6151]">{t("searchPrompt")}</p>
             <form action={findAction} className="mt-4 flex flex-col gap-3">
               <input
-                name="query"
+                name="name"
                 autoComplete="name"
-                placeholder={t("queryPlaceholder")}
+                placeholder={t("namePlaceholder")}
+                className="w-full rounded-xl border-[1.5px] border-[#c8cbb0] bg-cream px-4 py-4 text-center text-lg font-medium text-olive-deep outline-none focus:border-olive"
+              />
+              <div className="flex items-center gap-3" aria-hidden>
+                <span className="h-px flex-1 bg-[#e0dcc9]" />
+                <span className="text-[11px] font-medium tracking-[0.22em] text-[#8b8f7c] uppercase">{t("or")}</span>
+                <span className="h-px flex-1 bg-[#e0dcc9]" />
+              </div>
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder={t("emailPlaceholder")}
                 className="w-full rounded-xl border-[1.5px] border-[#c8cbb0] bg-cream px-4 py-4 text-center text-lg font-medium text-olive-deep outline-none focus:border-olive"
               />
               {searchError && <p className="text-sm text-rose">{t(`errors.${searchError}`)}</p>}
