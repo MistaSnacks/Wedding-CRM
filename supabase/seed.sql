@@ -26,9 +26,6 @@ insert into rsvp_questions (wedding_id, label, type, scope, sort_order) values
    '{"en":"Will you need hotel recommendations?","es":"¿Necesitas recomendaciones de hotel?","vi":"Bạn có cần gợi ý khách sạn không?"}',
    'boolean', 'household', 1),
   ('11111111-1111-1111-1111-111111111111',
-   '{"en":"Will you need the shuttle?","es":"¿Necesitarás el transporte?","vi":"Bạn có cần xe đưa đón không?"}',
-   'boolean', 'household', 2),
-  ('11111111-1111-1111-1111-111111111111',
    '{"en":"A message for the couple","es":"Un mensaje para los novios","vi":"Lời nhắn gửi cô dâu chú rể"}',
    'text', 'household', 3);
 
