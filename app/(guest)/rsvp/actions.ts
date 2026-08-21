@@ -4,11 +4,27 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
+import { matchHouseholds, type EntrySearchResult } from "@/lib/domain/entry-match";
 import { createGuestSession } from "@/lib/guest-session";
 import { rateLimit } from "@/lib/limiter";
-import { sendVerificationEmail } from "@/lib/email/send";
 
-export type EntryResult = { ok: true } | { ok: false; error: "rate_limited" | "not_found" | "invalid" };
+/**
+ * Entry is name-first: the paper invite's QR opens the site with no code and
+ * no per-guest link, so guests type a household member's name (or the
+ * household email) and, after confirming their party on a card, go straight
+ * into the RSVP — no emailed link round-trip. Direct entry is a deliberate
+ * simplification for this wedding; the multi-tenant product keeps emailed
+ * links as a per-wedding delivery mode (see docs/superpowers/specs/
+ * 2026-07-23-multi-tenant-guest-entry-design.md and git history for the
+ * previous enterWithCode / findInvitation actions).
+ *
+ * Anti-abuse: searches are rate-limited per IP, results reveal only the
+ * household display name + member first names (the confirm card), and names
+ * require first + last so single tokens can't browse the guest list.
+ */
+
+export type FindPartyResult = EntrySearchResult | { status: "rate_limited" };
+export type EnterPartyResult = { status: "not_found" | "rate_limited" };
 
 async function clientKey(prefix: string): Promise<string> {
   const h = await headers();
@@ -16,46 +32,30 @@ async function clientKey(prefix: string): Promise<string> {
   return `${prefix}:${ip}`;
 }
 
-export async function enterWithCode(_prev: EntryResult | null, formData: FormData): Promise<EntryResult> {
-  const code = String(formData.get("code") ?? "").trim();
-  if (code.length < 4 || code.length > 12) return { ok: false, error: "invalid" };
+export async function findParty(_prev: FindPartyResult | null, formData: FormData): Promise<FindPartyResult> {
+  const query = String(formData.get("query") ?? "").slice(0, 120);
 
-  const limit = await rateLimit(await clientKey("code"), { limit: 10, windowSec: 60 });
-  if (!limit.ok) return { ok: false, error: "rate_limited" };
+  const limit = await rateLimit(await clientKey("find"), { limit: 10, windowSec: 60 });
+  if (!limit.ok) return { status: "rate_limited" };
 
   const scope = defaultScope();
-  const household = await households.byInviteCode(scope, code);
-  if (!household) return { ok: false, error: "not_found" };
+  const all = await households.list(scope);
+  return matchHouseholds(query, all);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function enterParty(_prev: EnterPartyResult | null, formData: FormData): Promise<EnterPartyResult> {
+  const id = String(formData.get("household") ?? "");
+  if (!UUID_RE.test(id)) return { status: "not_found" };
+
+  const limit = await rateLimit(await clientKey("enter"), { limit: 20, windowSec: 60 });
+  if (!limit.ok) return { status: "rate_limited" };
+
+  const scope = defaultScope();
+  const household = await households.byId(scope, id);
+  if (!household) return { status: "not_found" };
 
   await createGuestSession(household.id, scope.weddingId);
   redirect(`/rsvp/h/${household.access_token}`);
-}
-
-/**
- * "Find my invitation": on a match we EMAIL the household's address a link —
- * never open the RSVP directly, and the response is identical whether or not
- * anything matched (no guest-list enumeration).
- */
-export async function findInvitation(
-  _prev: { done: boolean } | null,
-  formData: FormData,
-): Promise<{ done: boolean; rateLimited?: boolean }> {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
-
-  const limit = await rateLimit(await clientKey("find"), { limit: 5, windowSec: 300 });
-  if (!limit.ok) return { done: false, rateLimited: true };
-
-  if (name && email) {
-    const scope = defaultScope();
-    const match = await households.fuzzyFind(scope, name, email);
-    if (match) {
-      await sendVerificationEmail({
-        to: match.email,
-        accessToken: match.access_token,
-        locale: match.preferred_locale,
-      });
-    }
-  }
-  return { done: true };
 }

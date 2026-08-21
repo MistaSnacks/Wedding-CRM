@@ -3,21 +3,17 @@
     "eyebrow": "YOU ARE INVITED TO THE WEDDING OF",
     "date": "June 12, 2027 · Guadalajara, México",
     "rsvp": "RSVP",
-    "codePrompt": "Enter the invitation code from your invite to find your party.",
-    "codePlaceholder": "e.g. ABCD-1234",
+    "searchPrompt": "Enter your full name as it appears on your invitation — or your email address — to find your party.",
+    "queryPlaceholder": "Your full name",
     "find": "Find my invitation",
-    "noCode": "No code? Search by your name instead",
-    "searchTitle": "Find my invitation",
-    "searchPrompt": "Enter your name and the email address your invitation was sent to. We'll email you a secure link.",
-    "namePlaceholder": "Your full name",
-    "emailPlaceholder": "Email address",
-    "sendLink": "Email me my link",
-    "linkSent": "If we found your invitation, a link is on its way to your inbox. It can take a minute or two.",
-    "backToCode": "I have a code",
+    "confirmTitle": "Is this your party?",
+    "confirmHint": "Tap your household to open your RSVP.",
+    "searchAgain": "Not you? Search again",
     "errors": {
-      "not_found": "We couldn't find that code. Double-check your invitation, or search by name below.",
-      "rate_limited": "Too many attempts — please wait a minute and try again.",
-      "invalid": "That doesn't look like an invitation code."
+      "too_short": "Please enter your first and last name.",
+      "none": "We couldn't find that name. Try it exactly as it appears on your invitation.",
+      "not_found": "Something went wrong — please search again.",
+      "rate_limited": "Too many attempts — please wait a minute and try again."
     }
   },
   "flow": {

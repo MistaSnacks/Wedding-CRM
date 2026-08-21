@@ -3,21 +3,17 @@
     "eyebrow": "TRÂN TRỌNG KÍNH MỜI ĐẾN LỄ CƯỚI CỦA",
     "date": "Ngày 12 tháng 6, 2027 · Guadalajara, México",
     "rsvp": "PHẢN HỒI",
-    "codePrompt": "Nhập mã trên thiệp mời để tìm nhóm của bạn.",
-    "codePlaceholder": "vd. ABCD-1234",
+    "searchPrompt": "Nhập họ tên đầy đủ như trên thiệp mời — hoặc địa chỉ email — để tìm nhóm của bạn.",
+    "queryPlaceholder": "Họ và tên của bạn",
     "find": "Tìm thiệp mời của tôi",
-    "noCode": "Không có mã? Tìm bằng tên của bạn",
-    "searchTitle": "Tìm thiệp mời của tôi",
-    "searchPrompt": "Nhập tên của bạn và địa chỉ email đã nhận thiệp mời. Chúng tôi sẽ gửi cho bạn một liên kết an toàn.",
-    "namePlaceholder": "Họ và tên của bạn",
-    "emailPlaceholder": "Địa chỉ email",
-    "sendLink": "Gửi liên kết cho tôi",
-    "linkSent": "Nếu tìm thấy thiệp mời của bạn, liên kết đang được gửi đến hộp thư. Có thể mất một hai phút.",
-    "backToCode": "Tôi có mã",
+    "confirmTitle": "Đây có phải nhóm của bạn?",
+    "confirmHint": "Chạm vào nhóm của bạn để mở phần phản hồi.",
+    "searchAgain": "Không phải bạn? Tìm lại",
     "errors": {
-      "not_found": "Không tìm thấy mã đó. Vui lòng kiểm tra thiệp mời hoặc tìm bằng tên bên dưới.",
-      "rate_limited": "Quá nhiều lần thử — vui lòng đợi một phút rồi thử lại.",
-      "invalid": "Đó không giống mã thiệp mời."
+      "too_short": "Vui lòng nhập cả họ và tên.",
+      "none": "Không tìm thấy tên đó. Vui lòng nhập đúng như trên thiệp mời.",
+      "not_found": "Đã có lỗi xảy ra — vui lòng tìm lại.",
+      "rate_limited": "Quá nhiều lần thử — vui lòng đợi một phút rồi thử lại."
     }
   },
   "flow": {

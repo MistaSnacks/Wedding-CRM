@@ -3,21 +3,17 @@
     "eyebrow": "ESTÁS INVITADO A LA BODA DE",
     "date": "12 de junio de 2027 · Guadalajara, México",
     "rsvp": "RSVP",
-    "codePrompt": "Ingresa el código de tu invitación para encontrar a tu grupo.",
-    "codePlaceholder": "ej. ABCD-1234",
+    "searchPrompt": "Escribe tu nombre completo tal como aparece en tu invitación — o tu correo electrónico — para encontrar a tu grupo.",
+    "queryPlaceholder": "Tu nombre completo",
     "find": "Buscar mi invitación",
-    "noCode": "¿Sin código? Busca por tu nombre",
-    "searchTitle": "Buscar mi invitación",
-    "searchPrompt": "Escribe tu nombre y el correo al que se envió tu invitación. Te enviaremos un enlace seguro.",
-    "namePlaceholder": "Tu nombre completo",
-    "emailPlaceholder": "Correo electrónico",
-    "sendLink": "Enviar mi enlace",
-    "linkSent": "Si encontramos tu invitación, un enlace va en camino a tu correo. Puede tardar uno o dos minutos.",
-    "backToCode": "Tengo un código",
+    "confirmTitle": "¿Es este tu grupo?",
+    "confirmHint": "Toca tu grupo para abrir tu RSVP.",
+    "searchAgain": "¿No eres tú? Busca de nuevo",
     "errors": {
-      "not_found": "No encontramos ese código. Revisa tu invitación o busca por nombre abajo.",
-      "rate_limited": "Demasiados intentos — espera un minuto e inténtalo de nuevo.",
-      "invalid": "Eso no parece un código de invitación."
+      "too_short": "Por favor escribe tu nombre y apellido.",
+      "none": "No encontramos ese nombre. Escríbelo tal como aparece en tu invitación.",
+      "not_found": "Algo salió mal — intenta buscar de nuevo.",
+      "rate_limited": "Demasiados intentos — espera un minuto e inténtalo de nuevo."
     }
   },
   "flow": {

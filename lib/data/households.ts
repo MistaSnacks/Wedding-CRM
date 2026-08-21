@@ -199,6 +199,16 @@ export async function byInviteCode(scope: WeddingScope, code: string): Promise<H
   return (data as HouseholdRow) ?? null;
 }
 
+export async function byId(scope: WeddingScope, id: string): Promise<HouseholdRow | null> {
+  const { data } = await scope.db
+    .from("households")
+    .select(HOUSEHOLD_COLS)
+    .eq("wedding_id", scope.weddingId)
+    .eq("id", id)
+    .maybeSingle();
+  return (data as HouseholdRow) ?? null;
+}
+
 export async function byAccessToken(scope: WeddingScope, token: string): Promise<HouseholdRow | null> {
   const { data } = await scope.db
     .from("households")
