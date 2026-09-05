@@ -26,6 +26,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.16.0",
+    "three": "^0.185.1",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
@@ -35,6 +36,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.185.4",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"

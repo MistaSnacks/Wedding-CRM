@@ -40,3 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .emails/
+
+# Venue reference originals: local research archive; third-party image rights retained.
+/research/benavento/images/
+/research/benavento/architect-page.html
+
+# Venue concept export; regenerate with scripts/export-venue-concept.mjs
+/public/venue/*.glb
