@@ -656,7 +656,8 @@ export function styleFurniture(
 }
 export function disposeObject(root: THREE.Object3D) {
   const geometries = new Set<THREE.BufferGeometry>(),
-    materials = new Set<THREE.Material>();
+    materials = new Set<THREE.Material>(),
+    textures = new Set<THREE.Texture>();
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) {
       geometries.add(o.geometry);
@@ -665,5 +666,14 @@ export function disposeObject(root: THREE.Object3D) {
     }
   });
   for (const g of geometries) g.dispose();
-  for (const m of materials) m.dispose();
+  for (const m of materials) {
+    for (const value of Object.values(m))
+      if (value instanceof THREE.Texture) textures.add(value);
+    m.dispose();
+  }
+  for (const texture of textures) {
+    texture.dispose();
+    if (typeof ImageBitmap !== "undefined" && texture.image instanceof ImageBitmap)
+      texture.image.close();
+  }
 }

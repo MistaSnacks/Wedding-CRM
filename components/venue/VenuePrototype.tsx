@@ -90,6 +90,7 @@ export default function VenuePrototype() {
     [pick, setPick] = useState<Pick>(null),
     [dropPreview, setDropPreview] = useState<DropPreview>(null),
     [exporting, setExporting] = useState(false),
+    [exportingHtml, setExportingHtml] = useState(false),
     [confirmReset, setConfirmReset] = useState(false),
     [confirmRemove, setConfirmRemove] = useState(false),
     [photoFilter, setPhotoFilter] = useState("All"),
@@ -317,14 +318,16 @@ export default function VenuePrototype() {
         import("three"),
       ]);
       const scene = new THREE.Scene();
-      scene.add(buildShell(), buildFurniture(tables));
+      const { loadDetailedShell } = await import("@/lib/venue/detailed-shell");
+      const shell = await loadDetailedShell().catch(() => buildShell());
+      scene.add(shell, buildFurniture(tables));
       try {
         const result = await new GLTFExporter().parseAsync(scene, {
           binary: true,
         });
         download(
           new Blob([result as ArrayBuffer], { type: "model/gltf-binary" }),
-          "benavento-terrace-concept.glb",
+          "benavento-terrace-layout.glb",
         );
         setMessage({
           text: "3D model downloaded. It opens in Blender via File → Import → glTF 2.0.",
@@ -340,6 +343,19 @@ export default function VenuePrototype() {
       });
     } finally {
       setExporting(false);
+    }
+  }
+  async function exportInteractiveHtml() {
+    setExportingHtml(true);
+    try {
+      const { createInteractiveHtml } = await import("@/lib/venue/interactive-export");
+      const html = await createInteractiveHtml(draft);
+      download(new Blob([html], { type: "text/html;charset=utf-8" }), "benavento-interactive.html");
+      setMessage({ text: "Interactive HTML downloaded with your current seating plan. Open it in a browser.", tone: "ok" });
+    } catch {
+      setMessage({ text: "The interactive HTML download didn't work. Your plan is still saved here.", tone: "error" });
+    } finally {
+      setExportingHtml(false);
     }
   }
   function downloadLayout() {
@@ -986,6 +1002,9 @@ export default function VenuePrototype() {
           live seating is not changed here.
         </p>
         <div className="venue-row">
+          <button type="button" onClick={exportInteractiveHtml} disabled={exportingHtml}>
+            {exportingHtml ? "Preparing HTML…" : "Download interactive HTML"}
+          </button>
           <button type="button" onClick={downloadLayout}>
             Download layout (JSON)
           </button>

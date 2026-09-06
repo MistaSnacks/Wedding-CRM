@@ -1,0 +1,2 @@
+# The HTML contains compiled JavaScript, shader strings and embedded binary assets.
+public/venue/benavento-interactive.html -diff linguist-generated=true

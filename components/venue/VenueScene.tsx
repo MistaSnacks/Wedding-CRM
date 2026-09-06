@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
+import { loadDetailedShell, setPlanningGlass, VENUE_ENVIRONMENT_URL } from "@/lib/venue/detailed-shell";
 import {
   buildShell,
   buildFurniture,
@@ -36,12 +38,34 @@ export default function VenueScene(props: Props) {
       fill: THREE.HemisphereLight;
       furniture: THREE.Group;
       shell: THREE.Group;
+      camera: THREE.PerspectiveCamera;
+      controls: OrbitControls;
       render: () => void;
     } | null>(null);
   const [error, setError] = useState(false);
+  const [modelStatus, setModelStatus] = useState("Loading venue details…");
+  const [view, setView] = useState("Overview");
+  const viewRef = useRef("Overview");
+  function changeView(next: string) {
+    const r = runtime.current;
+    if (!r) return;
+    const positions: Record<string, [number, number, number]> = {
+      Overview: [34, 31, 39],
+      "Guest view": [10, 1.8, 11],
+      Garden: [27, 6, 37],
+    };
+    r.camera.position.set(...positions[next]);
+    r.controls.target.set(0, next === "Guest view" ? 1.8 : 2, 0);
+    setPlanningGlass(r.shell, next === "Overview");
+    r.controls.update();
+    r.render();
+    setView(next);
+    viewRef.current = next;
+  }
   latest.current = props;
   useEffect(() => {
     const el = host.current!;
+    let disposed = false;
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -63,11 +87,10 @@ export default function VenueScene(props: Props) {
     scene.fog = new THREE.Fog(0xe7e9e2, 55, 115);
     const environment = new RoomEnvironment(),
       pmrem = new THREE.PMREMGenerator(renderer);
-    const envTarget = pmrem.fromScene(environment, 0.04);
+    let envTarget = pmrem.fromScene(environment, 0.04);
     scene.environment = envTarget.texture;
     scene.environmentIntensity = 0.45;
     environment.dispose();
-    pmrem.dispose();
     const fill = new THREE.HemisphereLight(0xe7f1ff, 0x96947a, 1.1);
     scene.add(fill);
     const sun = new THREE.DirectionalLight(0xffe5bb, 3.3);
@@ -97,7 +120,7 @@ export default function VenueScene(props: Props) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 1, 0);
     controls.maxPolarAngle = Math.PI / 2 - 0.03;
-    controls.minDistance = 12;
+    controls.minDistance = 2;
     controls.maxDistance = 95;
     controls.update();
     const render = () => renderer.render(scene, camera);
@@ -109,8 +132,36 @@ export default function VenueScene(props: Props) {
       renderer,
       sun,
       fill,
+      camera,
+      controls,
       tables: latest.current.tables,
     };
+    void loadDetailedShell().then((detailed) => {
+      if (disposed) {
+        disposeObject(detailed);
+        return;
+      }
+      const roof = detailed.getObjectByName("roof");
+      if (roof) roof.visible = latest.current.roof;
+      setPlanningGlass(detailed, viewRef.current === "Overview");
+      scene.remove(shell);
+      disposeObject(shell);
+      scene.add(detailed);
+      runtime.current!.shell = detailed;
+      setModelStatus("Detailed venue");
+      render();
+    }).catch(() => {
+      if (!disposed) setModelStatus("Venue details unavailable · showing the simplified view");
+    });
+    void new HDRLoader().loadAsync(VENUE_ENVIRONMENT_URL).then((hdr) => {
+      if (disposed) { hdr.dispose(); return; }
+      const nextEnvironment = pmrem.fromEquirectangular(hdr);
+      hdr.dispose();
+      envTarget.dispose();
+      envTarget = nextEnvironment;
+      scene.environment = envTarget.texture;
+      render();
+    }).catch(() => { /* The studio environment remains a usable fallback. */ });
     controls.addEventListener("change", render);
     const resize = () => {
       const { width, height } = el.getBoundingClientRect();
@@ -215,6 +266,7 @@ export default function VenueScene(props: Props) {
     renderer.domElement.addEventListener("pointerup", up);
     renderer.domElement.addEventListener("pointercancel", up);
     return () => {
+      disposed = true;
       hitTestRef.current = null;
       observer.disconnect();
       controls.dispose();
@@ -223,6 +275,7 @@ export default function VenueScene(props: Props) {
       renderer.domElement.removeEventListener("pointerup", up);
       renderer.domElement.removeEventListener("pointercancel", up);
       envTarget.dispose();
+      pmrem.dispose();
       sun.shadow.map?.dispose();
       disposeObject(scene);
       renderer.dispose();
@@ -238,7 +291,8 @@ export default function VenueScene(props: Props) {
       r.tables = props.tables;
     }
     styleFurniture(r.furniture, props.selected, props.dropPreview);
-    r.shell.getObjectByName("roof")!.visible = props.roof;
+    const roof = r.shell.getObjectByName("roof");
+    if (roof) roof.visible = props.roof;
     r.sun.color.set(props.warmLight ? 0xffdfa6 : 0xfff5e7);
     r.sun.position.set(-24, props.warmLight ? 24 : 42, 20);
     r.sun.intensity = props.warmLight ? 3.4 : 3;
@@ -260,9 +314,15 @@ export default function VenueScene(props: Props) {
     <div
       ref={host}
       className="venue-render"
-      role="img"
-      aria-label="Interactive concept of the Benavento terrace. Use the table controls or floor plan for keyboard editing."
+      role="group"
+      aria-label="Interactive Benavento terrace. Use the table controls or floor plan for keyboard editing."
     >
+      {!error && <div className="venue-viewpoints" aria-label="Camera views">
+        {["Overview", "Guest view", "Garden"].map((name) => <button
+          key={name} type="button" aria-pressed={view === name}
+          onClick={() => changeView(name)}>{name}</button>)}
+      </div>}
+      {!error && <span className="venue-model-status" role="status">{modelStatus}</span>}
       {error && (
         <p className="venue-fallback">
           3D isn’t available on this device. Choose Floor plan to edit the same

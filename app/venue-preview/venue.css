@@ -380,6 +380,44 @@
   display: block;
   outline: none;
 }
+.venue-viewpoints {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 9px;
+  background: #fffffff0;
+  box-shadow: 0 2px 12px #22302218;
+}
+.venue-viewpoints button {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #40523e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+.venue-viewpoints button[aria-pressed="true"] {
+  color: white;
+  background: #40583f;
+}
+.venue-model-status {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  max-width: calc(100% - 28px);
+  padding: 5px 9px;
+  border-radius: 5px;
+  background: #ffffffdf;
+  color: #45543d;
+  font-size: 11px;
+  pointer-events: none;
+}
 .venue-loading,
 .venue-fallback {
   display: grid;

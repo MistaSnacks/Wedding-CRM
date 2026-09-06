@@ -41,7 +41,7 @@ The model is authored procedurally in `lib/venue/scene.ts`. A starter export is 
 
 Blender is appropriate for refining architectural geometry, materials, lighting and producing still renders. Three.js provides interaction in the application. Keep a future detailed shell separate from application-owned furniture so table movement and guest assignment continue to work independently. Export geometry in metres and preserve the agreed origin and axes; glTF is Y-up, Blender handles conversion.
 
-Blender is not installed in this workspace. No `.blend` file or photorealistic Blender render was produced. The GLB was exported and reloaded through GLTFLoader, verifying that all 16 table groups survived.
+At the time of the original concept export, Blender was not installed and no `.blend` file or Blender render had been produced. The GLB was exported and reloaded through GLTFLoader, verifying that all 16 table groups survived. Blender 5.2.1 and MCP are now installed, with a detailed terrace scene, render and integrated shell export; see [the Blender workflow](blender-venue-workflow.md) for current artifacts and validation.
 
 Regenerate the starter model with `node --experimental-strip-types scripts/export-venue-concept.mjs` (Node 22+). Recollect public references with `python3 scripts/collect-venue-references.py`; the app's curated JSON and gallery are a snapshot, so refresh them explicitly after recollection.
 

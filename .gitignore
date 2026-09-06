@@ -47,3 +47,6 @@ next-env.d.ts
 
 # Venue concept export; regenerate with scripts/export-venue-concept.mjs
 /public/venue/*.glb
+!/public/venue/benavento-terrace-detailed.glb
+/assets/blender/*.blend1
+/assets/blender/*.blend2

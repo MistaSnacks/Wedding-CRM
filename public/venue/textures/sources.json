@@ -1,0 +1,17 @@
+{
+  "license": "CC0",
+  "provider": "Poly Haven",
+  "assets": [
+    {
+      "size": 1616956,
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/rosendal_park_sunset_1k.hdr",
+      "md5": "b2492087e3476bf89997189632b86f57"
+    }
+  ],
+  "pages": [
+    "https://polyhaven.com/a/rosendal_park_sunset"
+  ],
+  "authored": {
+    "benavento-grey-marble-v2.png": "Baked procedural shader authored in scripts/blender/build-terrace.py"
+  }
+}
