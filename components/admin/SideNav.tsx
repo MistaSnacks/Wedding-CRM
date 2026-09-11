@@ -7,6 +7,8 @@ import type { ReactNode } from "react";
 type NavItem = { href: string; label: string; icon: ReactNode; ownerOnly?: boolean };
 
 const NAV: NavItem[] = [
+  { href: "/admin/vendors", label: "Vendors", icon: <><path d="M3 21h18V7H3zM8 7V3h8v4M3 12h18" /></> },
+  { href: "/admin/documents", label: "Documents", icon: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h5" /></> },
   {
     href: "/admin",
     label: "Overview",

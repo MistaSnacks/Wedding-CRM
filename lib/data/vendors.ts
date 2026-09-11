@@ -59,12 +59,17 @@ export class VendorValidationError extends Error {
   }
 }
 
+export class VendorNotFoundError extends Error {
+  constructor() { super("Vendor not found in this wedding"); this.name = "VendorNotFoundError"; }
+}
+
 /**
  * A vendor draft. Every field is optional so an inline edit can send one field;
  * `create` still fails validation without a name, and `update` merges anything
  * omitted from the stored row before validating.
  */
 export type VendorInput = {
+  syncBudget?: boolean;
   name?: string;
   role?: string | null;
   status?: string | null;
@@ -156,7 +161,7 @@ async function requireVendor(scope: WeddingScope, id: string): Promise<VendorRow
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Vendor not found in this wedding");
+  if (!data) throw new VendorNotFoundError();
   return data as VendorRow;
 }
 
@@ -527,7 +532,7 @@ export async function update(
   });
 
   const sync =
-    input.contractedCents === undefined
+    input.contractedCents === undefined || input.syncBudget !== true
       ? null
       : await syncContractedToItems(scope, id, existing.contracted_cents, actorId);
 
@@ -628,36 +633,10 @@ export async function remove(
   const vendor = await requireVendor(scope, id);
   const impact = await removalImpact(scope, id);
 
-  const unlinked = await Promise.all([
-    scope.db
-      .from("budget_items")
-      .update({ vendor_id: null, updated_at: nowIso() })
-      .eq("wedding_id", scope.weddingId)
-      .eq("vendor_id", id),
-    scope.db
-      .from("budget_payments")
-      .update({ vendor_id: null, updated_at: nowIso() })
-      .eq("wedding_id", scope.weddingId)
-      .eq("vendor_id", id),
-  ]);
-  for (const result of unlinked) {
-    if (result.error) throw new Error(result.error.message);
-  }
-
-  const { error } = await scope.db
-    .from("vendors")
-    .delete()
-    .eq("wedding_id", scope.weddingId)
-    .eq("id", id);
+  const { error } = await scope.db.rpc("remove_planning_vendor", { p_wedding_id: scope.weddingId, p_vendor_id: id, p_actor_id: actorId ?? null });
   if (error) throw new Error(error.message);
   invalidateMetrics(scope);
 
-  await activity.log(scope, {
-    actorType: "admin",
-    actorId,
-    action: "vendor.removed",
-    payload: { vendorId: id, name: vendor.name, unlinked: impact },
-  });
   return impact;
 }
 
@@ -756,25 +735,20 @@ export async function syncContractedToItems(
   const plan = syncPlan(vendor.contracted_cents, items, previousContractedCents);
   if (plan.writes.length === 0) return plan;
 
-  const results = await Promise.all(
-    plan.writes.map((change) =>
-      scope.db
-        .from("budget_items")
-        .update({
-          contracted_cents: change.toCents,
-          // Records that this number came from the vendor, so the next sync
-          // knows it is safe to move and the UI can say where it came from.
-          contracted_source: "vendor",
-          currency: vendor.currency,
-          updated_at: nowIso(),
-        })
-        .eq("wedding_id", scope.weddingId)
-        .eq("id", change.itemId),
-    ),
-  );
-  for (const result of results) {
-    if (result.error) throw new Error(result.error.message);
+  const successful: SyncPlan["writes"] = [];
+  for (const change of plan.writes) {
+    const original = items.find(i => i.id === change.itemId)!;
+    const { data: applied, error: writeError } = await scope.db.rpc("apply_vendor_contract_price", {
+      p_wedding_id: scope.weddingId, p_vendor_id: vendorId, p_item_id: change.itemId,
+      p_expected_price: change.fromCents, p_expected_source: original.contracted_source ?? null,
+      p_vendor_price: vendor.contracted_cents, p_currency: vendor.currency,
+    });
+    if (writeError) throw new Error(writeError.message);
+    if (applied) successful.push(change);
+    else plan.conflicts.push({ ...change, kind: "conflict", reason: "The linked line, currency, or vendor price changed. Review the amounts before updating them." });
   }
+  plan.writes = successful;
+  plan.requiresConfirm = plan.conflicts.length > 0;
   invalidateMetrics(scope);
 
   await activity.log(scope, {
