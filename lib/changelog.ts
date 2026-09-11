@@ -17,6 +17,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-09-11-vendors-documents",
+    date: "September 11",
+    title: "Vendors and documents, simplified",
+    items: [
+      "Vendors now opens properly from the menu and Budget. Add a vendor with just the basics, then fill in pricing and contract details when you're ready.",
+      "Keep your vendor list organized with Considering, Booked and Not booked filters.",
+      "Open Documents in the menu to find all your vendor files in one place. Search by file or vendor name, or filter by document type.",
+      "Upload several files at once, with suggested names and types you can change. Open or download files anytime, and confirm before removing one.",
+    ],
+  },
+  {
     id: "2026-07-28-sync",
     date: "July 28",
     title: "Save-the-Date replies come to you",
