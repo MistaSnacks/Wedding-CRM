@@ -32,7 +32,7 @@ async function loadShared(scope: WeddingScope) {
       households.list(scope),
       scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId),
       scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
-      scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
+      scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
       scope.db.from("events").select("id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order").eq("wedding_id", scope.weddingId).order("sort_order"),
       scope.db.from("seating_tables").select("id, event_id, name, capacity, shape, pos_x, pos_y").eq("wedding_id", scope.weddingId),
       scope.db.from("seat_assignments").select("guest_id, event_id, table_id, seat_number").eq("wedding_id", scope.weddingId),

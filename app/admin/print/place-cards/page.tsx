@@ -14,7 +14,7 @@ export default async function PlaceCardsPage() {
     scope.db.from("seat_assignments").select("guest_id, event_id, table_id, seat_number").eq("wedding_id", scope.weddingId),
     scope.db.from("seating_tables").select("id, event_id, name, capacity, shape, pos_x, pos_y").eq("wedding_id", scope.weddingId),
     scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId),
-    scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
+    scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
   ]);
 
   const guests = hhs.flatMap((h) => h.guests);

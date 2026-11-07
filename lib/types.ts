@@ -74,7 +74,13 @@ export type MealOptionRow = {
   is_kids_meal: boolean;
   sort_order: number;
   event_id: string | null;
+  /** False hides the option from the guest RSVP form; existing choices stay valid. */
+  is_active: boolean;
+  name_i18n: MealNameTranslations;
 };
+
+/** Guest-facing meal names by language. English is always `MealOptionRow.name`. */
+export type MealNameTranslations = Partial<Record<Exclude<Locale, "en">, string>>;
 
 export type ResponseRow = {
   guest_id: string;

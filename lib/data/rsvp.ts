@@ -18,7 +18,7 @@ export async function getRsvpContext(scope: WeddingScope, householdId: string) {
         .from("household_event_invites")
         .select("events(id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order)")
         .eq("household_id", householdId),
-      scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId).order("sort_order"),
+      scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId).eq("is_active", true).order("sort_order"),
       scope.db.from("rsvp_questions").select("id, label, type, options, scope, sort_order, is_active").eq("wedding_id", scope.weddingId).eq("is_active", true).order("sort_order"),
       scope.db
         .from("guest_event_responses")

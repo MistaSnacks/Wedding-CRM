@@ -3,7 +3,7 @@ import { mealCounts } from "./metrics";
 
 const MEALS = [
   { id: "meal-chicken", name: "Chicken", sort_order: 1 },
-  { id: "meal-fish", name: "Fish", sort_order: 0 },
+  { id: "meal-beef", name: "Beef", sort_order: 0 },
 ];
 
 describe("mealCounts", () => {
@@ -50,14 +50,14 @@ describe("mealCounts", () => {
     const responses = [{ guest_id: "g1", attending: "yes", meal_option_id: "meal-chicken" }];
     const result = mealCounts(responses, MEALS);
     expect(result).toHaveLength(2);
-    expect(result.find((r) => r.name === "Fish")?.count).toBe(0);
+    expect(result.find((r) => r.name === "Beef")?.count).toBe(0);
   });
 
   it("preserves the order of the meals array as given (caller sorts by sort_order)", () => {
-    // MEALS is deliberately passed UNSORTED — its sort_order is Fish(0), Chicken(1),
-    // so an implementation that re-sorted internally would return ["Fish","Chicken"].
+    // MEALS is deliberately passed UNSORTED — its sort_order is Beef(0), Chicken(1),
+    // so an implementation that re-sorted internally would return ["Beef","Chicken"].
     // Expecting declaration order is what pins "consumed in the order given".
     const result = mealCounts([], MEALS);
-    expect(result.map((r) => r.name)).toEqual(["Chicken", "Fish"]);
+    expect(result.map((r) => r.name)).toEqual(["Chicken", "Beef"]);
   });
 });

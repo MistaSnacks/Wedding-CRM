@@ -50,7 +50,7 @@ export default async function HouseholdDetailPage({
 
   const { data: meals } = await scope.db
     .from("meal_options")
-    .select("id, name, is_kids_meal, sort_order, event_id")
+    .select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n")
     .eq("wedding_id", scope.weddingId)
     .order("sort_order");
   const commHistory = await comms.historyForHousehold(scope, householdId);

@@ -33,7 +33,7 @@ export default async function SeatingPage({
     households.list(scope),
     scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId).eq("event_id", event.id),
     scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId).eq("event_id", event.id),
-    scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
+    scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
   ]);
 
   // Only invite-backed responses reach the canvas: a retained "yes" from a

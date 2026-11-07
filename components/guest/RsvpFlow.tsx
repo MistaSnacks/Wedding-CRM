@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { saveRsvp, rememberLocale } from "@/app/(guest)/rsvp/h/[token]/actions";
 import { openPlusOneSlots } from "@/lib/domain/invitation-rules";
+import { mealName } from "@/lib/domain/meal-name";
 import type { GuestRow, EventRow, MealOptionRow, QuestionRow, ResponseRow, Attending, Locale } from "@/lib/types";
 import type { GuestTableInfo } from "@/app/(guest)/rsvp/h/[token]/page";
 
@@ -336,7 +337,7 @@ export function RsvpFlow(props: {
                                 : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
                             }`}
                           >
-                            {m.name}
+                            {mealName(m, locale)}
                           </button>
                         );
                       })}
@@ -396,7 +397,7 @@ export function RsvpFlow(props: {
                                 : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
                             }`}
                           >
-                            {m.name}
+                            {mealName(m, locale)}
                           </button>
                         );
                       })}
@@ -492,7 +493,7 @@ export function RsvpFlow(props: {
                       {g.first_name} {g.last_name}
                     </span>
                     <span className={`text-[13px] font-medium ${attending ? "text-olive" : "text-rose"}`}>
-                      {attending ? `${t("reviewAttending")}${meal ? ` · ${meal.name}` : ` · ${t("reviewNoMeal")}`}` : t("reviewDeclining")}
+                      {attending ? `${t("reviewAttending")}${meal ? ` · ${mealName(meal, locale)}` : ` · ${t("reviewNoMeal")}`}` : t("reviewDeclining")}
                     </span>
                   </div>
                 );
@@ -507,7 +508,7 @@ export function RsvpFlow(props: {
                         {p.firstName} {p.lastName}
                       </span>
                       <span className="text-[13px] font-medium text-olive">
-                        {t("reviewAttending")}{meal ? ` · ${meal.name}` : ` · ${t("reviewNoMeal")}`}
+                        {t("reviewAttending")}{meal ? ` · ${mealName(meal, locale)}` : ` · ${t("reviewNoMeal")}`}
                       </span>
                     </div>
                   );

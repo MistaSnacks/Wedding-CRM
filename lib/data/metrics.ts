@@ -41,7 +41,7 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
           .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
           .eq("wedding_id", scope.weddingId),
         scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
-        scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id").eq("wedding_id", scope.weddingId),
+        scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
         scope.db.from("seating_tables").select("id").eq("wedding_id", scope.weddingId),
         scope.db.from("seat_assignments").select("guest_id").eq("wedding_id", scope.weddingId),
       ]);
