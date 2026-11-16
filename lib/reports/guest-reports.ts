@@ -62,10 +62,14 @@ export function buildGuestReport(data: ReportData, report: string, eventId?: str
   switch (report) {
     case "guest-list": return { name: "Guest List", rows: rows.map(({ h, g }) => ({
       Household: h.display_name, "First Name": g.first_name, "Last Name": g.last_name, "Age Type": g.age_type,
-      ...Object.fromEntries(data.events.flatMap(e => [
-        [`${e.name} [${e.id}] RSVP`, invites.has(`${h.id}:${e.id}`) ? attending(g.id, e.id) : "not invited"],
-        [`${e.name} [${e.id}] Meal`, meal(g.id, e.id)], [`${e.name} [${e.id}] Table`, table(g.id, e.id)],
-      ])), Dietary: g.dietary_restrictions ?? "", Allergies: g.allergies ?? "", Accessibility: g.accessibility_needs ?? "",
+      ...Object.fromEntries(data.events.flatMap((e, i) => {
+        // Two events with one name still need two sets of columns.
+        const title = data.events.some((other, j) => j !== i && other.name === e.name) ? `${e.name} (${i + 1})` : e.name;
+        return [
+          [`${title} RSVP`, invites.has(`${h.id}:${e.id}`) ? attending(g.id, e.id) : "not invited"],
+          [`${title} Meal`, meal(g.id, e.id)], [`${title} Table`, table(g.id, e.id)],
+        ];
+      })), Dietary: g.dietary_restrictions ?? "", Allergies: g.allergies ?? "", Accessibility: g.accessibility_needs ?? "",
     })) };
     case "households": return { name: "Households", rows: data.hhs.map(h => ({ Household: h.display_name, Contact: h.primary_contact_name ?? "", Email: h.email ?? "", Phone: h.phone ?? "", Guests: h.guests.length, "Max Party": h.max_party_size, "Plus Ones": h.plus_one_slots, Status: h.rsvp_status, Language: h.preferred_locale })) };
     case "rsvp-status": return { name: "RSVP Status", rows: data.hhs.map(h => ({ Household: h.display_name, Status: h.rsvp_status, Guests: h.guests.length })) };

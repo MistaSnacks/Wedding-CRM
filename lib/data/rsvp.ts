@@ -43,7 +43,6 @@ export async function getRsvpContext(scope: WeddingScope, householdId: string) {
       .from("meal_options")
       .select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n")
       .eq("wedding_id", scope.weddingId)
-      .eq("is_active", true)
       .order("sort_order"),
     scope.db
       .from("rsvp_questions")
@@ -85,7 +84,14 @@ export async function getRsvpContext(scope: WeddingScope, householdId: string) {
     guests,
     allEvents,
     events: allEvents.filter((e) => e.rsvp_enabled),
-    meals: results[1].data as MealOptionRow[],
+    // Dishes on offer, plus any hidden dish this household already chose: a
+    // guest who picked Fish before it left the menu must still read "Fish",
+    // not "No meal selected". The form offers a hidden dish only to its owner.
+    meals: (results[1].data as MealOptionRow[]).filter(
+      (m) =>
+        m.is_active ||
+        (results[3].data as ResponseRow[]).some((r) => r.meal_option_id === m.id),
+    ),
     questions: (results[2].data as QuestionRow[]).filter(
       (q) =>
         !q.event_id ||

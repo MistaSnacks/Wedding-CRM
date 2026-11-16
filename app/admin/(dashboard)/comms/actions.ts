@@ -13,12 +13,13 @@ import { processOutbox } from '@/lib/email/outbox';
 import type { HouseholdRow } from '@/lib/types';
 import { normalizeCompose, renderCampaign, type Compose } from '@/lib/domain/campaign-compose';
 
-export type CampaignReview = { token: string; count: number; skippedNames: string[]; previews: Array<{locale:string;subject:string;html:string}> };
+export type CampaignReview = { token: string; count: number; recipientNames: string[]; skippedNames: string[]; previews: Array<{locale:string;subject:string;html:string}> };
 export type SendSummary = { queued: number; skippedNoEmail: number };
 function parseCompose(fd: FormData): Compose { return normalizeCompose(Object.fromEntries(fd)); }
 async function audience(scope: WeddingScope,c:Compose) {
   let targets = await households.search(scope,{filter:c.audience==='not_responded'?'all':c.audience,limit:1000});
-  if(c.audience==='not_responded')targets=targets.filter(h=>['pending','started'].includes(h.rsvp_status));
+  // Delivery drops a reminder to a household that already finished, so the review must not count it.
+  if(c.audience==='not_responded'||c.type==='reminder')targets=targets.filter(h=>['pending','started'].includes(h.rsvp_status));
   if(c.type==='reminder'&&c.audience==='not_responded'){const eligible=new Set((await comms.needsReminder(scope)).map(h=>h.id));targets=targets.filter(h=>!h.email||eligible.has(h.id));}
   const {data:suppressed,error}=await scope.db.from('email_suppressions').select('email').eq('wedding_id',scope.weddingId);
   if(error) throw new Error(error.message);
@@ -36,7 +37,7 @@ export async function reviewCampaign(fd:FormData):Promise<CampaignReview>{
  if(!previews.length)previews.push({locale:'en',...render({access_token:'preview',invite_code:'XXXX-XXXX',preferred_locale:'en'},c)});
  // Queued mail keeps merge fields so delivery writes the day current at send time; the preview shows today's values.
  const wedding=await weddingFactsFor(scope);
- return {token:data.id,count:recipients.length,skippedNames:skipped.map(h=>h.display_name),previews:previews.map(p=>resolveEmail(p,wedding))};
+ return {token:data.id,count:recipients.length,recipientNames:emailable.map(h=>h.display_name),skippedNames:skipped.map(h=>h.display_name),previews:previews.map(p=>resolveEmail(p,wedding))};
 }
 export async function sendTestToMe(fd:FormData):Promise<{previewOnly:boolean}>{
  const admin=await requireEditor();const c=parseCompose(fd);

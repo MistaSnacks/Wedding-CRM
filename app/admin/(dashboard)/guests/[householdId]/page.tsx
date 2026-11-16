@@ -68,6 +68,7 @@ export default async function HouseholdDetailPage({
   const timeZone: string = wedding.data?.timezone ?? "America/Los_Angeles";
 
   const rsvpUrl = `${env().NEXT_PUBLIC_APP_URL}/rsvp/h/${detail.access_token}`;
+  const canEdit = admin.role !== "viewer";
   const invitationType =
     detail.plus_one_slots > 0
       ? "May bring a plus-one"
@@ -156,6 +157,7 @@ export default async function HouseholdDetailPage({
                     mealOptionId={r?.meal_option_id ?? null}
                     meals={(meals ?? []) as MealOptionRow[]}
                     isChild={g.age_type !== "adult"}
+                    canEdit={canEdit}
                   />
                 );
               })}
@@ -170,12 +172,14 @@ export default async function HouseholdDetailPage({
                   <span className="text-muted">No dietary notes</span>
                 )}
               </div>
-              {admin.role !== "viewer" && <GuestEditor guest={g} />}
-              <ConfirmButton
-                label="Remove"
-                confirmLabel="Confirm remove?"
-                action={removeGuest.bind(null, detail.id, g.id)}
-              />
+              {canEdit && <GuestEditor guest={g} />}
+              {canEdit && (
+                <ConfirmButton
+                  label="Remove"
+                  confirmLabel="Confirm remove?"
+                  action={removeGuest.bind(null, detail.id, g.id)}
+                />
+              )}
             </div>
           ))}
 
@@ -194,6 +198,13 @@ export default async function HouseholdDetailPage({
             </>
           )}
 
+          {!canEdit && (
+            <p className="rounded-xl bg-paper px-4 py-3 text-[13px] text-muted">
+              Your access is view-only. Ask an owner on the Team page if you need to make changes.
+            </p>
+          )}
+          {/* A disabled fieldset switches off every field and button inside it. */}
+          <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0">
           <HouseholdEditor
             householdId={detail.id}
             primaryContactName={detail.primary_contact_name}
@@ -209,9 +220,11 @@ export default async function HouseholdDetailPage({
               (detail.mailing_address as MailingAddress | null) ?? null
             }
           />
+          </fieldset>
         </div>
 
         <div className="flex w-full flex-1 flex-col gap-4">
+          <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0">
           <HouseholdEvents
             householdId={detail.id}
             invited={invitedEventIds}
@@ -222,6 +235,7 @@ export default async function HouseholdDetailPage({
               rsvpEnabled: e.rsvp_enabled,
             }))}
           />
+          </fieldset>
 
           <div className="rounded-xl border border-hairline p-5">
             <h2 className="text-[14.5px] font-semibold text-ink">Activity</h2>

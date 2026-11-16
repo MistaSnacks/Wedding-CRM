@@ -106,7 +106,7 @@ it("protects used menus against deletion", async () => {
       wedding,
       meal,
     ]),
-  ).rejects.toThrow(/guest choices/);
+  ).rejects.toThrow(/already chose this dish/);
   await db.exec("rollback to attempt");
 });
 it("uses a shared rate bucket and expires it", async () => {

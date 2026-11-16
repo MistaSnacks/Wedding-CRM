@@ -196,6 +196,12 @@ export function CampaignComposer() {
               </>
             )}
           </p>
+          {review.recipientNames.length > 0 && (
+            <p className="text-[12px] text-muted">
+              To: {review.recipientNames.slice(0, 8).join(", ")}
+              {review.recipientNames.length > 8 && ` and ${review.recipientNames.length - 8} more`}
+            </p>
+          )}
           {skippedShown && skippedShown.length > 0 && (
             <p className="text-[12px] text-muted">
               Skipped: {skippedShown.join(", ")}

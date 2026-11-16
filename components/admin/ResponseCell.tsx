@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { adminSetResponse } from "@/app/admin/(dashboard)/guests/actions";
 import type { Attending, MealOptionRow } from "@/lib/types";
 
@@ -13,19 +13,30 @@ export function ResponseCell(props: {
   mealOptionId: string | null;
   meals: MealOptionRow[];
   isChild: boolean;
+  /** View-only members see the answers but cannot change them. */
+  canEdit?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const locked = pending || props.canEdit === false;
 
   function set(attending: Attending, mealOptionId?: string | null) {
-    startTransition(() =>
-      adminSetResponse(
-        props.householdId,
-        props.guestId,
-        props.eventId,
-        attending,
-        mealOptionId === undefined ? props.mealOptionId : mealOptionId,
-      ),
-    );
+    setError("");
+    startTransition(async () => {
+      // A refused save (view-only access, a lost connection) must not take
+      // the whole page down: say so next to the control instead.
+      try {
+        await adminSetResponse(
+          props.householdId,
+          props.guestId,
+          props.eventId,
+          attending,
+          mealOptionId === undefined ? props.mealOptionId : mealOptionId,
+        );
+      } catch {
+        setError("Not saved. Reload the page and try again.");
+      }
+    });
   }
 
   return (
@@ -34,7 +45,7 @@ export function ResponseCell(props: {
         {props.eventName}
       </p>
       <select
-        disabled={pending}
+        disabled={locked}
         aria-label={`Reply for ${props.eventName}`}
         value={props.attending}
         onChange={(e) => set(e.target.value as Attending)}
@@ -52,7 +63,7 @@ export function ResponseCell(props: {
       </select>
       {props.attending === "yes" && (
         <select
-          disabled={pending}
+          disabled={locked}
           aria-label={`Meal for ${props.eventName}`}
           value={props.mealOptionId ?? ""}
           onChange={(e) => set("yes", e.target.value || null)}
@@ -65,7 +76,9 @@ export function ResponseCell(props: {
             .filter(
               (m) =>
                 (!m.event_id || m.event_id === props.eventId) &&
-                (props.isChild || !m.is_kids_meal),
+                (props.isChild || !m.is_kids_meal) &&
+                // A hidden dish stays only for the guest who already chose it.
+                (m.is_active || m.id === props.mealOptionId),
             )
             .map((m) => (
               <option key={m.id} value={m.id}>
@@ -73,6 +86,11 @@ export function ResponseCell(props: {
               </option>
             ))}
         </select>
+      )}
+      {error && (
+        <p role="alert" className="mt-1 text-[11.5px] font-medium text-rose-deep">
+          {error}
+        </p>
       )}
     </div>
   );

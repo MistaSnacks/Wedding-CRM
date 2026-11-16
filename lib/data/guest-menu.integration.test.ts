@@ -80,4 +80,26 @@ describe("Juliet & Juan guest menu", () => {
     expect((await db.query<{ name_i18n: object }>("select name_i18n from meal_options where id=$1", [vegan])).rows[0].name_i18n)
       .toEqual({});
   });
+
+  it("lets a dish chosen only at the reception become reception-only", async () => {
+    const chicken = await mealId("Chicken");
+    await db.query("select manage_meal_option($1,$2,'Chicken',$3,false,false)", [wedding, chicken, reception]);
+    expect((await db.query<{ event_id: string }>("select event_id from meal_options where id=$1", [chicken])).rows[0].event_id)
+      .toBe(reception);
+  });
+
+  it("refuses to move a dish away from an event where a guest holds it", async () => {
+    const beef = await mealId("Beef");
+    await expect(
+      db.query("select manage_meal_option($1,$2,'Beef',$3,false,false)", [wedding, beef, reception]),
+    ).rejects.toThrow("for another event");
+    expect((await db.query<{ event_id: string | null }>("select event_id from meal_options where id=$1", [beef])).rows[0].event_id)
+      .toBeNull();
+  });
+
+  it("still refuses to remove a dish a guest chose", async () => {
+    await expect(
+      db.query("select manage_meal_option($1,$2,'Beef',null,false,true)", [wedding, await mealId("Beef")]),
+    ).rejects.toThrow("already chose this dish");
+  });
 });

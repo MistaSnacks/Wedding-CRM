@@ -254,7 +254,8 @@ export function RsvpFlow(props: {
           <div key={e.id}>
             <strong>{e.name}</strong>
             {e.starts_at && (
-              <p>
+              // Node and browsers join a Spanish date and time differently.
+              <p suppressHydrationWarning>
                 {new Intl.DateTimeFormat(locale, {
                   dateStyle: "long",
                   timeStyle: "short",
@@ -447,13 +448,17 @@ export function RsvpFlow(props: {
                           }
                         >
                           <option value="">{t("reviewNoMeal")}</option>
-                          {eligibleMeals(props.meals, e.id, g.age_type).map(
-                            (m) => (
+                          {eligibleMeals(props.meals, e.id, g.age_type)
+                            .filter(
+                              (m) =>
+                                m.is_active ||
+                                m.id === g.responses[e.id]?.meal_option_id,
+                            )
+                            .map((m) => (
                               <option value={m.id} key={m.id}>
                                 {mealName(m, locale)}
                               </option>
-                            ),
-                          )}
+                            ))}
                         </select>
                       </label>
                     ))}

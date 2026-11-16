@@ -1,5 +1,6 @@
 "use server";
 
+import { freeTableSpot } from "@/lib/domain/table-spot";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { requireEditor } from "@/lib/admin-auth";
@@ -67,13 +68,19 @@ export async function createTable(
       throw new Error("Choose a round, long or head table.");
     for (const n of [place?.posX, place?.posY])
       if (n !== undefined && !Number.isFinite(n)) throw new Error("Invalid table position");
-    const row = await seating.upsertTable(forWedding(admin.weddingId), {
+    const scope = forWedding(admin.weddingId);
+    // The 3D venue sends the spot she tapped. The list forms send none, so
+    // the table takes the first free cell instead of the top-left corner.
+    const spot =
+      place?.posX !== undefined && place?.posY !== undefined
+        ? { posX: place.posX, posY: place.posY }
+        : freeTableSpot(await seating.listTables(scope, eventId));
+    const row = await seating.upsertTable(scope, {
       eventId,
       name,
       capacity,
       shape,
-      posX: place?.posX,
-      posY: place?.posY,
+      ...spot,
     });
     revalidateSeating();
     return { ok: true, id: row.id };

@@ -203,6 +203,13 @@ export function EventForm({
             note="Just part of the weekend"
           />
         </div>
+        {isNew && rsvp && everyone && (
+          <p className="mt-2.5 max-w-[52ch] rounded-lg bg-paper px-3.5 py-2.5 text-[12.5px] leading-relaxed text-[#4a5147]">
+            Every household gets a new question on its RSVP page. A household that already finished shows as
+            &ldquo;Partly replied&rdquo; until it answers for this event. No email goes out; send a reminder from
+            Emails when you want guests to come back.
+          </p>
+        )}
         {!rsvp && repliedHouseholds > 0 && (
           <p className="mt-2.5 max-w-[52ch] rounded-lg border border-blush-border bg-blush px-3.5 py-2.5 text-[12.5px] leading-relaxed text-rose-deep">
             {repliedHouseholds === 1

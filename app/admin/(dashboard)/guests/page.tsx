@@ -61,7 +61,7 @@ export default async function GuestsPage({
         <h1 className="flex-1 text-[22px] font-semibold text-ink">Guests</h1>
       </div>
 
-      {params.new === "1" && <NewHouseholdForm />}
+      {params.new === "1" && admin.role !== "viewer" && <NewHouseholdForm />}
 
       <div className="flex flex-wrap gap-1.5 max-md:flex-nowrap max-md:overflow-x-auto max-md:pb-1">
         {FILTERS.map((f) => (

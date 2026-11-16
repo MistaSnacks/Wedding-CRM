@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { saveMeal } from "@/app/admin/(dashboard)/meals/actions";
+import { saveMeal, setMealShown } from "@/app/admin/(dashboard)/meals/actions";
 import type { MealNameTranslations } from "@/lib/types";
 
 type Meal = {
@@ -23,7 +23,7 @@ export function MenuEditor({ meals, events }: { meals: Meal[]; events: Array<{ i
     if (pending) return;
     start(async () => {
       try {
-        const result = await saveMeal(form);
+        const result = form.has("shown") ? await setMealShown(form) : await saveMeal(form);
         setMessage({ ok: result.ok, text: result.message });
       } catch {
         setMessage({ ok: false, text: "Please reload to check the menu before you try again." });
@@ -43,8 +43,8 @@ export function MenuEditor({ meals, events }: { meals: Meal[]; events: Array<{ i
       </summary>
       <p className="mt-3 max-w-2xl text-[13px] leading-relaxed text-muted">
         Guests choose from these dishes when they reply. You can rename a dish at any time. A dish that a guest already
-        picked cannot be removed; add a new one instead. A renamed dish shows its new English name to every guest until
-        its Spanish and Vietnamese names are added again.
+        picked cannot be removed; hide it instead, and those guests keep their choice. A renamed dish shows its new
+        English name to every guest until its Spanish and Vietnamese names are added again.
       </p>
       {message && (
         <p
@@ -106,6 +106,16 @@ export function MenuEditor({ meals, events }: { meals: Meal[]; events: Array<{ i
                     className="rounded-lg px-2 py-2 text-[13px] font-medium text-rose-deep underline-offset-2 hover:underline disabled:opacity-50"
                   >
                     Remove
+                  </button>
+                )}
+                {m.id && (
+                  <button
+                    name="shown"
+                    value={m.is_active ? "false" : "true"}
+                    disabled={pending}
+                    className="rounded-lg px-2 py-2 text-[13px] font-medium text-olive-deep underline-offset-2 hover:underline disabled:opacity-50"
+                  >
+                    {m.is_active ? "Hide from guests" : "Show to guests"}
                   </button>
                 )}
                 {!m.is_active && <span className="text-[12.5px] text-muted">Hidden from guests</span>}

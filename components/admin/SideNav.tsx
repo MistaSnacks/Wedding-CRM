@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-type NavItem = { href: string; label: string; icon: ReactNode; ownerOnly?: boolean };
+type NavItem = { href: string; label: string; icon: ReactNode; ownerOnly?: boolean; editorOnly?: boolean };
 type NavGroup = { heading: string | null; items: NavItem[] };
 
 /*
@@ -58,6 +58,7 @@ const GROUPS: NavGroup[] = [
       {
         href: "/admin/events",
         label: "Events & dates",
+        editorOnly: true,
         icon: (
           <>
             <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
@@ -205,7 +206,9 @@ export function SideNav({
   return (
     <nav aria-label="Planning sections" className={`flex flex-col ${collapsed ? "items-center gap-2" : "gap-4"}`}>
       {GROUPS.map((group, index) => {
-        const items = group.items.filter((item) => !item.ownerOnly || role === "owner");
+        const items = group.items.filter(
+          (item) => (!item.ownerOnly || role === "owner") && (!item.editorOnly || role !== "viewer"),
+        );
         if (!items.length) return null;
         return (
           <div key={group.heading ?? "top"} className={`flex flex-col gap-0.5 ${collapsed ? "items-center" : ""}`}>

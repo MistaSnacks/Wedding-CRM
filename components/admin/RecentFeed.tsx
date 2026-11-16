@@ -69,7 +69,7 @@ export function RecentFeed({ items }: { items: FeedItem[] }) {
                 {badge.label}
               </span>
             )}
-            <span className="w-[72px] flex-shrink-0 text-right text-[12px] text-muted">{timeAgo(item.created_at)}</span>
+            <span suppressHydrationWarning className="w-[72px] flex-shrink-0 text-right text-[12px] text-muted">{timeAgo(item.created_at)}</span>
           </motion.div>
         );
       })}

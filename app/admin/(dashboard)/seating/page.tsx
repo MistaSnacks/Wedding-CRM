@@ -22,7 +22,9 @@ export default async function SeatingPage({
   const allEvents = data.events;
   const event =
     allEvents.find((e) => e.id === params.event) ??
-    allEvents[allEvents.length - 1];
+    // Open on the event she already started seating, not on an empty one.
+    allEvents.find((e) => data.tables.some((t) => t.event_id === e.id)) ??
+    allEvents[0];
   if (!event) return <p>Create an event before arranging seating.</p>;
   const tables = data.tables.filter((t) => t.event_id === event.id);
   const assignments = data.seats.filter((a) => a.event_id === event.id);
