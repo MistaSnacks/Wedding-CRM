@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SheetAccessError, csvReader, parseCsv, rowKey, rowsFromValues } from "./sheet";
+import { SheetAccessError, parseSubmission, csvReader, parseCsv, rowKey, rowsFromValues } from "./sheet";
 
 const CSV = `Received At,First Name,Last Name,Mailing Address,Email,Phone,Notes,No Mailing Address,Language
 6/27/2026 11:30,Camren,McMath,8829 E E ST,cmcmath89@gmail.com,2066736606,I would like a plus 1 if possible,,
@@ -68,4 +68,9 @@ describe("rowsFromValues", () => {
   it("returns nothing for an empty grid", () => {
     expect(rowsFromValues([])).toEqual([]);
   });
+});
+
+it('does not treat a negated or ambiguous free-text opt-out as a decline', () => {
+ expect(parseSubmission({'First Name':'Beth','Last Name':'B',Notes:'Please do not opt out; I will attend.'}).optOut).toBe(false);
+ expect(parseSubmission({'First Name':'Beth','Last Name':'B',Notes:'Please opt out'}).optOut).toBe(true);
 });

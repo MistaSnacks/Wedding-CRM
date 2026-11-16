@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "npm test && npm run build",
+    "test:db": "vitest run lib/data/*integration.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -20,17 +22,18 @@
     "framer-motion": "^12.42.2",
     "jose": "^6.2.3",
     "nanoid": "^5.1.16",
-    "next": "16.2.10",
+    "next": "^16.3.4",
     "next-intl": "^4.13.1",
     "papaparse": "^5.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.16.0",
     "three": "^0.185.1",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",

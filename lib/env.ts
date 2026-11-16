@@ -21,7 +21,7 @@ const schema = z.object({
   SAVE_THE_DATE_RANGE: z.string().default("Save My Spot!A:Z"),
   /** Shared secret for the Vercel cron GET. */
   CRON_SECRET: z.string().optional(),
-  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3006"),
   /** Where the RSVP confirmation sends guests who asked for hotel recommendations —
    *  the public wedding site, not this app. Point it at an anchor once the site has one. */
   HOTEL_RECS_URL: z.string().url().default("https://www.julietandjuan.com/details"),
@@ -32,7 +32,7 @@ let cached: z.infer<typeof schema> | null = null;
 /** Lazily-validated env. Throws with a readable message on first server use. */
 export function env(): z.infer<typeof schema> {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(Object.fromEntries(Object.entries(process.env).filter(([, value]) => value?.trim() !== "")));
   if (!parsed.success) {
     const missing = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(`Missing/invalid environment variables: ${missing}`);

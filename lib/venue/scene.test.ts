@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import * as THREE from "three";
 import {
   buildFurniture,
@@ -8,6 +8,10 @@ import {
   styleFurniture,
 } from "./scene";
 import { initialTables } from "./model";
+
+// These tests build the whole room in geometry. Alone they take about two
+// seconds; beside 70 other test files on a busy machine they passed 5 s.
+vi.setConfig({ testTimeout: 30_000 });
 it("keeps verified dimensions and inferred geometry identifiable in the model", () => {
   const shell = buildShell();
   expect(shell.userData.widthMetres).toBe(28);

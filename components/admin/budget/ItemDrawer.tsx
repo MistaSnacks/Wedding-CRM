@@ -53,6 +53,8 @@ export function ItemDrawer(props: {
   pending: boolean;
   /** `null` until the detail read lands. */
   detail: ItemDetail | null;
+  detailError: string | null;
+  onRetryDetail: () => void;
   flags: (field: CostField) => CellFlags;
   onCommitCost: (field: CostField, raw: string) => void;
   onClearError: (field: CostField) => void;
@@ -68,7 +70,7 @@ export function ItemDrawer(props: {
     notes?: string | null;
   }) => void;
   onDelete: () => Promise<void>;
-  onAddPayment: (values: { label: string; amount: string; dueDate: string | null }) => void;
+  onAddPayment: (values: { label: string; amount: string; dueDate: string | null; operationId: string }) => Promise<boolean>;
   onSplitDeposit: (values: { total: string; deposit: string; depositDue: string | null; balanceDue: string | null }) => void;
   onSetPaymentPaid: (paymentId: string, paid: boolean) => void;
   onPatchPayment: (
@@ -94,6 +96,14 @@ export function ItemDrawer(props: {
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      if (event.key === "Tab" && panel.current) {
+        const nodes = Array.from(panel.current.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex="0"]')).filter(n => n.getClientRects().length);
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        if (!first) { event.preventDefault(); return; }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !panel.current.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+        return;
+      }
       if (event.key !== "Escape") return;
       // A field that already handled Escape calls preventDefault to revert
       // itself, and React forwards that to the native event. Without this
@@ -171,6 +181,7 @@ export function ItemDrawer(props: {
           </button>
         </header>
 
+        {props.detailError && <p role="alert" className="rounded-lg bg-blush p-3 text-sm text-rose-deep">{props.detailError} <button type="button" onClick={props.onRetryDetail} className="underline">Retry details</button></p>}
         <section className="flex flex-col gap-2">
           <span className={label}>WHAT IT COSTS</span>
           <div className="grid grid-cols-4 gap-2">
@@ -249,8 +260,7 @@ export function ItemDrawer(props: {
               onChange={(event) => props.onPatchItem({ currency: event.target.value })}
               className={field}
             >
-              <option value="USD">USD</option>
-              <option value="MXN">MXN</option>
+              {[...new Set([item.currency, props.currency, "USD", "MXN", "CAD", "EUR", "GBP", "VND"])].map(code => <option key={code} value={code}>{code}</option>)}
             </select>
           ) : (
             <span className="text-[13.5px] text-[#4a5147]">{item.currency}</span>
@@ -330,8 +340,12 @@ function BlurText(props: {
   const [focused, setFocused] = useState(false);
   const skip = useRef(false);
 
+  const receivedValue = useRef(props.value);
   useEffect(() => {
-    if (!focused) setDraft(props.value);
+    if (receivedValue.current !== props.value) {
+      receivedValue.current = props.value;
+      if (!focused) setDraft(props.value);
+    }
   }, [props.value, focused]);
 
   return (
@@ -406,8 +420,12 @@ function BlurTextArea(props: { value: string; disabled: boolean; onCommit: (valu
   const [draft, setDraft] = useState(props.value);
   const [focused, setFocused] = useState(false);
 
+  const receivedValue = useRef(props.value);
   useEffect(() => {
-    if (!focused) setDraft(props.value);
+    if (receivedValue.current !== props.value) {
+      receivedValue.current = props.value;
+      if (!focused) setDraft(props.value);
+    }
   }, [props.value, focused]);
 
   return (

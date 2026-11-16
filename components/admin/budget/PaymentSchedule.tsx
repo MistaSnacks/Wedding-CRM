@@ -30,7 +30,7 @@ export function PaymentSchedule(props: {
   defaultBalanceDue: string | null;
   /** Receipt links by payment id, once the drawer's detail read has landed. */
   receiptUrls: Record<string, string | null> | null;
-  onAdd: (values: { label: string; amount: string; dueDate: string | null }) => void;
+  onAdd: (values: { label: string; amount: string; dueDate: string | null; operationId: string }) => Promise<boolean>;
   onSplit: (values: { total: string; deposit: string; depositDue: string | null; balanceDue: string | null }) => void;
   onSetPaid: (paymentId: string, paid: boolean) => void;
   onPatch: (
@@ -49,18 +49,26 @@ export function PaymentSchedule(props: {
 
   const suggestion = NEXT_LABEL[Math.min(payments.length, NEXT_LABEL.length - 1)];
 
-  function add() {
-    if (amount.trim() === "") return;
+  const submitting = useRef(false);
+  const [adding, setAdding] = useState(false);
+  const operation = useRef<{ fingerprint: string; id: string } | null>(null);
+  async function add() {
+    if (props.pending || submitting.current || amount.trim() === "") return;
+    submitting.current = true; setAdding(true);
+    const fingerprint = JSON.stringify([label, amount, due]);
+    if (operation.current?.fingerprint !== fingerprint) operation.current = { fingerprint, id: crypto.randomUUID() };
     const values = {
       label: label.trim() === "" ? suggestion : label.trim(),
       amount,
       dueDate: due === "" ? null : due,
+      operationId: operation.current.id,
     };
-    setLabel("");
-    setAmount("");
-    setDue("");
-    props.onAdd(values);
-    labelInput.current?.focus();
+    try {
+      if (await props.onAdd(values)) {
+        setLabel(""); setAmount(""); setDue(""); operation.current = null;
+        labelInput.current?.focus();
+      }
+    } finally { submitting.current = false; setAdding(false); }
   }
 
   const scheduled = payments.reduce((sum, p) => sum + p.amount_cents, 0);
@@ -107,6 +115,7 @@ export function PaymentSchedule(props: {
       {props.canEdit && (
         <div className="flex flex-wrap items-center gap-2">
           <input
+            disabled={props.pending || adding}
             ref={labelInput}
             value={label}
             aria-label="Name of the new payment"
@@ -115,6 +124,7 @@ export function PaymentSchedule(props: {
             className={`${field} min-w-0 flex-1 basis-[130px]`}
           />
           <input
+            disabled={props.pending || adding}
             value={amount}
             inputMode="decimal"
             aria-label="Amount of the new payment"
@@ -129,6 +139,7 @@ export function PaymentSchedule(props: {
             className={`${field} w-[92px] shrink-0 text-right tabular-nums`}
           />
           <input
+            disabled={props.pending || adding}
             type="date"
             value={due}
             aria-label="Due date of the new payment"
@@ -138,7 +149,7 @@ export function PaymentSchedule(props: {
           <button
             type="button"
             onClick={add}
-            disabled={props.pending || amount.trim() === ""}
+            disabled={props.pending || adding || amount.trim() === ""}
             className="shrink-0 rounded-lg border border-[#dddbd0] bg-white px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose disabled:opacity-40 disabled:hover:border-[#dddbd0] disabled:hover:text-ink motion-reduce:transition-none"
           >
             + Add

@@ -1,4 +1,8 @@
-import { defaultScope } from "@/lib/data/scope";
+import { forWedding } from "@/lib/data/scope";
+import { requireAdmin } from "@/lib/admin-auth";
+import { AutomationSettings } from "@/components/admin/AutomationSettings";
+import { reminderHtml } from "@/lib/email/send";
+import { weddingFactsFor } from "@/lib/data/wedding-public";
 import * as comms from "@/lib/data/comms";
 import { CampaignComposer } from "@/components/admin/CampaignComposer";
 
@@ -11,32 +15,46 @@ const STATUS_COLORS: Record<string, string> = {
   opened: "text-olive-deep",
   bounced: "text-rose",
   failed: "text-rose",
+  skipped: "text-muted",
+  suppressed: "text-rose",
 };
 
 export default async function CommsPage() {
-  const scope = defaultScope();
+  const admin = await requireAdmin();
+  const scope = forWedding(admin.weddingId);
   const needReminder = await comms.needsReminder(scope);
 
-  const { data: history } = await scope.db
+  const { data: history, error: historyError } = await scope.db
     .from("communications")
     .select("id, type, channel, subject, sent_at, communication_recipients(status)")
     .eq("wedding_id", scope.weddingId)
     .order("sent_at", { ascending: false })
     .limit(20);
 
+  if(historyError)throw new Error(historyError.message);
+  const [settings, issues, queued, automationRun, wedding] = await Promise.all([
+    scope.db.from("automation_settings").select("*").eq("wedding_id",scope.weddingId).maybeSingle(),
+    scope.db.from("email_outbox").select("id,recipient,state,last_error,household_id").eq("wedding_id",scope.weddingId).in("state",["failed","suppressed"]).is("resolved_at",null).order("created_at",{ascending:false}).limit(50),
+    scope.db.from("email_outbox").select("id",{count:"exact",head:true}).eq("wedding_id",scope.weddingId).in("state",["pending","processing"]),
+    scope.db.from("automation_runs").select("state,started_at,finished_at,error").eq("wedding_id",scope.weddingId).order("started_at",{ascending:false}).limit(1).maybeSingle(),
+    // The previews show the real wedding day and reply-by date, not merge fields.
+    weddingFactsFor(scope),
+  ]);
+  for(const r of [settings,issues,queued,automationRun])if(r.error)throw new Error(r.error.message);
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-semibold text-ink">Communications</h1>
+        <h1 className="text-[22px] font-semibold text-ink">Emails to guests</h1>
         <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
-          {needReminder.length} households could use a reminder (no RSVP, none sent in 7 days)
+          {needReminder.length} {needReminder.length === 1 ? "household has" : "households have"} not finished replying and got no email in the last 7 days
         </p>
       </div>
 
-      <CampaignComposer />
+      {admin.role !== "viewer" && <CampaignComposer />}
+      <AutomationSettings health={automationRun.data} settings={settings.data} issues={issues.data??[]} queued={queued.count??0} canEdit={admin.role!=="viewer"} previews={["en","es","vi"].map(locale=>({locale,html:reminderHtml({accessToken:"preview",locale,wedding}).html}))}/>
 
       <div className="rounded-xl border border-hairline p-5">
-        <h2 className="text-[14.5px] font-semibold text-ink">History</h2>
+        <h2 className="text-[14.5px] font-semibold text-ink">Sent so far</h2>
         <div className="mt-2 flex flex-col">
           {(history ?? []).map((c) => {
             const recipients = (c.communication_recipients ?? []) as Array<{ status: string }>;

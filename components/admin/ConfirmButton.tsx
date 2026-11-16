@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { unstable_rethrow } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 /** Two-click destructive button: first click arms it, second click fires. Re-disarms after 4s. */
@@ -9,6 +11,8 @@ export function ConfirmButton(props: {
   action: () => Promise<void>;
   variant?: "subtle" | "danger";
 }) {
+  const router = useRouter();
+  const [error,setError] = useState("");
   const [armed, setArmed] = useState(false);
   const [pending, startTransition] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -21,6 +25,8 @@ export function ConfirmButton(props: {
   }, []);
 
   function handleClick() {
+    if(pending) return;
+    setError("");
     if (!armed) {
       setArmed(true);
       timer.current = setTimeout(() => setArmed(false), 4000);
@@ -29,7 +35,7 @@ export function ConfirmButton(props: {
     if (timer.current) clearTimeout(timer.current);
     setArmed(false);
     startTransition(async () => {
-      await props.action();
+      try { await props.action(); } catch(e) { unstable_rethrow(e); setError("Could not confirm this change. Refreshing the saved list before you retry."); router.refresh(); }
     });
   }
 
@@ -47,8 +53,8 @@ export function ConfirmButton(props: {
         : "text-muted hover:text-rose";
 
   return (
-    <button type="button" onClick={handleClick} disabled={pending} className={`${base} ${tone} ${pending ? "opacity-50" : ""}`}>
+    <span className="inline-flex flex-col items-start gap-1"><button type="button" onClick={handleClick} disabled={pending} className={`${base} ${tone} ${pending ? "opacity-50" : ""}`}>
       {pending ? "…" : armed ? props.confirmLabel : props.label}
-    </button>
+    </button>{error && <span role="alert" className="max-w-64 text-xs text-rose-deep">{error}</span>}</span>
   );
 }

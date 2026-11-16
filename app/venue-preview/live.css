@@ -1,0 +1,1292 @@
+.vl {
+  --vl-ink: #1f261d;
+  --vl-muted: #5e6659;
+  --vl-panel: rgba(250, 248, 241, 0.86);
+  --vl-line: rgba(40, 48, 35, 0.12);
+  --vl-accent: #3b4823;
+  --vl-gold: #b98c45;
+  position: relative;
+  min-height: 100svh;
+  background: #1a1f24;
+  color: var(--vl-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  overflow: hidden;
+}
+.vl-stage,
+.vl-labels {
+  position: fixed;
+  inset: 0;
+}
+.vl-stage {
+  cursor: grab;
+}
+.vl-stage:active {
+  cursor: grabbing;
+}
+.vl-labels {
+  pointer-events: none;
+  z-index: 2;
+}
+.vl-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 11px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(252, 250, 244, 0.86);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  font: inherit;
+  color: var(--vl-ink);
+  cursor: pointer;
+  white-space: nowrap;
+  will-change: transform;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.vl-label-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.05;
+}
+.vl-label-count {
+  font-size: 11px;
+  color: var(--vl-muted);
+  letter-spacing: 0.02em;
+}
+.vl-label.is-full .vl-label-count {
+  color: var(--vl-accent);
+  font-weight: 600;
+}
+.vl-label.is-hovered,
+.vl-label:hover {
+  background: #fffaf0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+.vl-label.is-selected {
+  background: var(--vl-accent);
+  border-color: var(--vl-accent);
+  color: #fff;
+}
+.vl-label.is-selected .vl-label-count {
+  color: #e7ecd9;
+}
+.vl-label:focus-visible,
+.vl button:focus-visible,
+.vl a:focus-visible,
+.vl input:focus-visible {
+  outline: 3px solid #e3b766;
+  outline-offset: 2px;
+}
+
+.vl-top {
+  position: fixed;
+  z-index: 3;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  pointer-events: none;
+}
+.vl-top > * {
+  pointer-events: auto;
+}
+.vl-back,
+.vl-title,
+.vl-badge,
+.vl-dock,
+.vl-sheet,
+.vl-hover {
+  background: var(--vl-panel);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 30px rgba(10, 14, 10, 0.18);
+}
+.vl-back {
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: var(--vl-ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.vl-title {
+  border-radius: 18px;
+  padding: 12px 18px 12px;
+}
+.vl-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--vl-muted);
+  font-weight: 600;
+}
+.vl-title h1 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+}
+.vl-sub {
+  margin: 4px 0 0;
+  color: var(--vl-muted);
+  font-size: 13px;
+}
+.vl-top-right {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.vl-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.vl-top-actions button {
+  background: var(--vl-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 18px rgba(10, 14, 10, 0.16);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.vl-badge {
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.vl-badge.is-sample {
+  background: rgba(253, 236, 226, 0.92);
+  color: #7a3f2f;
+}
+.vl-badge.is-live {
+  color: var(--vl-accent);
+}
+
+.vl-dock {
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(1120px, calc(100vw - 32px));
+  border-radius: 22px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto minmax(170px, 240px);
+  gap: 12px 18px;
+  align-items: end;
+}
+.vl-dock-top {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--vl-line);
+}
+.vl-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.vl-tools button,
+.vl-top-actions button,
+.vl-btn-row button,
+.vl-arrange button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--vl-line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--vl-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vl-tools button.is-on,
+.vl-top-actions button.is-on {
+  background: var(--vl-accent);
+  border-color: var(--vl-accent);
+  color: #fff;
+}
+.vl-tools button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.vl-tools button.vl-quiet {
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  font-weight: 500;
+}
+.vl-views {
+  display: flex;
+  gap: 8px;
+}
+.vl-views {
+  flex-wrap: wrap;
+}
+.vl-views button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 84px;
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--vl-line);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--vl-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vl-views button.is-on {
+  background: var(--vl-accent);
+  border-color: var(--vl-accent);
+  color: #fff;
+}
+.vl-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vl-muted);
+}
+.vl-row strong {
+  color: var(--vl-ink);
+}
+.vl-ends {
+  font-weight: 500;
+  font-size: 12px;
+}
+.vl-time {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vl-time input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 34px;
+  background: transparent;
+  cursor: pointer;
+}
+.vl-time input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8fb7d8, #f3c27a 45%, #e0794a 62%, #3b3f6b 82%, #10162b);
+}
+.vl-time input[type="range"]::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8fb7d8, #f3c27a 45%, #e0794a 62%, #3b3f6b 82%, #10162b);
+}
+.vl-time input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 30px;
+  height: 30px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--vl-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.vl-time input[type="range"]::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--vl-accent);
+}
+.vl-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vl-chips {
+  display: flex;
+  gap: 6px;
+}
+.vl-chips button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vl-ink);
+  cursor: pointer;
+}
+.vl-chips button.is-on {
+  border-color: var(--vl-accent);
+  background: #fff;
+}
+.vl-swatch {
+  display: flex;
+}
+.vl-swatch i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-left: -4px;
+  border: 1.5px solid #fff;
+}
+.vl-swatch i:first-child {
+  margin-left: 0;
+}
+.vl-find {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vl-find label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vl-muted);
+}
+.vl-find input {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--vl-line);
+  background: #fff;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+}
+.vl-results {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+.vl-results button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vl-results button:hover {
+  background: #f3f1e8;
+}
+.vl-results span {
+  color: var(--vl-muted);
+}
+.vl-none {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.vl-hover {
+  position: fixed;
+  z-index: 4;
+  pointer-events: none;
+  max-width: 260px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.vl-hover strong {
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+.vl-hover ul {
+  margin: 6px 0 4px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.vl-hover small {
+  color: var(--vl-muted);
+}
+
+.vl-sheet {
+  position: fixed;
+  z-index: 5;
+  top: 120px;
+  right: 16px;
+  width: 300px;
+  max-height: calc(100svh - 300px);
+  overflow: auto;
+  border-radius: 20px;
+  padding: 16px 18px 18px;
+}
+.vl-sheet-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vl-sheet h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.05;
+}
+.vl-sheet-head p {
+  margin: 4px 0 0;
+  color: var(--vl-muted);
+  font-size: 14px;
+}
+.vl-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--vl-line);
+  background: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.vl-guests {
+  margin: 12px 0 14px;
+  padding-left: 22px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.vl-empty {
+  margin: 12px 0;
+  color: var(--vl-muted);
+}
+.vl-sheet-link {
+  display: inline-block;
+  color: var(--vl-accent);
+  font-weight: 600;
+}
+
+.vl-progress {
+  position: fixed;
+  z-index: 4;
+  top: 132px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  min-width: 260px;
+  padding: 10px 16px 14px;
+  border-radius: 14px;
+  background: var(--vl-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  overflow: hidden;
+}
+.vl-progress i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--vl-gold);
+  transition: width 0.3s;
+}
+.vl-progress.is-failed {
+  background: rgba(253, 236, 226, 0.95);
+  color: #7a3f2f;
+}
+.vl-status {
+  position: fixed;
+  z-index: 3;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 250px;
+  margin: 0;
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(20, 24, 18, 0.62);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  pointer-events: none;
+}
+.vl[data-view="floorplan"] .vl-status,
+.vl-status:empty {
+  display: none;
+}
+.vl-walk {
+  position: fixed;
+  z-index: 3;
+  left: 16px;
+  bottom: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vl-walk p {
+  display: none;
+}
+.vl-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  gap: 6px;
+}
+.vl-pad button {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: var(--vl-panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--vl-ink);
+  font-size: 20px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.vl-pad button:active {
+  background: var(--vl-accent);
+  color: #fff;
+}
+.vl-plan {
+  position: fixed;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 150px 24px 260px;
+  background: rgba(238, 234, 222, 0.94);
+}
+.vl-plan svg.venue-plan {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 31 / 32;
+  touch-action: none;
+  user-select: none;
+}
+.vl-plan-hint {
+  margin: 8px 0 0;
+  color: var(--vl-muted);
+  font-size: 13px;
+}
+.vl[data-view="guest"] .vl-note,
+.vl[data-view="garden"] .vl-note,
+.vl[data-view="evening"] .vl-note,
+.vl[data-view="floorplan"] .vl-note {
+  display: none;
+}
+.vl[data-view="floorplan"] .vl-labels {
+  display: none;
+}
+.vl[data-arrange] .vl-stage {
+  cursor: move;
+}
+.vl-panel {
+  position: fixed;
+  z-index: 5;
+  top: 132px;
+  left: 16px;
+  width: 320px;
+  max-height: calc(100svh - 400px);
+  min-height: 240px;
+  overflow: auto;
+  border-radius: 20px;
+  padding: 16px 18px 18px;
+  background: var(--vl-panel);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 30px rgba(10, 14, 10, 0.18);
+}
+.vl-panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+.vl-panel-search {
+  width: 100%;
+  height: 44px;
+  margin: 12px 0 8px;
+  border-radius: 12px;
+  border: 1px solid var(--vl-line);
+  background: #fff;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+}
+.vl-tables,
+.vl-tables ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.vl-tables > li {
+  border-bottom: 1px solid var(--vl-line);
+  padding: 6px 0;
+}
+.vl-tables > li.is-selected .vl-table-head {
+  color: var(--vl-accent);
+}
+.vl-tables button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  color: var(--vl-ink);
+  text-align: left;
+  cursor: pointer;
+}
+.vl-tables button:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+.vl-table-head strong {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+.vl-table-head span {
+  color: var(--vl-muted);
+  font-size: 13px;
+}
+.vl-tables ul button {
+  min-height: 32px;
+  padding-left: 14px;
+  font-size: 14px;
+}
+.vl-photos {
+  width: 420px;
+}
+.vl-photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vl-photo-grid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.vl-arrange {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.vl-arrange p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--vl-muted);
+}
+.vl-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vl-link {
+  margin-top: 8px;
+  padding: 0 !important;
+  min-height: 32px !important;
+  border: 0 !important;
+  background: none !important;
+  color: var(--vl-accent) !important;
+  text-decoration: underline;
+}
+.venue-tour-target {
+  box-shadow:
+    0 0 0 3px #c39655,
+    0 0 0 8px #c3965544 !important;
+  border-radius: 12px;
+}
+.vl-stage.venue-tour-target {
+  box-shadow: inset 0 0 0 4px #c39655 !important;
+}
+.venue-tour {
+  position: fixed;
+  z-index: 1100;
+  width: min(320px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  border-radius: 12px;
+  background: #384e3f;
+  color: #fff;
+  box-shadow: 0 14px 34px #18271955;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.venue-tour::before {
+  content: "";
+  position: absolute;
+  left: var(--arrow, 40px);
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  background: #384e3f;
+  transform: rotate(45deg);
+}
+.venue-tour.is-bottom::before {
+  top: -7px;
+}
+.venue-tour.is-top::before {
+  bottom: -7px;
+}
+.venue-tour.is-inside::before {
+  display: none;
+}
+.venue-tour strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.venue-tour p {
+  margin: 0 0 12px;
+  color: #e8eee6;
+}
+.venue-tour-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #c6d2c5;
+}
+.venue-tour-foot > div {
+  display: flex;
+  gap: 6px;
+}
+.venue-tour button {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.venue-tour button.venue-tour-skip {
+  background: transparent;
+  color: #d5dfd3;
+}
+.venue-tour button.venue-tour-next {
+  background: #fff;
+  color: #2c3c32;
+  font-weight: 600;
+}
+.vl-note {
+  position: fixed;
+  z-index: 2;
+  left: 16px;
+  bottom: 250px;
+  max-width: 320px;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 10px;
+  /* The floor under this note runs from sunlit white to night; a dark plate
+     keeps the small print readable on both. */
+  background: rgba(22, 27, 22, 0.58);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+}
+.vl-loading span {
+  animation: vl-pulse 1.6s ease-in-out infinite;
+}
+@keyframes vl-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+.vl-loading,
+.vl-failed {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  background: #e9e3d6;
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--vl-ink);
+}
+.vl-failed {
+  place-items: start;
+  overflow: auto;
+  padding: 120px 24px 24px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+}
+
+@media (max-width: 1100px) {
+  .vl-dock {
+    grid-template-columns: 1fr 1fr;
+  }
+  .vl-find {
+    grid-column: 1 / -1;
+  }
+  .vl-note,
+  .vl-walk,
+  .vl-status {
+    bottom: 330px;
+  }
+}
+
+/* Phone: the room sits on top, the controls scroll below it. */
+@media (max-width: 760px) {
+  .vl {
+    overflow: visible;
+    background: #f4f1e8;
+  }
+  .vl-stage,
+  .vl-labels {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 62svh;
+  }
+  .vl-labels {
+    overflow: hidden;
+  }
+  .vl-label {
+    padding: 3px 8px 4px;
+  }
+  .vl-label-name {
+    font-size: 13px;
+  }
+  .vl-label-count {
+    font-size: 10px;
+  }
+  .vl-top {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .vl-back {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .vl-title {
+    padding: 8px 12px;
+    border-radius: 14px;
+  }
+  .vl-title h1 {
+    font-size: 22px;
+  }
+  .vl-eyebrow {
+    display: none;
+  }
+  .vl-sub {
+    font-size: 12px;
+  }
+  .vl-badge {
+    margin-left: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .vl-note {
+    position: static;
+    max-width: none;
+    padding: 4px 16px 24px;
+    color: var(--vl-muted);
+    text-shadow: none;
+  }
+  .vl-dock {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    margin: calc(62svh - 18px) 0 0;
+    width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 16px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    background: #faf8f1;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .vl-views {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+  .vl-views button {
+    min-width: 0;
+  }
+  .vl-dock-top {
+    padding-bottom: 14px;
+  }
+  .vl-tools {
+    width: 100%;
+  }
+  .vl-tools button {
+    flex: 1;
+  }
+  .vl-top-right {
+    margin-left: 0;
+    align-items: flex-start;
+  }
+  .vl-top-actions {
+    justify-content: flex-start;
+  }
+  .vl-top-actions button {
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .vl-progress {
+    position: absolute;
+    top: calc(62svh - 70px);
+  }
+  .vl-status {
+    position: absolute;
+    top: calc(62svh - 64px);
+    bottom: auto;
+    font-size: 12px;
+  }
+  .vl-walk {
+    position: absolute;
+    top: calc(62svh - 170px);
+    bottom: auto;
+    left: 10px;
+  }
+  .vl-pad {
+    grid-template-columns: repeat(3, 42px);
+  }
+  .vl-pad button {
+    width: 42px;
+    height: 42px;
+  }
+  .vl-plan {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 62svh;
+    padding: 120px 10px 30px;
+  }
+  .vl-panel {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 70svh;
+    border-radius: 22px 22px 0 0;
+    background: #fbf9f3;
+  }
+  .vl-chips button {
+    flex: 1;
+  }
+  .vl-results,
+  .vl-none {
+    position: static;
+    box-shadow: none;
+    border: 1px solid var(--vl-line);
+  }
+  .vl-sheet {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 55svh;
+    border-radius: 22px 22px 0 0;
+    background: #fbf9f3;
+  }
+  .vl-hover {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vl-label {
+    transition: none;
+  }
+}
+
+/* ---------------- Edit layout (ports the old editor's side panel) */
+.vl .vl-editor {
+  position: fixed;
+  z-index: 5;
+  top: 132px;
+  left: 16px;
+  bottom: 250px;
+  width: 360px;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  padding: 14px 14px 16px;
+  overflow: auto;
+  border-radius: 20px;
+  background: rgba(250, 248, 241, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 30px rgba(10, 14, 10, 0.2);
+  font-size: 14px;
+}
+.vl-editor .venue-card {
+  margin: 10px 0 0;
+}
+.vl-editor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vl-editor-head h2 {
+  font-family: var(--font-display) !important;
+  font-size: 26px !important;
+}
+.vl-device {
+  margin: 4px 0 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fdf3df;
+  color: #6b4c1d;
+  font-size: 13px;
+  font-weight: 600;
+}
+.vl-editor-actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 12px;
+}
+.venue-app.vl-editor .vl-editor-actions button {
+  min-height: 52px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.venue-app.vl-editor button.vl-add {
+  background: var(--vl-accent);
+  border-color: var(--vl-accent);
+  color: #fff;
+  font-size: 17px;
+}
+.vl-add-menu {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+.venue-app.vl-editor .vl-add-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 6px 12px;
+  text-align: left;
+  background: #faf8f1;
+}
+.vl-add-menu span {
+  display: flex;
+  flex-direction: column;
+}
+.vl-add-menu strong {
+  font-size: 15px;
+}
+.vl-add-menu small {
+  color: var(--vl-muted);
+}
+.vl-editor-tabs {
+  margin-top: 12px;
+}
+.vl-editor-tabs button {
+  flex: 1;
+  min-height: 46px !important;
+  font-weight: 700;
+}
+.vl-editor-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vl-editor-foot .venue-team {
+  margin: 0;
+}
+.vl-tools button.vl-edit-btn {
+  background: #fff;
+  border: 2px solid var(--vl-accent);
+  font-size: 15px;
+}
+.vl-tools button.vl-edit-btn.is-on {
+  background: var(--vl-accent);
+  color: #fff;
+}
+.vl-pick {
+  position: fixed;
+  z-index: 6;
+  top: 132px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 18px;
+  border-radius: 999px;
+  background: #384e3f;
+  color: #fff;
+  font-size: 15px;
+}
+.vl-pick button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.vl[data-arrange] .vl-note {
+  display: none;
+}
+@media (max-width: 760px) {
+  .vl .vl-editor {
+    position: relative;
+    top: auto;
+    left: auto;
+    bottom: auto;
+    width: auto;
+    max-height: none;
+    margin: calc(62svh - 18px) 0 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: none;
+    background: #faf8f1;
+  }
+  .vl[data-arrange] .vl-dock {
+    margin-top: 0;
+    border-radius: 0;
+  }
+  .vl-pick {
+    position: absolute;
+    top: calc(62svh - 120px);
+    font-size: 13px;
+  }
+}
+
+/* Hide/show controls (H key). Only the 3D view and this button stay. */
+.vl-ui-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 252, 246, 0.92);
+  color: #2d3a2a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+.vl:not([data-ui="hidden"]) .vl-ui-toggle { bottom: auto; top: 16px; right: 50%; transform: translateX(50%); }
+.vl[data-ui="hidden"] > :not(.vl-stage):not(.vl-ui-toggle):not(.vl-loading) { display: none !important; }
+
+/* Save status and event picker for signed-in editors. */
+.vl-save,
+.vl-event-pick select {
+  background: var(--vl-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vl-muted);
+}
+.vl-save.is-saved {
+  color: var(--vl-accent);
+}
+.vl-save.is-error {
+  background: rgba(253, 226, 222, 0.95);
+  color: #8a2b1f;
+}
+.vl-event-pick select {
+  color: var(--vl-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.vl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* On a phone the top row is full, so the toggle sits at the lower right of the 3D view. */
+@media (max-width: 760px) {
+  .vl:not([data-ui="hidden"]) .vl-ui-toggle {
+    position: absolute;
+    top: calc(62svh - 112px);
+    right: 10px;
+    transform: none;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

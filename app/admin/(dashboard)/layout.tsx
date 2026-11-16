@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin-auth";
-import { defaultScope } from "@/lib/data/scope";
+import { forWedding } from "@/lib/data/scope";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { HeaderSearch } from "@/components/admin/HeaderSearch";
 import { FilmBackdrop } from "@/components/FilmBackdrop";
@@ -11,7 +11,7 @@ import Link from "next/link";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
-  const scope = defaultScope();
+  const scope = forWedding(admin.weddingId);
   const { data: wedding } = await scope.db
     .from("weddings")
     .select("couple_names, wedding_date, rsvp_deadline, timezone")
@@ -37,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="relative flex min-h-dvh watercolor-bg overflow-hidden">
-      <FilmBackdrop />
+      <FilmBackdrop animate={false} />
       <WhatsNew entries={whatsNew} />
       {/* Sidebar — translucent so the film shows through; collapsible */}
       <AdminSidebar coupleNames={wedding?.couple_names ?? "Wedding"} dateLabel={dateLabel} role={admin.role} />

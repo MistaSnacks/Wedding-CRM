@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mealCounts } from "./metrics";
+import { guestStanding, mealCounts } from "./metrics";
 
 const MEALS = [
   { id: "meal-chicken", name: "Chicken", sort_order: 1 },
@@ -59,5 +59,30 @@ describe("mealCounts", () => {
     // Expecting declaration order is what pins "consumed in the order given".
     const result = mealCounts([], MEALS);
     expect(result.map((r) => r.name)).toEqual(["Chicken", "Beef"]);
+  });
+});
+
+describe("guestStanding", () => {
+  it("counts a guest who declined one event and has not answered the other as not coming", () => {
+    const { attendingIds, declinedIds } = guestStanding([
+      { guest_id: "g1", attending: "no" },
+      { guest_id: "g1", attending: "pending" },
+    ]);
+    expect(declinedIds.has("g1")).toBe(true);
+    expect(attendingIds.has("g1")).toBe(false);
+  });
+
+  it("counts a guest who comes to one event and skips another as coming", () => {
+    const { attendingIds, declinedIds } = guestStanding([
+      { guest_id: "g1", attending: "yes" },
+      { guest_id: "g1", attending: "no" },
+    ]);
+    expect(attendingIds.has("g1")).toBe(true);
+    expect(declinedIds.has("g1")).toBe(false);
+  });
+
+  it("leaves a guest with no answer in neither group", () => {
+    const { attendingIds, declinedIds } = guestStanding([{ guest_id: "g1", attending: "pending" }]);
+    expect(attendingIds.size + declinedIds.size).toBe(0);
   });
 });

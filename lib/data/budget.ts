@@ -1,3 +1,4 @@
+import { safeDocumentUrl } from "./planning-rules";
 import type { WeddingScope } from "./scope";
 import type {
   BudgetCategoryRow,
@@ -197,6 +198,7 @@ export type BudgetItemInput = {
 
 /** A payment draft. `itemId` and `amountCents` are required on create only. */
 export type PaymentInput = {
+  operationId?: string;
   itemId?: string;
   vendorId?: string | null;
   label?: string | null;
@@ -988,6 +990,10 @@ export async function updateItem(
   if (input.categoryId !== undefined) await requireCategory(scope, input.categoryId);
   if (input.vendorId) await requireVendorId(scope, input.vendorId);
 
+  if (input.currency !== undefined && input.currency !== existing.currency) {
+    const payments = await listPayments(scope, id);
+    if (payments.length) throw new Error("This line has payments recorded. Keep its currency and create a separate line for another currency.");
+  }
   const validation = validatedItem(input, existing);
 
   const patch: Record<string, unknown> = { updated_at: nowIso() };
@@ -1169,6 +1175,8 @@ export async function createPayment(
   const item = await requireItem(scope, itemId);
   if (input.vendorId) await requireVendorId(scope, input.vendorId);
 
+  if (input.operationId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.operationId)) throw new Error("Invalid payment operation.");
+  if (input.currency && input.currency !== item.currency) throw new Error("A payment must use the budget line's currency.");
   const siblings = await listPayments(scope, itemId);
   const validation = validatePayment(
     {
@@ -1187,6 +1195,7 @@ export async function createPayment(
   const { data, error } = await scope.db
     .from("budget_payments")
     .insert({
+      ...(input.operationId ? { id: input.operationId } : {}),
       wedding_id: scope.weddingId,
       budget_item_id: itemId,
       vendor_id: input.vendorId !== undefined ? input.vendorId : item.vendor_id,
@@ -1199,13 +1208,24 @@ export async function createPayment(
       paid_at: validation.value.paidOn,
       method: orNull(input.method),
       reference: orNull(input.reference),
-      receipt_url: orNull(input.receiptUrl),
+      receipt_url: safeDocumentUrl(input.receiptUrl),
       notes: orNull(input.notes),
       sort_order: siblings.length,
     })
     .select(PAYMENT_COLS)
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === "23505" && input.operationId) {
+      const existing = await requirePayment(scope, input.operationId);
+      if (existing.budget_item_id === itemId && existing.label === validation.value.label &&
+          existing.amount_cents === signedAmount(kind, validation.value.amountCents) &&
+          existing.due_date === validation.value.dueDate && existing.currency === item.currency) {
+        return { payment: existing, warning: "This payment was already added; no duplicate was created." };
+      }
+      throw new Error("This payment request was already used for different values. Refresh before adding another payment.");
+    }
+    throw new Error(error.message);
+  }
   invalidateMetrics(scope);
 
   const payment = data as BudgetPaymentRow;
@@ -1234,6 +1254,7 @@ export async function updatePayment(
   if (input.vendorId) await requireVendorId(scope, input.vendorId);
 
   const item = await requireItem(scope, existing.budget_item_id);
+  if (input.currency && input.currency !== item.currency) throw new Error("A payment must use the budget line's currency.");
   const siblings = (await listPayments(scope, existing.budget_item_id)).filter((p) => p.id !== id);
 
   const kind: PaymentKind = input.kind ?? existing.kind;
@@ -1274,7 +1295,7 @@ export async function updatePayment(
   }
   if (input.method !== undefined) patch.method = orNull(input.method);
   if (input.reference !== undefined) patch.reference = orNull(input.reference);
-  if (input.receiptUrl !== undefined) patch.receipt_url = orNull(input.receiptUrl);
+  if (input.receiptUrl !== undefined) patch.receipt_url = safeDocumentUrl(input.receiptUrl);
   if (input.notes !== undefined) patch.notes = orNull(input.notes);
 
   const { data, error } = await scope.db

@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { EventForm } from "./EventForm";
 import { InvitePicker, type HouseholdView } from "./InvitePicker";
 import { DeleteEventButton } from "./DeleteEventButton";
+import { WeddingDetailsCard, type WeddingDetailsView } from "./WeddingDetailsCard";
 import { reorderEvents, type EventFormState } from "@/app/admin/(dashboard)/events/actions";
 
 /**
@@ -46,9 +47,11 @@ export type EventView = {
 };
 
 export function EventsScreen({
+  details,
   events,
   households,
 }: {
+  details: WeddingDetailsView;
   events: EventView[];
   households: HouseholdView[];
 }) {
@@ -152,6 +155,8 @@ export function EventsScreen({
 
   return (
     <div className="flex flex-col gap-5">
+      <WeddingDetailsCard details={details} />
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1">
           <h1 className="text-[22px] font-semibold text-ink">Events</h1>

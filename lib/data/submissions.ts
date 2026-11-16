@@ -1,4 +1,5 @@
 import type { WeddingScope } from "./scope";
+import { readAll } from "./query";
 import type { SheetSubmissionRow, SheetSubmissionStatus } from "@/lib/types";
 
 const COLUMNS =
@@ -11,37 +12,16 @@ export type NewSubmission = {
 };
 
 /**
- * Insert the rows we have not seen before and leave every existing row exactly
- * as it is — including its status. This is what makes re-running the job safe:
- * a cron double-fire changes nothing, and a resolved submission never reopens.
+ * Atomically ingest new rows and archive/reopen changed content for human review.
+ * Identical retries leave both resolved state and undo history unchanged.
  *
  * Returns how many rows were newly inserted.
  */
 export async function upsertMany(scope: WeddingScope, rows: NewSubmission[]): Promise<number> {
   if (!rows.length) return 0;
-
-  const { data: existing, error: readErr } = await scope.db
-    .from("sheet_submissions")
-    .select("row_key")
-    .eq("wedding_id", scope.weddingId)
-    .eq("source", "save_the_date");
-  if (readErr) throw new Error(readErr.message);
-
-  const seen = new Set((existing ?? []).map((r) => r.row_key as string));
-  const fresh = rows.filter((r) => !seen.has(r.rowKey));
-  if (!fresh.length) return 0;
-
-  const { error } = await scope.db.from("sheet_submissions").insert(
-    fresh.map((r) => ({
-      wedding_id: scope.weddingId,
-      source: "save_the_date" as const,
-      row_key: r.rowKey,
-      raw: r.raw,
-      received_at: r.receivedAt,
-    })),
-  );
+  const { data, error } = await scope.db.rpc("ingest_sheet_rows", { p_wedding: scope.weddingId, p_rows: rows });
   if (error) throw new Error(error.message);
-  return fresh.length;
+  return data as number;
 }
 
 /**
@@ -54,12 +34,8 @@ export async function upsertMany(scope: WeddingScope, rows: NewSubmission[]): Pr
 export async function listKeys(
   scope: WeddingScope,
 ): Promise<Map<string, { id: string; status: SheetSubmissionStatus; everResolved: boolean }>> {
-  const { data, error } = await scope.db
-    .from("sheet_submissions")
-    .select("id, row_key, status, resolved_at")
-    .eq("wedding_id", scope.weddingId)
-    .eq("source", "save_the_date");
-  if (error) throw new Error(error.message);
+  const data = await readAll<{id:string;row_key:string;status:SheetSubmissionStatus;resolved_at:string|null}>(()=>scope.db
+    .from("sheet_submissions").select("id, row_key, status, resolved_at").eq("wedding_id", scope.weddingId).eq("source", "save_the_date").order("id"));
   return new Map(
     (data ?? []).map((r) => [
       r.row_key as string,
@@ -81,14 +57,8 @@ export async function listByStatus(
   scope: WeddingScope,
   status: SheetSubmissionStatus,
 ): Promise<SheetSubmissionRow[]> {
-  const { data, error } = await scope.db
-    .from("sheet_submissions")
-    .select(COLUMNS)
-    .eq("wedding_id", scope.weddingId)
-    .eq("status", status)
-    .order("received_at", { ascending: true, nullsFirst: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SheetSubmissionRow[];
+  return await readAll<SheetSubmissionRow>(()=>scope.db.from("sheet_submissions").select(COLUMNS)
+    .eq("wedding_id",scope.weddingId).eq("status",status).order("received_at",{ascending:true,nullsFirst:false}).order("id"));
 }
 
 /** Resolved items that wrote something — the reversible activity list. */
@@ -153,4 +123,16 @@ export async function reopen(scope: WeddingScope, id: string): Promise<void> {
     .eq("wedding_id", scope.weddingId)
     .eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/** One transaction validates old values, applies data, archives history and resolves the inbox row. */
+export async function resolve(scope: WeddingScope, args: { id: string; householdId?: string; action: "match"|"auto"|"undo"|"ignore"|"create"; applied?: Record<string,{from:unknown;to:unknown}>; actorId?: string; newHousehold?: Record<string,unknown>; expectedRaw?: Record<string,string> }): Promise<string | null> {
+  const { data, error } = await scope.db.rpc("resolve_sheet_submission", { p_wedding: scope.weddingId, p_id: args.id,
+    p_household: args.householdId ?? null, p_action: args.action, p_applied: args.applied ?? {}, p_actor: args.actorId ?? null, p_new: args.newHousehold ?? null, p_expected_raw:args.expectedRaw ?? null });
+  if (error) throw new Error(error.message);
+  return data as string | null;
+}
+export async function latestRun(scope: WeddingScope) {
+ const { data, error } = await scope.db.from("sync_runs").select("state,started_at,finished_at,error,result").eq("wedding_id",scope.weddingId).order("started_at",{ascending:false}).limit(1).maybeSingle();
+ if(error)throw new Error(error.message);return data;
 }

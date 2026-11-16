@@ -112,7 +112,8 @@ export function parseSubmission(row: SheetRow): ParsedSubmission {
     notes,
     language: language === "es" || language === "vi" ? language : "en",
     receivedAt: cell(row, "Received At"),
-    optOut: /opt.?out/i.test(notes),
+    // Only a structured flag or a standalone, unambiguous instruction can decline attendance.
+    optOut: /^(yes|true|1)$/i.test(cell(row, "Opt Out")) || /^(opt[ -]?out|please opt[ -]?out)[.!]?$/i.test(notes),
   };
 }
 
@@ -150,6 +151,7 @@ async function accessToken(cfg: GoogleSheetConfig): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
+    signal: AbortSignal.timeout(15000),
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion,
@@ -175,7 +177,7 @@ export function googleSheetReader(cfg: GoogleSheetConfig): SheetReader {
 
     let res: Response;
     try {
-      res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+      res = await fetch(url, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(15000) });
     } catch {
       throw new SheetAccessError("We couldn't reach Google Sheets just now.", "network");
     }

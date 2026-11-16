@@ -153,3 +153,9 @@ describe("classify", () => {
     expect(top(sub("Ana", "Munoz")).householdName).toBe("Ana Muñoz");
   });
 });
+
+it('shared email across distinct households never authorizes automatic matching', () => {
+ const pool=[{guestId:'a',firstName:'Alice',lastName:'A',householdId:'ha',householdName:'Alice A',householdEmail:'family@example.com'},{guestId:'b',firstName:'Beth',lastName:'B',householdId:'hb',householdName:'Beth B',householdEmail:'family@example.com'}];
+ const submission={first:'Beth',last:'B',email:'family@example.com'};
+ expect(classify(submission,scoreCandidates(submission,pool),pool).bucket).toBe('review');
+});

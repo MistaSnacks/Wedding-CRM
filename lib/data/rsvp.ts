@@ -1,6 +1,16 @@
 import type { WeddingScope } from "./scope";
-import type { SubmitRsvpPayload, EventRow, MealOptionRow, QuestionRow, ResponseRow } from "@/lib/types";
-import { validateSubmission, dedupePlusOnes, type SubmissionGuest } from "@/lib/domain/invitation-rules";
+import type {
+  SubmitRsvpPayload,
+  EventRow,
+  MealOptionRow,
+  QuestionRow,
+  ResponseRow,
+} from "@/lib/types";
+import {
+  GUEST_RSVP_COLUMNS,
+  guestDto,
+  type GuestRsvpDto,
+} from "@/lib/domain/rsvp-validation";
 import { invalidateCache } from "@/lib/limiter";
 
 export class RsvpValidationError extends Error {
@@ -9,119 +19,131 @@ export class RsvpValidationError extends Error {
   }
 }
 
-/** Everything the guest flow needs to render a household's RSVP. */
+/** Guest context is deliberately projected; administrative data never crosses this boundary. */
 export async function getRsvpContext(scope: WeddingScope, householdId: string) {
-  const [{ data: guests }, { data: invites }, { data: meals }, { data: questions }, { data: responses }] =
-    await Promise.all([
-      scope.db.from("guests").select("*").eq("household_id", householdId).order("created_at"),
-      scope.db
-        .from("household_event_invites")
-        .select("events(id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order)")
-        .eq("household_id", householdId),
-      scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId).eq("is_active", true).order("sort_order"),
-      scope.db.from("rsvp_questions").select("id, label, type, options, scope, sort_order, is_active").eq("wedding_id", scope.weddingId).eq("is_active", true).order("sort_order"),
-      scope.db
-        .from("guest_event_responses")
-        .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
-        .eq("wedding_id", scope.weddingId),
-    ]);
-
-  const events = ((invites ?? []) as unknown as Array<{ events: EventRow }>)
+  const guestResult = await scope.db
+    .from("guests")
+    .select(GUEST_RSVP_COLUMNS)
+    .eq("wedding_id", scope.weddingId)
+    .eq("household_id", householdId)
+    .order("created_at");
+  if (guestResult.error) throw new Error(guestResult.error.message);
+  const guests = (guestResult.data ?? []).map((g) =>
+    guestDto(g as unknown as GuestRsvpDto),
+  );
+  const results = await Promise.all([
+    scope.db
+      .from("household_event_invites")
+      .select(
+        "events(id, name, starts_at, ends_at, venue_name, venue_address, dress_code, rsvp_enabled, seating_published_at, sort_order)",
+      )
+      .eq("wedding_id", scope.weddingId)
+      .eq("household_id", householdId),
+    scope.db
+      .from("meal_options")
+      .select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n")
+      .eq("wedding_id", scope.weddingId)
+      .eq("is_active", true)
+      .order("sort_order"),
+    scope.db
+      .from("rsvp_questions")
+      .select(
+        "id, event_id, label, type, options, scope, sort_order, is_active",
+      )
+      .eq("wedding_id", scope.weddingId)
+      .eq("is_active", true)
+      .eq("scope", "household")
+      .order("sort_order"),
+    guests.length
+      ? scope.db
+          .from("guest_event_responses")
+          .select(
+            "guest_id, event_id, attending, meal_option_id, responded_at, responded_via",
+          )
+          .eq("wedding_id", scope.weddingId)
+          .in(
+            "guest_id",
+            guests.map((g) => g.id),
+          )
+      : Promise.resolve({ data: [], error: null }),
+    scope.db
+      .from("rsvp_answers")
+      .select("question_id, value")
+      .eq("wedding_id", scope.weddingId)
+      .eq("household_id", householdId)
+      .is("guest_id", null),
+  ]);
+  for (const result of results)
+    if (result.error) throw new Error(result.error.message);
+  const allEvents = (
+    (results[0].data as unknown as Array<{ events: EventRow }>) ?? []
+  )
     .map((i) => i.events)
-    .filter((e) => e.rsvp_enabled)
+    .filter(Boolean)
     .sort((a, b) => a.sort_order - b.sort_order);
-
-  const guestIds = new Set((guests ?? []).map((g: { id: string }) => g.id));
-
   return {
-    guests: guests ?? [],
-    events,
-    meals: (meals ?? []) as MealOptionRow[],
-    questions: (questions ?? []) as QuestionRow[],
-    responses: ((responses ?? []) as ResponseRow[]).filter((r) => guestIds.has(r.guest_id)),
+    guests,
+    allEvents,
+    events: allEvents.filter((e) => e.rsvp_enabled),
+    meals: results[1].data as MealOptionRow[],
+    questions: (results[2].data as QuestionRow[]).filter(
+      (q) =>
+        !q.event_id ||
+        allEvents.some((e) => e.id === q.event_id && e.rsvp_enabled),
+    ),
+    responses: results[3].data as ResponseRow[],
+    answers: results[4].data as Array<{
+      question_id: string;
+      value: string | boolean;
+    }>,
   };
 }
 
-/**
- * Validates with the domain engine, then submits atomically via the
- * submit_rsvp Postgres function. Throws RsvpValidationError on rule breaches.
- */
+/** The database locks the household and validates references/caps in the transaction. */
 export async function submit(
   scope: WeddingScope,
   householdId: string,
   payload: SubmitRsvpPayload,
-): Promise<{ status: string }> {
-  const [{ data: household }, { data: guests }] = await Promise.all([
-    scope.db
-      .from("households")
-      .select("id, max_party_size, plus_one_slots")
-      .eq("wedding_id", scope.weddingId)
-      .eq("id", householdId)
-      .single(),
-    scope.db.from("guests").select("id, origin, first_name, last_name").eq("household_id", householdId),
-  ]);
-  if (!household) throw new Error("household not found");
-
-  const known = (guests ?? []).map(
-    (g: { id: string; origin: "named" | "plus_one"; first_name: string; last_name: string }) => ({
-      id: g.id,
-      origin: g.origin,
-      firstName: g.first_name,
-      lastName: g.last_name,
-    }),
-  );
-
-  // Idempotency: a re-submitted plus-one (autosave, retry, edit) matches the
-  // guest row it already created instead of consuming another slot.
-  const incoming = (payload.new_plus_ones ?? []).map((p) => ({
-    firstName: p.first_name,
-    lastName: p.last_name,
-    responses: p.responses,
-  }));
-  const { existing: reusedPlusOnes, fresh } = dedupePlusOnes(known, incoming);
-
-  payload = {
-    ...payload,
-    responses: [
-      ...payload.responses,
-      ...reusedPlusOnes.flatMap((r) =>
-        r.responses.map((resp) => ({
-          guest_id: r.guestId,
-          event_id: resp.event_id,
-          attending: resp.attending,
-          meal_option_id: resp.meal_option_id ?? null,
-        })),
-      ),
-    ],
-    new_plus_ones: fresh.map((p) => ({
-      first_name: p.firstName,
-      last_name: p.lastName,
-      responses: p.responses,
-    })),
-  };
-
-  const submitted: SubmissionGuest[] = [
-    ...Array.from(new Set(payload.responses.map((r) => r.guest_id))).map((guestId) => ({ guestId })),
-    ...(payload.new_plus_ones ?? []).map((p) => ({
-      newPlusOne: { firstName: p.first_name, lastName: p.last_name },
-    })),
-  ];
-
-  const verdict = validateSubmission(
-    { maxPartySize: household.max_party_size, plusOneSlots: household.plus_one_slots },
-    known,
-    submitted,
-  );
-  if (!verdict.ok) throw new RsvpValidationError(verdict.code);
-
+): Promise<{
+  status: string;
+  guests: GuestRsvpDto[];
+  responses: ResponseRow[];
+}> {
+  const { data: household, error: lookupError } = await scope.db
+    .from("households")
+    .select("id")
+    .eq("wedding_id", scope.weddingId)
+    .eq("id", householdId)
+    .maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
+  if (!household) throw new RsvpValidationError("not_found");
   const { data, error } = await scope.db.rpc("submit_rsvp", {
     p_household_id: householdId,
     p_payload: payload,
   });
-  if (error) throw new Error(error.message);
-
+  if (error) {
+    const codes = [
+      "not_found",
+      "deadline_passed",
+      "empty_name",
+      "unknown_guest",
+      "no_plus_one_slot",
+      "over_party_size",
+      "invalid_meal",
+      "invalid_answer",
+      "invalid_payload",
+      "incomplete_rsvp",
+    ];
+    if (codes.includes(error.message))
+      throw new RsvpValidationError(error.message);
+    throw new Error(error.message);
+  }
   invalidateCache(`metrics:${scope.weddingId}`);
-  return data as { status: string };
+  return data as {
+    status: string;
+    guests: GuestRsvpDto[];
+    responses: ResponseRow[];
+  };
 }
 
 /**
@@ -130,20 +152,32 @@ export async function submit(
  * containing "hotel" is the signal. Type must be boolean: a text answer that
  * merely mentions a hotel is not a request for recommendations.
  */
-export function isHotelQuestion(q: { type: string; label: Record<string, string> | null }): boolean {
+export function isHotelQuestion(q: {
+  type: string;
+  label: Record<string, string> | null;
+}): boolean {
   return q.type === "boolean" && /hotel/i.test(q.label?.en ?? "");
 }
 
 export function hotelRecsRequested(
-  questions: Array<{ id: string; type: string; label: Record<string, string> | null }>,
+  questions: Array<{
+    id: string;
+    type: string;
+    label: Record<string, string> | null;
+  }>,
   answers: Array<{ question_id: string; value: unknown }>,
 ): boolean {
   const ids = new Set(questions.filter(isHotelQuestion).map((q) => q.id));
-  return answers.some((a) => ids.has(a.question_id) && (a.value === true || a.value === "true"));
+  return answers.some(
+    (a) => ids.has(a.question_id) && (a.value === true || a.value === "true"),
+  );
 }
 
 /** Whether this household answered yes to the hotel-recommendations question. */
-export async function wantsHotelRecs(scope: WeddingScope, householdId: string): Promise<boolean> {
+export async function wantsHotelRecs(
+  scope: WeddingScope,
+  householdId: string,
+): Promise<boolean> {
   const [{ data: questions }, { data: answers }] = await Promise.all([
     scope.db
       .from("rsvp_questions")
@@ -160,11 +194,12 @@ export async function wantsHotelRecs(scope: WeddingScope, householdId: string): 
 }
 
 export async function getDeadline(scope: WeddingScope): Promise<string | null> {
-  const { data } = await scope.db
+  const { data, error } = await scope.db
     .from("weddings")
     .select("rsvp_deadline")
     .eq("id", scope.weddingId)
     .single();
+  if (error) throw new Error(error.message);
   return data?.rsvp_deadline ?? null;
 }
 
@@ -179,11 +214,12 @@ export async function getDeadline(scope: WeddingScope): Promise<string | null> {
 export async function getDeadlineContext(
   scope: WeddingScope,
 ): Promise<{ deadline: string | null; timeZone: string }> {
-  const { data } = await scope.db
+  const { data, error } = await scope.db
     .from("weddings")
     .select("rsvp_deadline, timezone")
     .eq("id", scope.weddingId)
     .single();
+  if (error) throw new Error(error.message);
   return {
     deadline: data?.rsvp_deadline ?? null,
     timeZone: data?.timezone ?? "America/Los_Angeles",

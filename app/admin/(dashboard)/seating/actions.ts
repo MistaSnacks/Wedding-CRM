@@ -34,22 +34,49 @@ import * as seating from "@/lib/data/seating";
 
 export type ActionResult = { ok: boolean; message?: string };
 
+/**
+ * Both screens that show the chart: this page and the 3D venue editor at
+ * /venue-preview. A change made on either one re-renders the other's data.
+ */
+function revalidateSeating() {
+  revalidatePath("/admin/seating");
+  revalidatePath("/venue-preview");
+}
+
 /** Turns anything thrown into one sentence, in her words where we have them. */
 function readableError(error: unknown): string {
   if (error instanceof Error) return error.message;
-  return "Something went wrong. Nothing was changed.";
+  return "Something went wrong. Refresh the chart to check the saved assignments.";
 }
 
+/**
+ * The optional `place` lets the 3D editor create a table with its shape and
+ * spot in one write; the Seating page leaves it out, as before. `id` is the
+ * new table's id, which the 3D editor needs for the next change.
+ */
 export async function createTable(
   eventId: string,
   name: string,
   capacity: number,
-): Promise<ActionResult> {
+  place?: { shape?: "round" | "rect" | "banquet"; posX?: number; posY?: number },
+): Promise<ActionResult & { id?: string }> {
   try {
     const admin = await requireEditor();
-    await seating.upsertTable(forWedding(admin.weddingId), { eventId, name, capacity });
-    revalidatePath("/admin/seating");
-    return { ok: true };
+    const shape = place?.shape;
+    if (shape !== undefined && !["round", "rect", "banquet"].includes(shape))
+      throw new Error("Choose a round, long or head table.");
+    for (const n of [place?.posX, place?.posY])
+      if (n !== undefined && !Number.isFinite(n)) throw new Error("Invalid table position");
+    const row = await seating.upsertTable(forWedding(admin.weddingId), {
+      eventId,
+      name,
+      capacity,
+      shape,
+      posX: place?.posX,
+      posY: place?.posY,
+    });
+    revalidateSeating();
+    return { ok: true, id: row.id };
   } catch (error) {
     unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
@@ -57,7 +84,7 @@ export async function createTable(
 }
 
 /**
- * Deliberately does not revalidate. The canvas holds dragged positions in its
+ * Deliberately does not revalidate the Seating page. The canvas holds dragged positions in its
  * own state so a table never snaps back mid-drag, and a revalidation per drop
  * would re-render the whole room to tell it what it already knows.
  */
@@ -69,6 +96,10 @@ export async function saveTablePosition(
   try {
     const admin = await requireEditor();
     await seating.moveTable(forWedding(admin.weddingId), tableId, posX, posY);
+    // Only the 3D page: revalidating /admin/seating here would re-render the
+    // canvas mid-drag (see above). That page is force-dynamic, so it reads
+    // the new position on its next load.
+    revalidatePath("/venue-preview");
     return { ok: true };
   } catch (error) {
     unstable_rethrow(error);
@@ -80,7 +111,7 @@ export async function removeTable(tableId: string): Promise<ActionResult> {
   try {
     const admin = await requireEditor();
     await seating.deleteTable(forWedding(admin.weddingId), tableId);
-    revalidatePath("/admin/seating");
+    revalidateSeating();
     return { ok: true };
   } catch (error) {
     unstable_rethrow(error);
@@ -95,8 +126,14 @@ export async function assignGuest(
 ): Promise<ActionResult> {
   try {
     const admin = await requireEditor();
-    await seating.assign(forWedding(admin.weddingId), guestId, eventId, tableId, admin.userId);
-    revalidatePath("/admin/seating");
+    await seating.assign(
+      forWedding(admin.weddingId),
+      guestId,
+      eventId,
+      tableId,
+      admin.userId,
+    );
+    revalidateSeating();
     return { ok: true };
   } catch (error) {
     unstable_rethrow(error);
@@ -118,10 +155,8 @@ export async function assignHousehold(
   try {
     const admin = await requireEditor();
     const scope = forWedding(admin.weddingId);
-    for (const guestId of guestIds) {
-      await seating.assign(scope, guestId, eventId, tableId, admin.userId);
-    }
-    revalidatePath("/admin/seating");
+    await seating.assignGroup(scope, guestIds, eventId, tableId, admin.userId);
+    revalidateSeating();
     return { ok: true };
   } catch (error) {
     unstable_rethrow(error);
@@ -129,11 +164,14 @@ export async function assignHousehold(
   }
 }
 
-export async function unassignGuest(guestId: string, eventId: string): Promise<ActionResult> {
+export async function unassignGuest(
+  guestId: string,
+  eventId: string,
+): Promise<ActionResult> {
   try {
     const admin = await requireEditor();
     await seating.unassign(forWedding(admin.weddingId), guestId, eventId);
-    revalidatePath("/admin/seating");
+    revalidateSeating();
     return { ok: true };
   } catch (error) {
     unstable_rethrow(error);
@@ -147,9 +185,62 @@ export async function setSeatingPublished(
 ): Promise<ActionResult> {
   try {
     const admin = await requireEditor();
-    await seating.setPublished(forWedding(admin.weddingId), eventId, published);
-    revalidatePath("/admin/seating");
+    await seating.setPublished(
+      forWedding(admin.weddingId),
+      eventId,
+      published,
+      admin.userId,
+    );
+    revalidateSeating();
     return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { ok: false, message: readableError(error) };
+  }
+}
+
+export async function editTable(
+  tableId: string,
+  eventId: string,
+  name: string,
+  capacity: number,
+  shape: "round" | "rect" | "banquet",
+): Promise<ActionResult> {
+  try {
+    const admin = await requireEditor();
+    await seating.upsertTable(forWedding(admin.weddingId), {
+      id: tableId,
+      eventId,
+      name,
+      capacity,
+      shape,
+    });
+    revalidateSeating();
+    return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { ok: false, message: readableError(error) };
+  }
+}
+
+/**
+ * Saves a table's turn (degrees) from the 3D venue editor. The Seating canvas
+ * does not draw turns. Before migration 0020 the column does not exist; then
+ * this returns `persisted: false` rather than an error, and nothing is written.
+ */
+export async function saveTableRotation(
+  tableId: string,
+  rotation: number,
+): Promise<ActionResult & { persisted?: boolean }> {
+  try {
+    const admin = await requireEditor();
+    const { persisted } = await seating.turnTable(
+      forWedding(admin.weddingId),
+      tableId,
+      rotation,
+    );
+    if (persisted) revalidatePath("/venue-preview");
+    return { ok: true, persisted };
   } catch (error) {
     unstable_rethrow(error);
     return { ok: false, message: readableError(error) };

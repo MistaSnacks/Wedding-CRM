@@ -1,6 +1,8 @@
 # Benavento venue prototype — 4 September 2026
 
-Try locally: http://localhost:3006/venue-preview. A link also appears above the admin seating canvas.
+Try locally: http://localhost:3007/venue-preview. A link also appears above the admin seating canvas.
+
+> **Current state (October 2026).** `/venue-preview` is the live Three.js scene (`components/venue/VenueLive.tsx`, `lib/venue/live-*.ts`). It loads the Blender-exported shell `public/venue/benavento-terrace-detailed.glb` and builds the garden, lake and furniture in Three.js. The earlier procedural editor route `/venue-preview/editor` was removed. Its component `VenuePrototype.tsx` remains only as the source of the standalone interactive HTML export (see [the Blender workflow](blender-venue-workflow.md)). The sections below are a dated history of the earlier prototype.
 
 ## What works
 

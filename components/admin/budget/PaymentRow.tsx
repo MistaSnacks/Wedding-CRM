@@ -1,5 +1,6 @@
 "use client";
 
+import { safeDocumentUrl } from "@/lib/data/planning-rules";
 import { useEffect, useRef, useState } from "react";
 import { centsToInputValue, formatMoney } from "@/lib/format/money";
 import type { PaymentView } from "@/lib/data/budget-rules";
@@ -45,6 +46,7 @@ export function PaymentRow(props: {
   onRemove: () => Promise<void>;
 }) {
   const { payment } = props;
+  let receiptUrl: string | null = null; try { receiptUrl = safeDocumentUrl(props.receiptUrl); } catch {}
 
   const rowTone =
     payment.status === "paid"
@@ -140,8 +142,8 @@ export function PaymentRow(props: {
           className="min-w-0 flex-1 basis-[180px]"
           onCommit={(next) => props.onPatch({ receiptUrl: next.trim() === "" ? null : next.trim() })}
         />
-        {props.receiptUrl && (
-          <a href={props.receiptUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[12px] text-olive underline hover:text-rose">
+        {receiptUrl && (
+          <a href={receiptUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[12px] text-olive underline hover:text-rose">
             Open receipt
           </a>
         )}
@@ -174,8 +176,12 @@ function BlurInput(props: {
   const [focused, setFocused] = useState(false);
   const skip = useRef(false);
 
+  const receivedValue = useRef(props.value);
   useEffect(() => {
-    if (!focused) setDraft(props.value);
+    if (receivedValue.current !== props.value) {
+      receivedValue.current = props.value;
+      if (!focused) setDraft(props.value);
+    }
   }, [props.value, focused]);
 
   return (

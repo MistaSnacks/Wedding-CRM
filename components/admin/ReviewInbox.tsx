@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  importSheetCsv,
   createHouseholdFrom,
   ignoreSubmission,
   matchToHousehold,
@@ -20,6 +21,7 @@ export type InboxCandidate = {
 
 export type InboxItem = {
   id: string;
+  version: string;
   name: string;
   email: string;
   phone: string;
@@ -53,6 +55,7 @@ export function ReviewInbox(props: {
   applied: AppliedItem[];
   connected: boolean;
   canEdit: boolean;
+  health?: { state: string; started_at: string; finished_at: string | null; error: string | null } | null;
 }) {
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [flash, setFlash] = useState<ActionResult | null>(null);
@@ -60,7 +63,7 @@ export function ReviewInbox(props: {
 
   const run = (fn: () => Promise<ActionResult>) =>
     startTransition(async () => {
-      setFlash(await fn());
+      try { setFlash(await fn()); } catch (e) { setFlash({ok:false,message:e instanceof Error ? e.message : "Could not finish that action. Please retry."}); }
     });
 
   const visible = props.items.filter((i) => !skipped.has(i.id));
@@ -88,6 +91,8 @@ export function ReviewInbox(props: {
         )}
       </div>
 
+      <p className="text-[12px] text-muted">{props.health ? `Last check: ${new Date(props.health.started_at).toLocaleString()} — ${props.health.state === "running" && Date.now() - new Date(props.health.started_at).getTime() > 300000 ? "timed out" : props.health.state}. ${props.health.error ?? ""}` : "The sheet has not been checked yet."}</p>
+      {props.canEdit && <label className="flex flex-col gap-1 text-[12.5px] text-ink">Upload a Save-the-Date CSV export (up to 2 MB)<input type="file" accept=".csv,text/csv" disabled={pending} onChange={e => { const file=e.target.files?.[0]; if(!file)return; if(file.size>2000000){setFlash({ok:false,message:"Choose a CSV smaller than 2 MB."});return;} run(async()=>importSheetCsv(await file.text())); e.target.value=""; }} /></label>}
       {!props.connected && (
         <p className="rounded-lg bg-blush px-3.5 py-2.5 text-[12.5px] leading-relaxed text-rose-deep">
           Not connected to the Save-the-Date sheet yet, so new responses won&apos;t arrive on their own.
@@ -154,7 +159,7 @@ export function ReviewInbox(props: {
                     <button
                       type="button"
                       disabled={pending}
-                      onClick={() => run(() => matchToHousehold(item.id, c.householdId))}
+                      onClick={() => run(() => matchToHousehold(item.id, c.householdId, item.version))}
                       className="shrink-0 rounded-lg bg-olive-deep px-3.5 py-2 text-[12.5px] font-semibold text-cream transition-colors hover:bg-rose disabled:opacity-50 max-md:w-full"
                     >
                       This is them
@@ -178,7 +183,7 @@ export function ReviewInbox(props: {
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => run(() => createHouseholdFrom(item.id))}
+                onClick={() => run(() => createHouseholdFrom(item.id, item.version))}
                 className="rounded-lg border border-[#dddbd0] px-3.5 py-2 text-[12.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
               >
                 Add as someone new

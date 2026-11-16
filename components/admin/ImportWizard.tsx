@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Papa from "papaparse";
 import {
   parseCsv,
@@ -20,7 +20,9 @@ import { DoneStep } from "./import/DoneStep";
 import { ColumnMatches, type SingleColumnKey } from "./import/ColumnMatches";
 import { resolveApplied, resolveFix, type AppliedFix, type RowFix } from "./import/fixable";
 
-type Step = "upload" | "review" | "done";
+import type { ImportDecision, Reconciliation } from "@/lib/csv/reconciliation";
+import { ImportReconciliation } from "./import/ImportReconciliation";
+type Step = "upload" | "sheet" | "review" | "done";
 
 /**
  * Step machine only: Upload → Review → Done. It holds state and handlers;
@@ -32,7 +34,9 @@ type Step = "upload" | "review" | "done";
 export function ImportWizard({
   events,
   mealOptions,
+  weddingId = "default",
 }: {
+  weddingId?: string;
   events: Array<{ id: string; name: string }>;
   mealOptions: Array<{ id: string; name: string }>;
 }) {
@@ -53,7 +57,7 @@ export function ImportWizard({
   const [validation, setValidation] = useState<CsvValidation | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [commitErrors, setCommitErrors] = useState<RowError[] | null>(null);
-  const [done, setDone] = useState<{ households: number; guests: number; skipped: ImportProblem[] } | null>(null);
+  const [done, setDone] = useState<{ households: number; guests: number; skipped: ImportProblem[]; updated?: number } | null>(null);
   const [reading, setReading] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [columnsOpen, setColumnsOpen] = useState(false);
@@ -88,6 +92,34 @@ export function ImportWizard({
    * racy as the window before it.
    */
   const generation = useRef(0);
+  const [sheets, setSheets] = useState<Array<{name:string;text:string;rows:number}>>([]);
+  const [reconciliation, setReconciliation] = useState<Reconciliation[]>([]);
+  const [decisions, setDecisions] = useState<ImportDecision[]>([]);
+  const draftKey = `import-draft:${weddingId}`;
+  const [savedDraft, setSavedDraft] = useState<string | null>(null);
+  const [draftMessage, setDraftMessage] = useState("");
+  useEffect(() => { try { setSavedDraft(sessionStorage.getItem(draftKey)); } catch {} }, [draftKey]);
+  function invalidateReview() { setRunId(null); setReconciliation([]); setDecisions([]); }
+  function loadText(text: string) {
+    const parsed = parseCsv(text);
+    if (!parsed.rows.length) throw new Error("This worksheet has no guest rows. Choose another worksheet.");
+    if (new TextEncoder().encode(JSON.stringify(parsed.rows)).length > 3_000_000) throw new Error("This worksheet expands beyond the 3 MB import limit. Split it into smaller files.");
+    if (parsed.rows.length > 10000) throw new Error("Import up to 10,000 rows at a time.");
+    let detected = detectMapping(parsed.headers);
+    try { const saved = localStorage.getItem(`import-columns:${weddingId}:${JSON.stringify(parsed.headers)}`); if(saved) detected = JSON.parse(saved); } catch {}
+    setHeaders(parsed.headers); setRows(parsed.rows); setMapping(detected);
+    setValidation(validateCsv(parsed.rows, detected, context)); invalidateReview();
+    setCommitErrors(null); setDone(null); setApplied([]); setWarningsAdded(0);
+    setColumnsOpen(!detected.firstName || !detected.lastName); setColumnsReason(null); setStep("review");
+  }
+  function saveDraft() {
+    try { sessionStorage.setItem(draftKey, JSON.stringify({at:Date.now(),filename,headers,rows,mapping})); setDraftMessage("Draft saved in this browser tab for 24 hours. Closing the tab clears it."); }
+    catch { setDraftMessage("This browser could not save the draft. Keep this tab open to continue."); }
+  }
+  function restoreDraft() {
+    try { const d=JSON.parse(savedDraft!); if(Date.now()-d.at>86400000) throw new Error("This draft expired. Upload the file again."); generation.current++; setFilename(d.filename); setHeaders(d.headers); setRows(d.rows); setMapping(d.mapping); setValidation(validateCsv(d.rows,d.mapping,context)); invalidateReview(); setStep("review"); }
+    catch(e) { setFileError(e instanceof Error?e.message:"Could not restore this draft."); }
+  }
 
   const summary = useMemo(
     () => (validation && mapping ? summarize(validation, rows, mapping) : null),
@@ -109,39 +141,18 @@ export function ImportWizard({
     setFilename(file.name);
     // A new file invalidates any dry run in flight for the previous one.
     generation.current += 1;
+    const startedAt = generation.current;
     try {
-      const text = await readSpreadsheet(file);
-      const parsed = parseCsv(text);
-      if (parsed.rows.length === 0) {
-        setFileError(
-          "That file didn't have any guests in it. If your spreadsheet has more than one tab, export the tab with your guest list on it and try again.",
-        );
-        return;
-      }
-      const detected = detectMapping(parsed.headers);
-      const missingNames = !detected.firstName || !detected.lastName;
-      setHeaders(parsed.headers);
-      setRows(parsed.rows);
-      setMapping(detected);
-      setValidation(validateCsv(parsed.rows, detected, context));
-      setRunId(null);
-      setCommitErrors(null);
-      setDone(null);
-      setApplied([]);
-      setWarningsAdded(0);
-      setColumnsOpen(missingNames);
-      setColumnsReason(
-        missingNames
-          ? "We couldn't tell which columns hold names. Choose your first name and last name columns below and your guests will appear."
-          : null,
-      );
-      setStep("review");
-    } catch {
-      setFileError(
-        "We couldn't read that file. It needs to be a spreadsheet saved as CSV or Excel — in Google Sheets that's File → Download → Comma-separated values.",
-      );
+      if (file.size > 5_000_000) throw new Error("Import files up to 5 MB. Split larger workbooks into smaller files.");
+      const choices = await readSpreadsheet(file);
+      if (generation.current !== startedAt) return;
+      setSheets(choices); invalidateReview();
+      if (choices.length > 1) setStep("sheet");
+      else loadText(choices[0].text);
+    } catch(e) {
+      if (generation.current === startedAt) setFileError(e instanceof Error ? e.message : "We couldn't read that file. Try CSV or Excel.");
     } finally {
-      setReading(false);
+      if (generation.current === startedAt) setReading(false);
     }
   }
 
@@ -150,7 +161,7 @@ export function ImportWizard({
     generation.current += 1;
     setMapping(next);
     setValidation(validateCsv(rows, next, context));
-    setRunId(null);
+    invalidateReview();
     setCommitErrors(null);
     // Inline fixes were written into the previously mapped name column. Point
     // either name column somewhere else and those repairs no longer apply to
@@ -206,7 +217,7 @@ export function ImportWizard({
     generation.current += 1;
     setRows(next);
     setValidation(revalidated);
-    setRunId(null);
+    invalidateReview();
     setCommitErrors(null);
     setWarningsAdded(Math.max(0, revalidated.warnings.length - before));
     setApplied((list) => {
@@ -252,38 +263,38 @@ export function ImportWizard({
     setCommitErrors(null);
 
     startTransition(async () => {
-      const dry = await validateCsvImport(filename, rows, mapping);
-      if (generation.current !== startedAt) return; // stale — mapping/file changed since this run started
-      if (!dry.ok) {
-        setRunId(null);
-        setCommitErrors(dry.errors);
-        return;
-      }
-      setRunId(dry.runId);
-
-      if (generation.current !== startedAt) return; // stale — do not commit an unvalidated shape
-      const committed = await commitCsvImport(dry.runId, rows, mapping);
-      if (generation.current !== startedAt) return;
-
-      if (!committed.ok) {
-        setCommitErrors(committed.errors);
-        return;
-      }
-      setDone({ households: committed.households, guests: committed.guests, skipped });
-      setRunId(null);
-      setStep("done");
+      try {
+        let reviewedRun = runId;
+        if (!reviewedRun) {
+          const dry = await validateCsvImport(filename, rows, mapping);
+          if (generation.current !== startedAt) return;
+          if (!dry.ok) { invalidateReview(); setCommitErrors(dry.errors); return; }
+          reviewedRun = dry.runId; setRunId(dry.runId); setReconciliation(dry.reconciliation);
+          if (dry.reconciliation.some(r => r.candidates.length)) return;
+        }
+        const unresolved = reconciliation.filter(r => r.candidates.length && !decisions.some(d => d.index === r.index));
+        if (unresolved.length) { setCommitErrors([{line:0,message:`Choose what to do with ${unresolved.length} possible matches below.`}]); return; }
+        const committed = await commitCsvImport(reviewedRun, rows, mapping, decisions);
+        if (generation.current !== startedAt) return;
+        if (!committed.ok) { setCommitErrors(committed.errors); return; }
+        setDone({ households: committed.households, guests: committed.guests, skipped, updated: committed.updated });
+        try { sessionStorage.removeItem(draftKey); } catch {}
+        setSavedDraft(null); setRunId(null); setStep("done");
+      } catch { setCommitErrors([{line:0,message:"The connection was interrupted. Retry this same import to safely check or finish it."}]); }
     });
   }
 
   function startOver() {
     generation.current += 1;
+    try { sessionStorage.removeItem(draftKey); } catch {}
+    setSavedDraft(null); setSheets([]); setDraftMessage("");
     setStep("upload");
     setFilename("");
     setHeaders([]);
     setRows([]);
     setMapping(null);
     setValidation(null);
-    setRunId(null);
+    invalidateReview();
     setCommitErrors(null);
     setDone(null);
     setFileError(null);
@@ -308,7 +319,7 @@ export function ImportWizard({
       out["What to fix"] = p.message;
       return out;
     });
-    const csv = Papa.unparse({ fields: [...headers, "Spreadsheet row", "What to fix"], data });
+    const csv = Papa.unparse({ fields: [...headers, "Spreadsheet row", "What to fix"], data }, { escapeFormulae: true });
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
     const a = document.createElement("a");
     a.href = url;
@@ -322,6 +333,7 @@ export function ImportWizard({
   if (step === "done" && done) {
     return (
       <DoneStep
+        updated={done.updated}
         households={done.households}
         guests={done.guests}
         skipped={done.skipped}
@@ -333,7 +345,16 @@ export function ImportWizard({
 
   if (step === "review" && summary && mapping) {
     return (
+      <>
+      <div className="mb-4 flex flex-wrap gap-3 text-sm">
+        <button disabled={pending} onClick={saveDraft} className="underline">Save draft in this tab</button>
+        <button disabled={pending} onClick={() => {try {localStorage.setItem(`import-columns:${weddingId}:${JSON.stringify(headers)}`,JSON.stringify(mapping));setDraftMessage("Column choices saved for files with these headers.");}catch {setDraftMessage("Could not save column choices in this browser.");}}} className="underline">Remember column choices</button>
+        {runId && <button disabled={pending} onClick={()=>{invalidateReview();setCommitErrors(null);}} className="underline">Refresh match review</button>}
+        <p role="status">{draftMessage}</p>
+      </div>
+      <ImportReconciliation items={reconciliation} decisions={decisions} onChange={setDecisions} disabled={pending} />
       <ReviewStep
+        importLabel={runId ? "Apply reviewed import" : "Review and import"}
         summary={summary}
         filename={filename}
         importing={pending}
@@ -361,10 +382,12 @@ export function ImportWizard({
           />
         }
       />
+      </>
     );
   }
 
-  return <UploadStep onFile={onFile} reading={reading} readingName={filename} error={fileError} />;
+  if(step === "sheet") return <section className="rounded-xl border border-hairline p-6"><h2 className="font-display text-2xl">Choose the guest worksheet</h2><p>{filename}</p>{fileError && <p role="alert">{fileError}</p>}<ul>{sheets.map(sheet=><li key={sheet.name}><button className="my-2 rounded-lg border border-hairline p-3" onClick={()=>{try {setFileError(null);loadText(sheet.text);}catch(e){setFileError(e instanceof Error?e.message:"Cannot read worksheet.");}}}>{sheet.name} · {sheet.rows} rows before validation</button></li>)}</ul><button onClick={startOver} className="underline">Choose another file</button></section>;
+  return <>{savedDraft && <div className="mb-4"><button onClick={restoreDraft} className="underline">Resume saved import draft</button><button onClick={startOver} className="ml-4 underline">Discard draft</button></div>}<UploadStep onFile={onFile} reading={reading} readingName={filename} error={fileError} /></>;
 }
 
 /**
@@ -374,11 +397,10 @@ export function ImportWizard({
  * loaded dynamically, so it stays out of the bundle unless someone actually
  * drops a workbook.
  */
-async function readSpreadsheet(file: File): Promise<string> {
-  if (!/\.xlsx?$/i.test(file.name)) return file.text();
+async function readSpreadsheet(file: File): Promise<Array<{name:string;text:string;rows:number}>> {
+  if (!/\.xlsx?$/i.test(file.name)) return [{name:file.name,text:await file.text(),rows:0}];
   const XLSX = await import("xlsx");
   const workbook = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  if (!sheet) throw new Error("empty workbook");
-  return XLSX.utils.sheet_to_csv(sheet);
+  if (!workbook.SheetNames.length) throw new Error("This workbook is empty.");
+  return workbook.SheetNames.map(name=>{const sheet=workbook.Sheets[name];return {name,text:XLSX.utils.sheet_to_csv(sheet),rows:sheet['!ref']?Math.max(0,XLSX.utils.decode_range(sheet['!ref']).e.r):0};});
 }

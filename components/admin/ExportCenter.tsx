@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * fallback matches the Excel default.
  */
 
+const EVENT_REPORTS = new Set(["attending","declined","pending","meals","dietary","accessibility","seating","caterer"]);
 const COOKIE = "export_download";
 const POLL_MS = 150;
 const GIVE_UP_MS = 20_000;
@@ -47,15 +48,17 @@ function clearCookie(): void {
   document.cookie = `${COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
-function hrefFor(report: string, format: Format, token: string | undefined): string {
+function hrefFor(report: string, format: Format, token: string | undefined, eventId?: string): string {
   const params = new URLSearchParams();
   if (format === "xlsx") params.set("format", "xlsx");
   if (token) params.set("dl", token);
+  if (eventId) params.set("event", eventId);
   const query = params.toString();
   return `/api/export/${report}${query ? `?${query}` : ""}`;
 }
 
-export function ExportCenter({ reports }: { reports: ExportReport[] }) {
+export function ExportCenter({ reports, events = [] }: { reports: ExportReport[]; events?: Array<{ id: string; name: string }> }) {
+  const [eventId, setEventId] = useState(events.length === 1 ? events[0].id : "");
   const [format, setFormat] = useState<Format>("xlsx");
   // Tokens are generated after mount, never during render: a random value in
   // the server-rendered HTML would be a hydration mismatch. Until they arrive
@@ -138,6 +141,12 @@ export function ExportCenter({ reports }: { reports: ExportReport[] }) {
 
   return (
     <>
+      <label className="mb-4 flex flex-wrap items-center gap-3 text-sm text-ink">Event for attendance, meals and seating reports
+        <select id="export-event" value={eventId} onChange={e => setEventId(e.target.value)} className="rounded-lg border border-hairline bg-white p-2">
+          <option value="">Choose an event</option>
+          {events.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </select>
+      </label>
       <fieldset className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
         <legend className="sr-only">File format</legend>
         <div className="flex overflow-hidden rounded-full border border-[#dddbd0]" role="presentation">
@@ -184,8 +193,8 @@ export function ExportCenter({ reports }: { reports: ExportReport[] }) {
                 return (
                   <li key={r.key}>
                     <a
-                      href={hrefFor(r.key, format, tokens[r.key])}
-                      onClick={() => onDownload(r.key, r.label)}
+                      href={hrefFor(r.key, format, tokens[r.key], eventId)}
+                      onClick={(e) => { if(EVENT_REPORTS.has(r.key) && !eventId) { e.preventDefault(); setAnnouncement("Choose an event before downloading this report."); document.getElementById("export-event")?.focus(); return; } onDownload(r.key, r.label); }}
                       aria-busy={st === "pending" || undefined}
                       className={`group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-sage-band ${
                         st ? "bg-sage-band" : ""

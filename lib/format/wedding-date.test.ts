@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   formatCalendarDate,
+  formatInstantDay,
   daysUntilCalendarDate,
   calendarDayIn,
   calendarDayDelta,
@@ -27,6 +28,33 @@ describe("formatCalendarDate", () => {
 
   test("returns null for a missing date rather than inventing one", () => {
     expect(formatCalendarDate(null)).toBeNull();
+  });
+
+  test("writes the same day in each guest language", () => {
+    expect(formatCalendarDate("2027-09-18", "en")).toBe("September 18, 2027");
+    expect(formatCalendarDate("2027-09-18", "es")).toBe("18 de septiembre de 2027");
+    expect(formatCalendarDate("2027-09-18", "vi")).toBe("18 tháng 9, 2027");
+  });
+
+  test("falls back to English for a language the site does not offer", () => {
+    expect(formatCalendarDate("2027-09-18", "fr")).toBe("September 18, 2027");
+  });
+});
+
+/**
+ * The RSVP deadline is 23:59 at the venue, which is already the next day in
+ * UTC. The day shown to a guest is the day at the venue.
+ */
+describe("formatInstantDay", () => {
+  test("names the day the instant falls on at the venue", () => {
+    expect(formatInstantDay("2027-07-02T06:59:00Z", "America/Los_Angeles")).toBe("July 1, 2027");
+    expect(formatInstantDay("2027-07-02T06:59:00Z", "America/Los_Angeles", "es")).toBe("1 de julio de 2027");
+    expect(formatInstantDay("2027-07-02T06:59:00Z", "America/Los_Angeles", "vi")).toBe("1 tháng 7, 2027");
+  });
+
+  test("returns null when there is no deadline or it cannot be read", () => {
+    expect(formatInstantDay(null, "America/Los_Angeles")).toBeNull();
+    expect(formatInstantDay("not a date", "America/Los_Angeles")).toBeNull();
   });
 });
 

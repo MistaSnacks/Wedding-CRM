@@ -1,636 +1,576 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { saveRsvp, rememberLocale } from "@/app/(guest)/rsvp/h/[token]/actions";
-import { openPlusOneSlots } from "@/lib/domain/invitation-rules";
+import { saveRsvp } from "@/app/(guest)/rsvp/h/[token]/actions";
+import { eligibleMeals, type GuestRsvpDto } from "@/lib/domain/rsvp-validation";
 import { mealName } from "@/lib/domain/meal-name";
-import type { GuestRow, EventRow, MealOptionRow, QuestionRow, ResponseRow, Attending, Locale } from "@/lib/types";
+import type {
+  EventRow,
+  MealOptionRow,
+  QuestionRow,
+  ResponseRow,
+  Attending,
+} from "@/lib/types";
 import type { GuestTableInfo } from "@/app/(guest)/rsvp/h/[token]/page";
 
+type Person = GuestRsvpDto & {
+  draft?: boolean;
+  responses: Record<
+    string,
+    { attending: Attending; meal_option_id: string | null }
+  >;
+};
 type Step = "guests" | "meals" | "extras" | "review" | "confirmed";
-
-type GuestState = {
-  byEvent: Record<string, { attending: Attending; mealOptionId: string | null }>;
-  dietary: string;
-};
-
-type PlusOneState = {
-  firstName: string;
-  lastName: string;
-  byEvent: Record<string, { attending: Attending; mealOptionId: string | null }>;
-};
-
-const spring = { type: "spring" as const, stiffness: 260, damping: 26 };
-
+const input =
+  "w-full rounded-lg border border-[#d8d4c2] bg-white px-3 py-2 text-sm";
+const button =
+  "rounded-xl bg-olive-deep px-5 py-3 text-sm font-semibold text-cream disabled:opacity-50";
+function hydrate(
+  guests: GuestRsvpDto[],
+  responses: ResponseRow[],
+  events: EventRow[],
+): Person[] {
+  return guests.map((g) => ({
+    ...g,
+    responses: Object.fromEntries(
+      events.map((e) => {
+        const r = responses.find(
+          (r) => r.guest_id === g.id && r.event_id === e.id,
+        );
+        return [
+          e.id,
+          {
+            attending: r?.attending ?? "pending",
+            meal_option_id: r?.meal_option_id ?? null,
+          },
+        ];
+      }),
+    ),
+  }));
+}
 export function RsvpFlow(props: {
   token: string;
   locale: string;
-  household: { displayName: string; maxPartySize: number; plusOneSlots: number; rsvpStatus: string };
-  guests: GuestRow[];
+  household: {
+    displayName: string;
+    maxPartySize: number;
+    plusOneSlots: number;
+    rsvpStatus: string;
+  };
+  guests: GuestRsvpDto[];
   events: EventRow[];
   meals: MealOptionRow[];
   questions: QuestionRow[];
   responses: ResponseRow[];
+  answers: Array<{ question_id: string; value: string | boolean }>;
   deadline: string | null;
   deadlinePassed: boolean;
-  /**
-   * The wedding's own timezone. The deadline is a real instant, so the day it
-   * falls on depends entirely on where you stand — without this the server
-   * renders in UTC and the browser re-renders in whatever zone the guest is
-   * sitting in, which is both a hydration mismatch and the wrong date for
-   * anyone outside UTC. Falls back to UTC so the two halves at least agree
-   * until `page.tsx` passes the stored value.
-   */
-  /** The venue's zone. Required: a default here would silently render a wrong date. */
   timeZone: string;
-  tableInfo: GuestTableInfo;
+  tables: GuestTableInfo[];
 }) {
   const t = useTranslations("flow");
-  const locale = useLocale() as Locale;
+  const locale = useLocale();
+  const [people, setPeople] = useState(() =>
+    hydrate(props.guests, props.responses, props.events),
+  );
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string | boolean>>(() =>
+    Object.fromEntries(props.answers.map((a) => [a.question_id, a.value])),
+  );
   const [step, setStep] = useState<Step>("guests");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-
-  // Slots are only offered when the server would also accept them: both a
-  // plus-one grant AND party-size headroom must exist.
-  const openSlots = openPlusOneSlots(
-    { maxPartySize: props.household.maxPartySize, plusOneSlots: props.household.plusOneSlots },
-    props.guests.map((g) => ({ id: g.id, origin: g.origin })),
+  const [status, setStatus] = useState(props.household.rsvpStatus);
+  const deadline = props.deadline
+    ? new Intl.DateTimeFormat(locale, {
+        dateStyle: "long",
+        timeZone: props.timeZone,
+      }).format(new Date(props.deadline))
+    : "";
+  const closed = props.deadlinePassed;
+  const hasMeals = people.some((g) =>
+    props.events.some(
+      (e) =>
+        g.responses[e.id]?.attending === "yes" &&
+        eligibleMeals(props.meals, e.id, g.age_type).length,
+    ),
   );
-
-  const [guestState, setGuestState] = useState<Record<string, GuestState>>(() => {
-    const init: Record<string, GuestState> = {};
-    for (const g of props.guests) {
-      const byEvent: GuestState["byEvent"] = {};
-      for (const e of props.events) {
-        const r = props.responses.find((r) => r.guest_id === g.id && r.event_id === e.id);
-        byEvent[e.id] = { attending: r?.attending ?? "pending", mealOptionId: r?.meal_option_id ?? null };
-      }
-      init[g.id] = { byEvent, dietary: g.dietary_restrictions ?? "" };
-    }
-    return init;
-  });
-
-  const [plusOnes, setPlusOnes] = useState<PlusOneState[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string | boolean>>({});
-
-  const timeZone = props.timeZone;
-  const deadlineText = useMemo(() => {
-    if (!props.deadline) return "";
-    return new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : locale === "es" ? "es-MX" : "en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      timeZone,
-    }).format(new Date(props.deadline));
-  }, [props.deadline, locale, timeZone]);
-
-  const eventNames = props.events.map((e) => e.name).join(t("and"));
-
-  function setAttending(guestId: string, attending: Attending) {
-    setGuestState((s) => {
-      const next = { ...s[guestId], byEvent: { ...s[guestId].byEvent } };
-      for (const e of props.events) {
-        next.byEvent[e.id] = { ...next.byEvent[e.id], attending };
-      }
-      return { ...s, [guestId]: next };
+  function patch(id: string, value: Partial<Person>) {
+    setPeople((ps) => ps.map((p) => (p.id === id ? { ...p, ...value } : p)));
+  }
+  function answer(
+    g: Person,
+    e: EventRow,
+    attending: Attending,
+    meal = g.responses[e.id]?.meal_option_id ?? null,
+  ) {
+    patch(g.id, {
+      responses: {
+        ...g.responses,
+        [e.id]: {
+          attending,
+          meal_option_id: attending === "yes" ? meal : null,
+        },
+      },
     });
   }
-
-  function setMeal(guestId: string, mealOptionId: string) {
-    setGuestState((s) => {
-      const next = { ...s[guestId], byEvent: { ...s[guestId].byEvent } };
-      for (const e of props.events) next.byEvent[e.id] = { ...next.byEvent[e.id], mealOptionId };
-      return { ...s, [guestId]: next };
-    });
+  function remove(g: Person) {
+    if (!g.draft) setRemoved((ids) => [...ids, g.id]);
+    setPeople((ps) => ps.filter((p) => p.id !== g.id));
   }
-
-  function buildPayload(complete: boolean) {
-    return {
-      responses: props.guests.flatMap((g) =>
-        props.events.map((e) => ({
-          guest_id: g.id,
-          event_id: e.id,
-          attending: guestState[g.id].byEvent[e.id].attending,
-          meal_option_id: guestState[g.id].byEvent[e.id].mealOptionId,
-        })),
-      ),
-      new_plus_ones: plusOnes
-        .filter((p) => p.firstName.trim() && p.lastName.trim())
-        .map((p) => ({
-          first_name: p.firstName,
-          last_name: p.lastName,
-          responses: props.events.map((e) => ({
-            event_id: e.id,
-            attending: (p.byEvent[e.id]?.attending ?? "yes") as Attending,
-            meal_option_id: p.byEvent[e.id]?.mealOptionId ?? null,
-          })),
-        })),
-      guest_fields: props.guests.map((g) => ({ guest_id: g.id, dietary_restrictions: guestState[g.id].dietary })),
-      answers: props.questions.map((q) => ({
-        question_id: q.id,
-        value: answers[q.id] ?? null,
-      })).filter((a) => a.value !== null && a.value !== ""),
-      complete,
-    };
+  function add() {
+    const id = crypto.randomUUID();
+    setPeople((ps) => [
+      ...ps,
+      {
+        id,
+        rsvp_client_id: id,
+        draft: true,
+        first_name: "",
+        last_name: "",
+        age_type: "adult",
+        origin: "plus_one",
+        dietary_restrictions: "",
+        allergies: "",
+        responses: Object.fromEntries(
+          props.events.map((e) => [
+            e.id,
+            { attending: "pending" as Attending, meal_option_id: null },
+          ]),
+        ),
+      },
+    ]);
   }
-
-  const KNOWN_ERRORS = [
-    "no_plus_one_slot",
-    "over_party_size",
-    "unknown_guest",
-    "duplicate_guest",
-    "empty_name",
-    "rate_limited",
-    "deadline_passed",
-    "not_found",
-  ];
-
-  function advance(next: Step, complete = false) {
+  function save(next: Step, complete = false) {
     setError(null);
+    if (people.some((g) => !g.first_name.trim() || !g.last_name.trim())) {
+      setError("empty_name");
+      return;
+    }
+    const responseFor = (g: Person) =>
+      props.events.map((e) => ({ event_id: e.id, ...g.responses[e.id] }));
     startTransition(async () => {
-      const result = await saveRsvp(props.token, buildPayload(complete));
-      if (!result.ok) {
-        setError(KNOWN_ERRORS.includes(result.error) ? result.error : "unknown");
-        return;
+      try {
+        const result = await saveRsvp(props.token, {
+          responses: people
+            .filter((g) => g.origin === "named")
+            .flatMap((g) =>
+              responseFor(g).map((r) => ({ ...r, guest_id: g.id })),
+            ),
+          new_plus_ones: people
+            .filter((g) => g.origin === "plus_one")
+            .map((g) => ({
+              guest_id: g.draft ? undefined : g.id,
+              client_id: g.rsvp_client_id ?? undefined,
+              first_name: g.first_name,
+              last_name: g.last_name,
+              responses: responseFor(g),
+            })),
+          remove_plus_one_ids: removed,
+          guest_fields: people
+            .filter((g) => !g.draft)
+            .map((g) => ({
+              guest_id: g.id,
+              dietary_restrictions: g.dietary_restrictions ?? "",
+              allergies: g.allergies ?? "",
+            })),
+          answers: props.questions
+            .filter((q) => answers[q.id] !== undefined)
+            .map((q) => ({ question_id: q.id, value: answers[q.id] })),
+          complete,
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setPeople(hydrate(result.guests, result.responses, props.events));
+        setRemoved([]);
+        setStatus(result.status);
+        if (complete && !["completed", "declined"].includes(result.status)) {
+          setError("incomplete_rsvp");
+          return;
+        }
+        setStep(next);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch {
+        setError("unknown");
       }
-      setStep(next);
-      if (complete) window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
-
-  const anyoneAttending = props.guests.some((g) =>
-    props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes"),
-  );
-
-  // Plus-ones are implicitly attending; the meal step covers both.
-  const namedPlusOnes = plusOnes.filter((p) => p.firstName.trim());
-  const hasMealStep = anyoneAttending || namedPlusOnes.length > 0;
-  const stepAfterGuests: Step = hasMealStep ? "meals" : props.questions.length ? "extras" : "review";
-  const stepAfterMeals: Step = props.questions.length ? "extras" : "review";
-  const stepsLeftFromGuests = (hasMealStep ? 1 : 0) + props.questions.length;
-
-  if (props.deadlinePassed && props.household.rsvpStatus !== "completed") {
+  function summary() {
     return (
-      <Shell displayName={props.household.displayName} sub={t("deadlinePassed")} eventNames={eventNames} deadlineText="" />
+      <div className="flex flex-col gap-4">
+        {people.map((g) => (
+          <section
+            key={g.id}
+            className="rounded-xl border border-[#e7e3d2] bg-white p-4"
+          >
+            <h3 className="font-display text-xl font-semibold">
+              {g.first_name} {g.last_name}
+            </h3>
+            {props.events.map((e) => {
+              const r = g.responses[e.id];
+              return (
+                <div
+                  key={e.id}
+                  className="mt-3 border-t border-hairline pt-2 text-sm"
+                >
+                  <p className="font-semibold">{e.name}</p>
+                  <p>
+                    {r?.attending === "yes"
+                      ? t("reviewAttending")
+                      : r?.attending === "no"
+                        ? t("reviewDeclining")
+                        : t("reviewPending")}
+                  </p>
+                  {r?.attending === "yes" &&
+                    eligibleMeals(props.meals, e.id, g.age_type).length > 0 && (
+                      <p>
+                        {mealName(
+                          props.meals.find((m) => m.id === r.meal_option_id),
+                          locale,
+                        ) ?? t("reviewNoMeal")}
+                      </p>
+                    )}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+      </div>
     );
   }
-
   return (
-    <div className="mx-auto flex w-full max-w-[420px] flex-col items-center px-6 pt-10 pb-6">
-      <p className="text-[11px] font-medium tracking-[0.28em] text-rose">{t("welcome")}</p>
-      <h1 className="font-display mt-2 text-center text-4xl font-medium text-olive-deep">
+    <div className="mx-auto w-full max-w-xl px-5 py-10 text-olive-deep">
+      <p className="text-center text-xs font-semibold tracking-widest text-rose">
+        {t("welcome")}
+      </p>
+      <h1 className="font-display mt-2 text-center text-4xl">
         {props.household.displayName}
       </h1>
-      <p className="mt-2 text-center text-[13.5px] leading-relaxed text-[#5c6151]">
-        {t("invitedTo", { events: eventNames })}
-        <br />
-        {deadlineText && t("deadline", { date: deadlineText })}
-      </p>
-
-      {props.tableInfo && step !== "confirmed" && (
-        <TableReveal info={props.tableInfo} />
+      <div className="my-5 space-y-2 text-center text-sm">
+        {props.events.map((e) => (
+          <div key={e.id}>
+            <strong>{e.name}</strong>
+            {e.starts_at && (
+              <p>
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                  timeZone: props.timeZone,
+                }).format(new Date(e.starts_at))}
+              </p>
+            )}
+            {e.venue_name && <p>{e.venue_name}</p>}
+            {e.venue_address && <p>{e.venue_address}</p>}
+            {e.dress_code && <p>{e.dress_code}</p>}
+          </div>
+        ))}
+        {deadline && !closed && <p>{t("deadline", { date: deadline })}</p>}
+      </div>
+      {props.events.some((e) => e.starts_at) && (
+        <a
+          href={`/rsvp/h/${encodeURIComponent(props.token)}/calendar`}
+          className="mb-5 block text-center text-sm underline"
+        >
+          {t("addCalendar")}
+        </a>
       )}
-
-      <AnimatePresence mode="wait" initial={false}>
-        {step === "guests" && (
-          <motion.div key="guests" {...stepMotion} className="mt-7 flex w-full flex-col gap-4">
-            {props.guests.map((g) => (
-              <div key={g.id} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-                <div className="flex items-center gap-2.5">
-                  <h3 className="font-display flex-1 text-xl font-semibold text-olive-deep">
+      {props.tables.length > 0 && (
+        <section className="mb-6 rounded-xl border border-hairline bg-white p-4">
+          <h2 className="font-display text-2xl">{t("yourTable")}</h2>
+          {props.tables.map((table, i) => (
+            <div key={i} className="mt-3 text-sm">
+              <strong>{table.eventName}</strong>
+              <p>
+                {t("yourTableTitle", {
+                  name: table.guestName,
+                  table: table.tableName,
+                })}
+              </p>
+              {table.mates.length > 0 && (
+                <p className="mt-1">
+                  {t("seatedWith")}:{" "}
+                  {table.mates
+                    .map((m) => `${m.first_name} ${m.last_name}`)
+                    .join(", ")}
+                </p>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+      {closed ? (
+        <>
+          <p className="mb-5 rounded-xl bg-paper p-4 text-sm">
+            {t("deadlinePassed")}
+          </p>
+          {summary()}
+        </>
+      ) : step === "confirmed" ? (
+        <>
+          <h2 className="font-display text-center text-3xl">
+            {t("confirmedTitle")}
+          </h2>
+          <p className="my-4 text-center text-sm">
+            {status === "declined" ? t("declinedBody") : t("confirmedBody")}
+          </p>
+          {summary()}
+          <button
+            className={`${button} mt-5`}
+            onClick={() => setStep("guests")}
+          >
+            {t("editResponse")}
+          </button>
+        </>
+      ) : (
+        <fieldset disabled={pending} className="space-y-4">
+          {step === "guests" && (
+            <>
+              {people.map((g) => (
+                <section
+                  key={g.id}
+                  className="rounded-xl border border-hairline bg-white p-4"
+                >
+                  {g.origin === "plus_one" ? (
+                    <div className="space-y-2">
+                      <label className="block text-sm">
+                        {t("firstName")}
+                        <input
+                          className={input}
+                          value={g.first_name}
+                          maxLength={120}
+                          onChange={(e) =>
+                            patch(g.id, { first_name: e.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        {t("lastName")}
+                        <input
+                          className={input}
+                          value={g.last_name}
+                          maxLength={120}
+                          onChange={(e) =>
+                            patch(g.id, { last_name: e.target.value })
+                          }
+                        />
+                      </label>
+                      <button
+                        className="text-sm text-rose underline"
+                        onClick={() => remove(g)}
+                      >
+                        {t("removeGuest")}
+                      </button>
+                    </div>
+                  ) : (
+                    <h2 className="font-display text-2xl">
+                      {g.first_name} {g.last_name}
+                    </h2>
+                  )}
+                  {props.events.map((e) => (
+                    <div key={e.id} className="mt-4">
+                      <p className="mb-2 text-sm font-semibold">{e.name}</p>
+                      <div
+                        className="flex gap-2"
+                        role="group"
+                        aria-label={`${g.first_name} — ${e.name}`}
+                      >
+                        {(["yes", "no"] as const).map((v) => (
+                          <button
+                            key={v}
+                            aria-pressed={g.responses[e.id]?.attending === v}
+                            onClick={() => answer(g, e, v)}
+                            className={`flex-1 rounded-lg border p-3 text-sm ${g.responses[e.id]?.attending === v ? "bg-olive-deep text-cream" : "border-hairline"}`}
+                          >
+                            {t(v === "yes" ? "attending" : "declining")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              ))}
+              {people.length < props.household.maxPartySize &&
+                people.filter((g) => g.origin === "plus_one").length <
+                  props.household.plusOneSlots && (
+                  <button
+                    className="w-full rounded-xl border border-dashed border-rose p-4 text-sm"
+                    onClick={add}
+                  >
+                    {t("addGuest")}
+                  </button>
+                )}
+              <button
+                className={`${button} w-full`}
+                onClick={() =>
+                  save(
+                    hasMeals
+                      ? "meals"
+                      : props.questions.length
+                        ? "extras"
+                        : "review",
+                  )
+                }
+              >
+                {t("continue")}
+              </button>
+              <p className="text-center text-xs">{t("autosave")}</p>
+            </>
+          )}
+          {step === "meals" && (
+            <>
+              <h2 className="font-display text-2xl">{t("mealsTitle")}</h2>
+              {people.map((g) => (
+                <section
+                  key={g.id}
+                  className="rounded-xl border border-hairline bg-white p-4"
+                >
+                  <h3 className="font-display text-xl">
                     {g.first_name} {g.last_name}
                   </h3>
-                  <span className="rounded-full bg-sage-band px-2.5 py-1 text-[10.5px] font-semibold tracking-wider text-olive">
-                    {t(g.age_type)}
-                  </span>
-                </div>
-                <div className="mt-3.5 flex gap-2">
-                  {(["yes", "no"] as const).map((v) => {
-                    const active = props.events.every((e) => guestState[g.id].byEvent[e.id].attending === v);
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setAttending(g.id, v)}
-                        className={`flex-1 rounded-[10px] py-3 text-[13.5px] font-semibold transition-all duration-200 active:scale-[0.98] ${
-                          active
-                            ? v === "yes"
-                              ? "bg-olive-deep text-cream"
-                              : "bg-rose text-blush"
-                            : "border-[1.5px] border-[#d8d4c2] text-[#4a5147] hover:border-rose"
-                        }`}
-                      >
-                        {v === "yes" ? t("attending") : t("declining")}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-
-            {plusOnes.map((p, i) => (
-              <div key={i} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-xl font-semibold text-olive-deep">{t("addGuest")}</h3>
-                  <button
-                    type="button"
-                    onClick={() => setPlusOnes((ps) => ps.filter((_, j) => j !== i))}
-                    className="text-[12px] font-medium text-rose underline underline-offset-2"
-                  >
-                    {t("removeGuest")}
-                  </button>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <input
-                    value={p.firstName}
-                    onChange={(ev) =>
-                      setPlusOnes((ps) => ps.map((x, j) => (j === i ? { ...x, firstName: ev.target.value } : x)))
-                    }
-                    placeholder={t("firstName")}
-                    className="w-1/2 rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
-                  />
-                  <input
-                    value={p.lastName}
-                    onChange={(ev) =>
-                      setPlusOnes((ps) => ps.map((x, j) => (j === i ? { ...x, lastName: ev.target.value } : x)))
-                    }
-                    placeholder={t("lastName")}
-                    className="w-1/2 rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
-                  />
-                </div>
-              </div>
-            ))}
-
-            {plusOnes.length < openSlots && (
-              <button
-                type="button"
-                onClick={() =>
-                  setPlusOnes((ps) => [
-                    ...ps,
-                    {
-                      firstName: "",
-                      lastName: "",
-                      byEvent: Object.fromEntries(
-                        props.events.map((e) => [e.id, { attending: "yes" as Attending, mealOptionId: null }]),
-                      ),
-                    },
-                  ])
-                }
-                className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed border-[#c68e86] p-4 text-left transition-colors hover:bg-blush/50"
-              >
-                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blush text-xl font-light text-rose">
-                  +
-                </span>
-                <span>
-                  <span className="block text-[14.5px] font-semibold text-olive-deep">{t("addGuest")}</span>
-                  <span className="block text-[12.5px] text-rose">
-                    {openSlots === 1 ? t("plusOneNote") : t("plusOneNotes", { count: openSlots })}
-                  </span>
-                </span>
-              </button>
-            )}
-
-            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => advance(stepAfterGuests)}
-              className="mt-2 w-full rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
-            >
-              {pending ? "…" : stepsLeftFromGuests ? t("questionsLeft", { count: stepsLeftFromGuests }) : t("continue")}
-            </button>
-            <p className="text-center text-xs text-[#75796a]">{t("autosave")}</p>
-          </motion.div>
-        )}
-
-        {step === "meals" && (
-          <motion.div key="meals" {...stepMotion} className="mt-7 flex w-full flex-col gap-4">
-            <h2 className="font-display text-center text-2xl font-semibold text-olive-deep">{t("mealsTitle")}</h2>
-            {props.guests
-              .filter((g) => props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes"))
-              .map((g) => (
-                <div key={g.id} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="font-display flex-1 text-xl font-semibold text-olive-deep">
-                      {g.first_name} {g.last_name}
-                    </h3>
-                    <span className="rounded-full bg-sage-band px-2.5 py-1 text-[10.5px] font-semibold tracking-wider text-olive">
-                      {t(g.age_type)}
-                    </span>
-                  </div>
-                  <div className="mt-3.5 flex flex-wrap gap-1.5">
-                    {props.meals
-                      .filter((m) => (g.age_type === "adult" ? !m.is_kids_meal : true))
-                      .map((m) => {
-                        const selected = guestState[g.id].byEvent[props.events[0]?.id]?.mealOptionId === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => setMeal(g.id, m.id)}
-                            className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors duration-150 ${
-                              selected
-                                ? "bg-olive-deep text-cream"
-                                : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
-                            }`}
-                          >
-                            {mealName(m, locale)}
-                          </button>
-                        );
-                      })}
-                  </div>
-                  <input
-                    value={guestState[g.id].dietary}
-                    onChange={(ev) =>
-                      setGuestState((s) => ({ ...s, [g.id]: { ...s[g.id], dietary: ev.target.value } }))
-                    }
-                    placeholder={t("dietaryPlaceholder")}
-                    className="mt-3 w-full rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
-                  />
-                </div>
-              ))}
-            {plusOnes
-              .map((p, i) => ({ p, i }))
-              .filter(({ p }) => p.firstName.trim())
-              .map(({ p, i }) => (
-                <div key={`p1-${i}`} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="font-display flex-1 text-xl font-semibold text-olive-deep">
-                      {p.firstName} {p.lastName}
-                    </h3>
-                    <span className="rounded-full bg-sage-band px-2.5 py-1 text-[10.5px] font-semibold tracking-wider text-olive">
-                      {t("adult")}
-                    </span>
-                  </div>
-                  <div className="mt-3.5 flex flex-wrap gap-1.5">
-                    {props.meals
-                      .filter((m) => !m.is_kids_meal)
-                      .map((m) => {
-                        const selected = p.byEvent[props.events[0]?.id]?.mealOptionId === m.id;
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() =>
-                              setPlusOnes((ps) =>
-                                ps.map((x, j) =>
-                                  j === i
-                                    ? {
-                                        ...x,
-                                        byEvent: Object.fromEntries(
-                                          props.events.map((e) => [
-                                            e.id,
-                                            { attending: "yes" as Attending, mealOptionId: m.id },
-                                          ]),
-                                        ),
-                                      }
-                                    : x,
-                                ),
-                              )
-                            }
-                            className={`whitespace-nowrap rounded-full px-3.5 py-2 text-[12.5px] font-medium transition-colors ${
-                              selected
-                                ? "bg-olive-deep text-cream"
-                                : "border border-[#d8d4c2] text-[#4a5147] hover:border-rose hover:text-rose"
-                            }`}
-                          >
-                            {mealName(m, locale)}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              ))}
-            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setStep("guests")}
-                className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
-              >
-                {t("back")}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => advance(stepAfterMeals)}
-                className="flex-1 rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
-              >
-                {pending ? "…" : t("continue")}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {step === "extras" && (
-          <motion.div key="extras" {...stepMotion} className="mt-7 flex w-full flex-col gap-4">
-            <h2 className="font-display text-center text-2xl font-semibold text-olive-deep">{t("extrasTitle")}</h2>
-            {props.questions.map((q) => (
-              <div key={q.id} className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-                <p className="text-[14px] font-medium text-ink">{q.label[locale] ?? q.label.en}</p>
-                {q.type === "boolean" ? (
-                  <div className="mt-3 flex gap-2">
-                    {[true, false].map((v) => (
-                      <button
-                        key={String(v)}
-                        type="button"
-                        onClick={() => setAnswers((a) => ({ ...a, [q.id]: v }))}
-                        className={`flex-1 rounded-[10px] py-2.5 text-[13.5px] font-semibold transition-colors ${
-                          answers[q.id] === v
-                            ? "bg-olive-deep text-cream"
-                            : "border-[1.5px] border-[#d8d4c2] text-[#4a5147] hover:border-rose"
-                        }`}
-                      >
-                        {v ? t("yes") : t("no")}
-                      </button>
+                  {props.events
+                    .filter(
+                      (e) =>
+                        g.responses[e.id]?.attending === "yes" &&
+                        eligibleMeals(props.meals, e.id, g.age_type).length,
+                    )
+                    .map((e) => (
+                      <label key={e.id} className="mt-3 block text-sm">
+                        {e.name}
+                        <select
+                          className={input}
+                          value={g.responses[e.id]?.meal_option_id ?? ""}
+                          onChange={(ev) =>
+                            answer(g, e, "yes", ev.target.value || null)
+                          }
+                        >
+                          <option value="">{t("reviewNoMeal")}</option>
+                          {eligibleMeals(props.meals, e.id, g.age_type).map(
+                            (m) => (
+                              <option value={m.id} key={m.id}>
+                                {mealName(m, locale)}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
                     ))}
-                  </div>
-                ) : (
-                  <input
-                    value={(answers[q.id] as string) ?? ""}
-                    onChange={(ev) => setAnswers((a) => ({ ...a, [q.id]: ev.target.value }))}
-                    placeholder={t("answerPlaceholder")}
-                    className="mt-3 w-full rounded-[10px] border border-[#ddd9c4] bg-cream px-3.5 py-3 text-[13px] outline-none focus:border-olive"
-                  />
-                )}
-              </div>
-            ))}
-            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
-            <div className="flex gap-2">
+                  <label className="mt-3 block text-sm">
+                    {t("dietaryPlaceholder")}
+                    <textarea
+                      className={input}
+                      value={g.dietary_restrictions ?? ""}
+                      maxLength={2000}
+                      onChange={(e) =>
+                        patch(g.id, { dietary_restrictions: e.target.value })
+                      }
+                    />
+                  </label>
+                </section>
+              ))}
               <button
-                type="button"
-                onClick={() => setStep(hasMealStep ? "meals" : "guests")}
-                className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
+                className={button}
+                onClick={() =>
+                  save(props.questions.length ? "extras" : "review")
+                }
+              >
+                {t("continue")}
+              </button>
+              <button
+                className="ml-4 underline"
+                onClick={() => setStep("guests")}
               >
                 {t("back")}
               </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => advance("review")}
-                className="flex-1 rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
-              >
-                {pending ? "…" : t("continue")}
+            </>
+          )}
+          {step === "extras" && (
+            <>
+              {props.questions.map((q) => (
+                <label className="block text-sm" key={q.id}>
+                  {q.label[locale as "en" | "es" | "vi"] ?? q.label.en}
+                  {q.type === "boolean" ? (
+                    <select
+                      className={input}
+                      value={
+                        answers[q.id] === undefined ? "" : String(answers[q.id])
+                      }
+                      onChange={(e) =>
+                        setAnswers((a) => ({
+                          ...a,
+                          [q.id]: e.target.value === "true",
+                        }))
+                      }
+                    >
+                      <option value="">—</option>
+                      <option value="true">{t("yes")}</option>
+                      <option value="false">{t("no")}</option>
+                    </select>
+                  ) : q.type === "select" ? (
+                    <select
+                      className={input}
+                      value={String(answers[q.id] ?? "")}
+                      onChange={(e) =>
+                        setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+                      }
+                    >
+                      <option value="">—</option>
+                      {(Array.isArray(q.options) ? q.options : [])
+                        .filter((x) => typeof x === "string")
+                        .map((x) => (
+                          <option key={x}>{x}</option>
+                        ))}
+                    </select>
+                  ) : (
+                    <textarea
+                      className={input}
+                      value={String(answers[q.id] ?? "")}
+                      onChange={(e) =>
+                        setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+                      }
+                    />
+                  )}
+                </label>
+              ))}
+              <button className={button} onClick={() => save("review")}>
+                {t("continue")}
               </button>
-            </div>
-          </motion.div>
-        )}
-
-        {step === "review" && (
-          <motion.div key="review" {...stepMotion} className="mt-7 flex w-full flex-col gap-4">
-            <h2 className="font-display text-center text-2xl font-semibold text-olive-deep">{t("reviewTitle")}</h2>
-            <div className="rounded-2xl border border-[#e7e3d2] bg-white p-5">
-              {props.guests.map((g) => {
-                const attending = props.events.some((e) => guestState[g.id].byEvent[e.id].attending === "yes");
-                const mealId = guestState[g.id].byEvent[props.events[0]?.id]?.mealOptionId;
-                const meal = props.meals.find((m) => m.id === mealId);
-                return (
-                  <div key={g.id} className="flex items-center justify-between border-b border-[#f1f0ea] py-3 last:border-0">
-                    <span className="text-[14px] font-medium text-ink">
-                      {g.first_name} {g.last_name}
-                    </span>
-                    <span className={`text-[13px] font-medium ${attending ? "text-olive" : "text-rose"}`}>
-                      {attending ? `${t("reviewAttending")}${meal ? ` · ${mealName(meal, locale)}` : ` · ${t("reviewNoMeal")}`}` : t("reviewDeclining")}
-                    </span>
-                  </div>
-                );
-              })}
-              {plusOnes
-                .filter((p) => p.firstName.trim())
-                .map((p, i) => {
-                  const meal = props.meals.find((m) => m.id === p.byEvent[props.events[0]?.id]?.mealOptionId);
-                  return (
-                    <div key={i} className="flex items-center justify-between border-b border-[#f1f0ea] py-3 last:border-0">
-                      <span className="text-[14px] font-medium text-ink">
-                        {p.firstName} {p.lastName}
-                      </span>
-                      <span className="text-[13px] font-medium text-olive">
-                        {t("reviewAttending")}{meal ? ` · ${mealName(meal, locale)}` : ` · ${t("reviewNoMeal")}`}
-                      </span>
-                    </div>
-                  );
-                })}
-            </div>
-            {error && <p className="text-center text-sm text-rose">{t(`errors.${error}`)}</p>}
-            <div className="flex gap-2">
+            </>
+          )}
+          {step === "review" && (
+            <>
+              <h2 className="font-display text-2xl">{t("reviewTitle")}</h2>
+              {summary()}
               <button
-                type="button"
-                onClick={() => setStep(props.questions.length ? "extras" : hasMealStep ? "meals" : "guests")}
-                className="rounded-xl border-[1.5px] border-[#d8d4c2] px-6 py-4 text-[15px] font-medium text-[#4a5147] transition-colors hover:border-rose hover:text-rose"
+                className={`${button} w-full`}
+                onClick={() => save("confirmed", true)}
               >
+                {t("submit")}
+              </button>
+              <button className="underline" onClick={() => setStep("guests")}>
                 {t("back")}
               </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => advance("confirmed", true)}
-                className="flex-1 rounded-xl bg-olive-deep py-4 text-[15px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none"
-              >
-                {pending ? "…" : t("submit")}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {step === "confirmed" && (
-          <motion.div
-            key="confirmed"
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={spring}
-            className="mt-10 flex w-full flex-col items-center gap-3 text-center"
-          >
-            <Petals />
-            <h2 className="font-display text-4xl font-medium text-olive-deep">{t("confirmedTitle")}</h2>
-            <p className="max-w-[300px] text-[14px] leading-relaxed text-[#5c6151]">
-              {anyoneAttending ? t("confirmedBody") : t("confirmedBody")}
+            </>
+          )}
+          {error && (
+            <p
+              role="alert"
+              className="rounded-lg border border-rose bg-white p-3 text-sm text-rose"
+            >
+              {t.has(`errors.${error}`)
+                ? t(`errors.${error}`)
+                : t("errors.unknown")}
             </p>
-            {deadlineText && (
-              <p className="text-[12.5px] text-[#75796a]">{t("confirmedEdit", { date: deadlineText })}</p>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <LocaleSaver token={props.token} />
-    </div>
-  );
-}
-
-const stepMotion = {
-  initial: { opacity: 0, x: 24 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -24 },
-  transition: spring,
-};
-
-function Shell(props: { displayName: string; sub: string; eventNames: string; deadlineText: string }) {
-  return (
-    <div className="mx-auto flex w-full max-w-[420px] flex-col items-center px-6 pt-16 text-center">
-      <h1 className="font-display text-4xl font-medium text-olive-deep">{props.displayName}</h1>
-      <p className="mt-4 text-[14px] leading-relaxed text-[#5c6151]">{props.sub}</p>
-    </div>
-  );
-}
-
-function TableReveal({ info }: { info: NonNullable<GuestTableInfo> }) {
-  const t = useTranslations("flow");
-  const shown = info.mates.slice(0, 4);
-  const extra = info.mates.length - shown.length;
-  return (
-    <div className="mt-6 w-full rounded-2xl border border-[#e7e3d2] bg-white p-5 text-center">
-      <p className="text-[10.5px] font-semibold tracking-[0.18em] text-rose">{t("yourTable")}</p>
-      <p className="font-display mt-1 text-2xl font-medium text-olive-deep">
-        {t("yourTableTitle", { name: info.guestName, table: info.tableName })}
-      </p>
-      {shown.length > 0 && (
-        <>
-          <p className="mt-3 text-[10.5px] font-semibold tracking-widest text-muted">{t("seatedWith")}</p>
-          <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-            {shown.map((m, i) => (
-              <span key={i} className="rounded-full bg-cream px-3 py-1.5 text-[12px] font-medium text-olive-deep">
-                {m.first_name} {m.last_name}
-              </span>
-            ))}
-            {extra > 0 && (
-              <span className="rounded-full border border-dashed border-[#d8d4c2] px-3 py-1.5 text-[12px] text-[#75796a]">
-                {t("more", { count: extra })}
-              </span>
-            )}
-          </div>
-        </>
+          )}
+          {pending && (
+            <p role="status" className="text-sm">
+              …
+            </p>
+          )}
+        </fieldset>
       )}
     </div>
   );
-}
-
-/** One-time drifting petals on the confirmation screen (skipped under reduced motion). */
-function Petals() {
-  const petals = [0, 1, 2, 3, 4, 5];
-  return (
-    <div aria-hidden className="pointer-events-none relative h-0 w-full motion-reduce:hidden">
-      {petals.map((i) => (
-        <motion.span
-          key={i}
-          initial={{ opacity: 0, y: -30, x: (i - 2.5) * 44, rotate: 0 }}
-          animate={{ opacity: [0, 1, 1, 0], y: 130, rotate: i % 2 ? 100 : -80 }}
-          transition={{ duration: 2.6 + i * 0.25, delay: i * 0.12, ease: "easeInOut" }}
-          className="absolute left-1/2 top-0 block h-3 w-2.5 rounded-full"
-          style={{ backgroundColor: i % 2 ? "#C68E86" : "#E9B7AC", borderRadius: "60% 40% 55% 45%" }}
-        />
-      ))}
-    </div>
-  );
-}
-
-function LocaleSaver({ token }: { token: string }) {
-  const locale = useLocale();
-  // Server actions may not run during render — persist the language
-  // preference as an effect after mount / locale change.
-  useEffect(() => {
-    void rememberLocale(token, locale);
-  }, [token, locale]);
-  return null;
 }

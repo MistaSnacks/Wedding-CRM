@@ -6,10 +6,16 @@
       "size": 1616956,
       "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/rosendal_park_sunset_1k.hdr",
       "md5": "b2492087e3476bf89997189632b86f57"
+    },
+    {
+      "size": 1701220,
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/pretoria_gardens_1k.hdr",
+      "md5": "dc3f50c0e9e1d0157bc30988f226fadd"
     }
   ],
   "pages": [
-    "https://polyhaven.com/a/rosendal_park_sunset"
+    "https://polyhaven.com/a/rosendal_park_sunset",
+    "https://polyhaven.com/a/pretoria_gardens"
   ],
   "authored": {
     "benavento-grey-marble-v2.png": "Baked procedural shader authored in scripts/blender/build-terrace.py"

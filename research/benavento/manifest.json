@@ -1,0 +1,2765 @@
+{
+  "venue": "Edén Benavento",
+  "retrieved": "2026-09-04",
+  "usage": "Reference research. Photos belong to their owners; no redistribution license inferred.",
+  "pages": [
+    {
+      "url": "https://benavento.com/",
+      "error": null
+    },
+    {
+      "url": "https://benavento.com/espacios-para-eventos/",
+      "error": null
+    },
+    {
+      "url": "https://benavento.com/areas-generales/",
+      "error": null
+    },
+    {
+      "url": "https://benavento.com/galeria/",
+      "error": null
+    },
+    {
+      "url": "https://benavento.com/planning/",
+      "error": null
+    },
+    {
+      "url": "https://www.salondeeventosbenavento.com/",
+      "error": null
+    },
+    {
+      "url": "https://www.salondeeventosbenavento.com/instalaciones",
+      "error": null
+    },
+    {
+      "url": "https://www.salondeeventosbenavento.com/jardin-y-terraza-para-bodas-en-guadalajara",
+      "error": null
+    },
+    {
+      "url": "https://www.salondeeventosbenavento.com/galeria",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "url": "https://www.aearquitectos.mx/en/projects-1/benavento",
+      "error": null
+    }
+  ],
+  "assets": [
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/00.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/c1d6946697ef.webp",
+      "bytes": 344942,
+      "sha256": "13f0220370bfc04ad0920b9b314b0fd6627c18bb397dae344122c7ecd9d72543",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/wedding-planner-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/b02b5dbb55df.webp",
+      "bytes": 530910,
+      "sha256": "fb7f3520f091ca64d911ff2d2f95d7ab8f91f53bbeaa218d9427b332731dc311",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/3a9a7deaedd1.webp",
+      "bytes": 714170,
+      "sha256": "e8fe8d48dc4450d3ddb81d9f741a3e3b7f47565e350c70a1a5ea9b1443a36e73",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/areas-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/7596dac48a6e.webp",
+      "bytes": 764664,
+      "sha256": "c5eb9460f097677cd994e0754f51a7922aeddbad0031800a6ab06e67e6fe6235",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/94feee685a40.webp",
+      "bytes": 527598,
+      "sha256": "9fb9995b587ef7edd808c1f5caf3e7cd5e5ec51301d6622ce7ae6fa1e4d16941",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/9a3a7c95cebf.webp",
+      "bytes": 952448,
+      "sha256": "836ccca1aadde2ec82be1a84d560c88982b482c63257042cc73ce552f6aff496",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/motor-lobby.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/18710ec219f7.webp",
+      "bytes": 796826,
+      "sha256": "7565b1d5e45ec3303d2f6b89c19811c1923055ff5d5e1efa77e2d5eda4656442",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/benavento-guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/8d1d3ca2226b.webp",
+      "bytes": 481210,
+      "sha256": "c9376927e506bd485ac7fa2809b46d71e863bde4d805b5772e566cdc8373c194",
+      "width": 1300,
+      "height": 979
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/lago-principal-01-scaled.webp",
+      "kind": "image",
+      "alt": "Lago Principal",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/5d1c0bb44201.webp",
+      "bytes": 1112952,
+      "sha256": "91dbdb2c8572842128ffb24b85d7879a9d02c4613622bc09e6d616537d2ab2f2",
+      "width": 2560,
+      "height": 1440
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/lago-principal-01.webp",
+      "kind": "image",
+      "alt": "Lago Principal",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/4f30c667f0d7.webp",
+      "bytes": 2663798,
+      "sha256": "4800e7131e6aadccc5554eacba831450432eea03a18faa3e836f5147020b912b",
+      "width": 4032,
+      "height": 2268
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Benavento venue Guadalajara",
+      "pages": [
+        "https://benavento.com/"
+      ],
+      "local": "images/8c7686f63293.webp",
+      "bytes": 197328,
+      "sha256": "2c7a22469407623c49aa631806ff2011efdb5bb3d1e7afe78b19911d02d551b5",
+      "width": 920,
+      "height": 1313
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/"
+      ],
+      "local": "images/5aab012057ef.webp",
+      "bytes": 247282,
+      "sha256": "5260fa84ea41295aebcf732849c40ae1517f6572f1b53f7596a7b86101cb6c34",
+      "width": 920,
+      "height": 1313
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/"
+      ],
+      "local": "images/0d437a4e9778.webp",
+      "bytes": 275620,
+      "sha256": "eda8d74d912fdb7c239cdba420ce49aace91f3ee41416d1cfeeed201c391caa1",
+      "width": 920,
+      "height": 1313
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/"
+      ],
+      "local": "images/4358dcc58c13.webp",
+      "bytes": 393424,
+      "sha256": "c5b9ccbb3fec5934bdcc97a0f5dc581635f5bb72dab54cb2c64d3a000fe79ae5",
+      "width": 920,
+      "height": 1313
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/"
+      ],
+      "local": "images/9d9e25db43a5.webp",
+      "bytes": 233248,
+      "sha256": "552746f46dad29499da82d698349a736386e187296073cba53fb5f6ad5770899",
+      "width": 920,
+      "height": 1313
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/92bc2a318b60.webp",
+      "bytes": 1309258,
+      "sha256": "e5c3052ef7d7e26dc69954422e0bcbe478c20ee8f5394bc9bb29c6d33f050afe",
+      "width": 1920,
+      "height": 1282
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/benavento.png",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/",
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/",
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/01a374d1ad5b.png",
+      "bytes": 9069,
+      "sha256": "67c63feea3e36c8fcc9986277a75a4104ecd929941e3346ed6db02e432d450a9",
+      "width": 320,
+      "height": 114
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-terraza-panoramica-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/9e4bc50e18fd.webp",
+      "bytes": 353926,
+      "sha256": "00eaea32091b7f45fab4cb3a327e933674a7665fec1ee347290348c64f6d332e",
+      "width": 1500,
+      "height": 843
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-terraza-panoramica-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/6cd85c74f01a.webp",
+      "bytes": 450308,
+      "sha256": "992e3ffc03459aaf26e4d1851c5dda066c909be3dcabb31b5f80f93c7632d5af",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-terraza-panoramica-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/16b71f8aca2e.webp",
+      "bytes": 303616,
+      "sha256": "f9066c1a7048fb2ba9d02eeb15b62947a7f1770b6b30b0532a4289ace920b92b",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-terraza-panoramica-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/f807f5ed1e96.webp",
+      "bytes": 173498,
+      "sha256": "81238e1c61b100e94a775d6a4aff7c039d49fffb6292801a31ffd62377ad5e5b",
+      "width": 1500,
+      "height": 788
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/terraza-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/6dec63fd858c.webp",
+      "bytes": 621158,
+      "sha256": "bfb3d7ef41f6983ff281a03bba91f95a7eedf3c6fdd1b85214f93468a7289c7d",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/3cfcb6cfc15b.webp",
+      "bytes": 294140,
+      "sha256": "ffa6e039da159011c69da956a4d7c906ced2e4d3e1f850155df7484bd343e464",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/74ea2d1ef35a.webp",
+      "bytes": 392512,
+      "sha256": "e6af3d5e63ab2ecbecffff0b5bccc8da83a297cad3e6d12661503cf4bc374dfb",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/e3aea3223546.webp",
+      "bytes": 330716,
+      "sha256": "cb953bbfe99904a274aea02950f259fbd26a221ab7a23a8dce879ac81a0e7dda",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/1f99a3a3f6c5.webp",
+      "bytes": 393338,
+      "sha256": "3133d4a76a7a008280f8b1654082cf6652d06e743c0cdc5deaec0351713f5d2e",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/05-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/d2de5e529fbc.webp",
+      "bytes": 255482,
+      "sha256": "23f0b58c10ab35ce2c438e75cb57b5ddec9db77bf9aee9a59a0407cb9f2be0a3",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/06-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/a351dc2949f0.webp",
+      "bytes": 295856,
+      "sha256": "1ca031bc49e9d6172874329b6cd4aaf4c6665ffa97744a7caa7ad03e2154b861",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Boda-Benavento-Guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/dc82c2b38a00.webp",
+      "bytes": 334442,
+      "sha256": "52e12e47b9fa7813563371424c8f325a7884409dfaaa76805734945328af7046",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/08-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/532d3ae46ad3.webp",
+      "bytes": 409970,
+      "sha256": "db2e6f547cfd0a510f62c0bb1016bb88a23adadeb714f287107adaecc0762c98",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/09-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/51e1f1895e42.webp",
+      "bytes": 503954,
+      "sha256": "51330fddce3fef66f66f763f0eeaad50dba88c420cb5147eb597eace4a209944",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/10-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/9f8bd7cdd0c4.webp",
+      "bytes": 497112,
+      "sha256": "fff4bf0f9e5899b3c668dfdb1fb5cbc2cd2b9aaadaa09fbf7148ebff10abc568",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/11-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/bc3ddfdd083e.webp",
+      "bytes": 339544,
+      "sha256": "2c8771bb783e6ef2670cb873a51d940711322bcc652f9a5a40eca786b5372fb9",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/12-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/d5c397ef7f12.webp",
+      "bytes": 328674,
+      "sha256": "f1986516414072eb88fff875f196f6bea94a4077db82e2a27b5b3bab3cdf6f2c",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/13-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/c2af523d8ae6.webp",
+      "bytes": 319734,
+      "sha256": "6aa71ce66166bedcac4586814ecd6b349b200dade1476a047cbd0d00d0009d92",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/14-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/722ee642be81.webp",
+      "bytes": 341894,
+      "sha256": "def015301634657d6c4e9b2be2de42a0f927f0afdda84f2eb0e585baf0aa1e65",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/15-terraza-montaje-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/94000f8e0394.webp",
+      "bytes": 249218,
+      "sha256": "7a7458a2704b0c4a912633160707a8921e0c0507baae38127ce6ceae57bbb779",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/c41b77a7d5dc.webp",
+      "bytes": 124352,
+      "sha256": "660e0ce4a4a73865be353e51e3258aa5efc980c822c88c08a1be071830eb5318",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/9ed81019d22a.webp",
+      "bytes": 119926,
+      "sha256": "a8756145d8deb41ceb945c0d6e992f959fc9f7520d3cde4b75252b4e4d0655c6",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/bb55d26a9bfb.webp",
+      "bytes": 139312,
+      "sha256": "3a0d6353a88d909005854554efd177e5bfa02b20fc7bf7c0e00c3ea45071aef5",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/b5df7e8e558b.webp",
+      "bytes": 166744,
+      "sha256": "922c96fbc195d5c0ce5bd3bd1f0c562a07677ec31a690c382f99f137b2270259",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/05-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/0a5e794caadb.webp",
+      "bytes": 296312,
+      "sha256": "aec9108af9e5f7ef33f5df3ec02b19e0e5e2468d809130fbe689e5c7bf78cd96",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/06-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/8709abacc4e7.webp",
+      "bytes": 438202,
+      "sha256": "b389d7b17f8e1ebb79ce5a9d61daaf15a0b14a5da23fab05996e899b1e26fc99",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/07-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "Gran Salón Benavento",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/",
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/7781e841e828.webp",
+      "bytes": 255058,
+      "sha256": "3afc34f8b8afb2940b98993aa459856568114ece2623baff5f8164e7125c42ff",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/08-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/ecdc47590d67.webp",
+      "bytes": 202086,
+      "sha256": "e2d59555cfebed8053ffad69eb29284bd90029b596eedc1d3d573d929bdaa6e4",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/09-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/a7fe8191713e.webp",
+      "bytes": 136004,
+      "sha256": "359f922c3b8bbd8ef22f0c2fd028c982e4dfa6ce49d19bcbb4e3e5d8fbbd1344",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/10-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/5267eac2a345.webp",
+      "bytes": 167356,
+      "sha256": "ce5bb0c72f54de290fe5c9cfbc8722770405ea781b07a5ea4dc0588b6bf6b458",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/11-gran-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/a78ee8458ea6.webp",
+      "bytes": 232140,
+      "sha256": "e16d30d60f0bc090a9970471edccbbbd3bdf7212486a87f966c9187f32ef9586",
+      "width": 1500,
+      "height": 990
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-explanada-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/be3cbc6f83a9.webp",
+      "bytes": 375150,
+      "sha256": "19886bec8e9906007d84c7d5d705b05768d632cd05d166759fab7ea9e03d8092",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/03-explanada-salon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/bbbe2566a444.webp",
+      "bytes": 391536,
+      "sha256": "842516471944550ef5b121a7eb36501358dbd2de62f769dfa1f90df5869eecae",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/00-pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/f92024770630.webp",
+      "bytes": 704048,
+      "sha256": "44548aafde102e1bdf4aa6336649f6064fb855e9e53be475b1634e695d4a4b02",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/5b813798d666.webp",
+      "bytes": 767464,
+      "sha256": "db374af27c50ad6439bb0b2c384fcc04cea040dd73f726d58b36622ea34caf8a",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/9e98cf13b510.webp",
+      "bytes": 809886,
+      "sha256": "b5c1848244deefe7488d64f9d40241f94aa1f675098e1acf72df6dce6e2daab3",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/5af361ffaeae.webp",
+      "bytes": 688202,
+      "sha256": "e9f846545f9df39713623017f1aef9dda2ae26b53cf34382438347c28e418af4",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-pabellon-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/5ecf435ae38a.webp",
+      "bytes": 475608,
+      "sha256": "a0ee65971c6c549f53e9f83c357e038786875a33eb7e08c94e1c45fc2b7f8434",
+      "width": 1100,
+      "height": 1650
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-jardin-jacarandas-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/0a733274929b.webp",
+      "bytes": 456348,
+      "sha256": "831a34b71bbbdc1ec17644b8b21000b1ed157b61ecf30ab136ba722b9b7c31e9",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-jardin-jacarandas-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/1ea029a26638.webp",
+      "bytes": 467658,
+      "sha256": "b8455795f2d149d500efc68f3bb725a3a4170a2acdfc320cb94a7627ef0032da",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-jardin-jacarandas-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/46140a948d51.webp",
+      "bytes": 319276,
+      "sha256": "3120afde8bafc69fea367b031eb901a41344a7778ade9cda2d15e3b1c60fe353",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-jardin-jacarandas-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/734f44610920.webp",
+      "bytes": 312052,
+      "sha256": "7845c16f020f5360f8baa560253a83390fddfb308f174fe152f2e6b3bb1ad794",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-parroquia-guadalajara-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/44e85bba4be7.webp",
+      "bytes": 124812,
+      "sha256": "d02b2bcb777f60d3382597a33c169d07aab491452f4e6f4ca7a7683e92e81b05",
+      "width": 1500,
+      "height": 1010
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-parroquia-guadalajara-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/b19f7d89fcb1.webp",
+      "bytes": 149536,
+      "sha256": "57581fceb25d224d0862828f7c23b0dd408edae157e7940f324b365c4202d94e",
+      "width": 1500,
+      "height": 1010
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-parroquia-guadalajara-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/espacios-para-eventos/"
+      ],
+      "local": "images/029d9b873893.webp",
+      "bytes": 374022,
+      "sha256": "3812831ff399c606b42f39506da1979dc3bbcbc998ae3fba0595e820232fa0a1",
+      "width": 1500,
+      "height": 1010
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/02/acceso-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/ae2725d23b00.webp",
+      "bytes": 845380,
+      "sha256": "6173d1da3cfcd489cdffa9f2a7b8ca81fd5a5a8c8988bb58c9cf00fd9eba3ff0",
+      "width": 1920,
+      "height": 1279
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/fachada-benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/6ff14638b623.webp",
+      "bytes": 320778,
+      "sha256": "dd1057ee740e51a10c01c6cb9101b5d8135667b37a5f9d9e5781373b48994a36",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/02/palmeras-acceso-benavento.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/f1f3f68e21ec.webp",
+      "bytes": 1014582,
+      "sha256": "7fd94f914d15ec8b1c1f4fb97988fdd093cdda18afad6052667a7e50c404cfd9",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/camino-palmeras-benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/7c3f56fac05d.webp",
+      "bytes": 149188,
+      "sha256": "8fa4c8e5d51b256f9fe12b420e396fa0b155abf46d70800921462251bf4c5acc",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/a1a12abb9e94.webp",
+      "bytes": 224654,
+      "sha256": "09656ba7dff666c8a8287b62e279be1fde943fe1f92cf7c0a6faea6e3622f8f2",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/2cad25d9217c.webp",
+      "bytes": 318722,
+      "sha256": "17fa57db2b6dc8abf037aea49d9c6609162515b27590deae4048fc8a2ba0dd1b",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/1a64f4799572.webp",
+      "bytes": 280270,
+      "sha256": "40fc2891d24bff0676715e3ba48809ce6e7f96ddd0bba3f8ed469de3f9e8dbab",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-04.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/a58491e57f4e.webp",
+      "bytes": 382736,
+      "sha256": "8bd17ee8df678ee3e8809f03d17de0a6b8e4cdf018b2cd1c6501442ed6c4143b",
+      "width": 1500,
+      "height": 1001
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-05.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/5e1922a50c1e.webp",
+      "bytes": 225306,
+      "sha256": "6d2930b90d8659a35209ed25258e323228c04f138517c80c179f81f7c320a958",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/motor-lobby-benavento-06.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/5d5b33bfbf53.webp",
+      "bytes": 210018,
+      "sha256": "0e06889511b9d9ae10f46afa07826df2c87d1b4c77773e3ca455275948bdd2cd",
+      "width": 1500,
+      "height": 1034
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/pergola-benavento-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/a1cf9e4f82cd.webp",
+      "bytes": 283208,
+      "sha256": "72d47807aa3c2abd147d8ac963c32b28e6d3f8970ae502b61105d125dfb9729d",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/pergola-benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/0f637fe8e86b.webp",
+      "bytes": 246092,
+      "sha256": "8b582ccf92203b348030f44a3b664cdec2ba66634d537852ae5e6d9d1b2dbb0e",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/pergola-benavento-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/4ba3e19e6cd1.webp",
+      "bytes": 206262,
+      "sha256": "07764013f6e58e1857bd992e02739e1d115c0a8881fc30e3cdbd147a65259d81",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/pergola-benavento-04.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/f63d8777d4b7.webp",
+      "bytes": 235776,
+      "sha256": "03bc11bb77b2b9d3a2817291f303ec636e810f7a4047e57ef8be044288bb3e37",
+      "width": 1500,
+      "height": 1020
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/ce40e3db681c.webp",
+      "bytes": 159566,
+      "sha256": "683a1a6eec9f2466ea161d971be8e8eeeafa26750cba269dda4c31673c61ae53",
+      "width": 1500,
+      "height": 964
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/b182ff51312e.webp",
+      "bytes": 171904,
+      "sha256": "1fa5e59132c1beeb4640670ee631c89f4791924d513b53ff8b78fae08b1db88e",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/9adaf60624e5.webp",
+      "bytes": 382724,
+      "sha256": "50b8b8bf31b1d5065895b29379c80e7245bd9de5c46a2affba81e817bb9603e2",
+      "width": 1500,
+      "height": 1001
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-04.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/a4e051dc1ba5.webp",
+      "bytes": 208038,
+      "sha256": "23852e3899098f0b51ce8b71f547b459a8fb6faf36d1491c5a59480599d39bb1",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-05.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/f17cbf8c6b7d.webp",
+      "bytes": 133638,
+      "sha256": "4caccf9652762ccc442672178428f570e1586c6a6203d2457a4cfb2dd4200947",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-06.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/02a4143af464.webp",
+      "bytes": 143718,
+      "sha256": "930ef29227037b3919da4934cf04eee1c291859539a1742439095e0a0188773f",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/arcada-y-andador-07.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/966007c5dce3.webp",
+      "bytes": 113160,
+      "sha256": "c9a33d7e1bb5d895a7ccb87a621447f709a4523326561e624f001c556ec4a29c",
+      "width": 1500,
+      "height": 1048
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Principal-Benavento-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/1868010a1265.webp",
+      "bytes": 503606,
+      "sha256": "6b00830eb63e539b1309ba419574d85c08a48a5ecc8ff1c7d8d53323f5a01fa7",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Principal-Benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/acefb22f4962.webp",
+      "bytes": 675010,
+      "sha256": "569c80e45ba6351ef842ea8123a61131d4773843ade5e7b7572f04306a473b61",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Principal-Benavento-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/aa99a73a4551.webp",
+      "bytes": 396246,
+      "sha256": "26a176107175bfb20ed603288c34977b3890726b5a1601b79b854be6cb1dc78c",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Papiros-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/cb36c012cafe.webp",
+      "bytes": 661606,
+      "sha256": "98b0aa56f8d8941229449402ef448e3b710aa85893fd5a9d84595bb7ea9a1b5d",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Papiros-03.webp",
+      "kind": "image",
+      "alt": "Lago Papiros",
+      "pages": [
+        "https://benavento.com/areas-generales/",
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/ab88d3ea62fd.webp",
+      "bytes": 737330,
+      "sha256": "8fab8ef31db9efc4c557f52d6d30873efc159458b06efbe958793427a039392c",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Papiros-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/9ac39fba9d0c.webp",
+      "bytes": 341608,
+      "sha256": "75ca508c33a63bcb355f5e4a2e10502362f10a63760e031cb4227cdf53783361",
+      "width": 1920,
+      "height": 1149
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Lago-Papiros-04.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/4ab2c2fd28b9.webp",
+      "bytes": 362764,
+      "sha256": "acd8219a910e50f9b72515211579d40bcd0c035f311fe5ba55cc66a18c8ce516",
+      "width": 1920,
+      "height": 1238
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Sanitarios-Benavento-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/4cf365813e17.webp",
+      "bytes": 110118,
+      "sha256": "40434ad9b54f8fbec3b8f3c1ce4d1b6fa57f0dac19529a3a19a3b2cb7426b43c",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Sanitarios-Benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/8272be30fab5.webp",
+      "bytes": 139736,
+      "sha256": "f5299e86fab6512ad12468f5bd90e72127d295cfe8a08152927880fae934fa52",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Sanitarios-Benavento-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/895056389530.webp",
+      "bytes": 61296,
+      "sha256": "db186c9fc30052a27ea33339f2de9774c2981781089e1224a92cc1d6a8093d56",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/banos-para-discapacitados.webp",
+      "kind": "image",
+      "alt": "Baños para Discapacitados",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/3759b7a942b1.webp",
+      "bytes": 271768,
+      "sha256": "b05b15d1cd324fb8fa94a0a8568441e49c2e9d0b8700350de343fcf57dd64784",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Suite-Nupcial-Benavento-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/754a21f69dc7.webp",
+      "bytes": 105962,
+      "sha256": "4514d2d6fe14094006b6cdbc33f85ed7c223910142de0ecaecf3d5bf1ddd05ae",
+      "width": 1500,
+      "height": 995
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Suite-Nupcial-Benavento-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/5a93f53db1ff.webp",
+      "bytes": 62868,
+      "sha256": "7927550a417f1ef127f45099bf4a6b3c4e3b771b7fb1207b659bf79e9947ddc3",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Suite-Nupcial-Benavento-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/5659ec5b8326.webp",
+      "bytes": 82084,
+      "sha256": "05374446384b23712f394f3adc92136466a3ccfa6e717e2f14e67fa79c647307",
+      "width": 1500,
+      "height": 843
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Suite-Nupcial-Benavento-04.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/59e115a2baea.webp",
+      "bytes": 83658,
+      "sha256": "5c50629b7d4a4f0fc105e21d8bdf234b62ee5e4429033ecf7390892d907f196f",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Suite-Nupcial-Benavento-05.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/b70022f8e42c.webp",
+      "bytes": 85772,
+      "sha256": "b4659cab304a1e39684cf5fe8bad39e6b6f5410fdbdd28c16fb4c969abe5e6b8",
+      "width": 1500,
+      "height": 999
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Salon-Novia-01.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/1e07836683f6.webp",
+      "bytes": 80462,
+      "sha256": "4b9441211f5b607160831bc57c2e4a6cc6d6a0f45d1194eda4973472d146a017",
+      "width": 1500,
+      "height": 843
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Salon-Novia-02.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/6a5d32c72361.webp",
+      "bytes": 65188,
+      "sha256": "99c7cb211dfde719a8a864301c9e3dd6ca290240da9c88c6a3522fb60e575e4a",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/Salon-Novia-03.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/areas-generales/"
+      ],
+      "local": "images/26a9b8662cbf.webp",
+      "bytes": 67074,
+      "sha256": "12196abce4825cc0bd6e4243baa0abfee67ebacc16011ca1d927a5d8a907ce1e",
+      "width": 1500,
+      "height": 1000
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/f722b0657a7d.webp",
+      "bytes": 311642,
+      "sha256": "b5bf993407b6ca84248bab6908176ee66785a4efac4d482fa4198df445e7ab42",
+      "width": 1700,
+      "height": 1130
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/91779cf1f35b.webp",
+      "bytes": 324890,
+      "sha256": "39f415e0b90317200b41cac00609ad3fdb35b8d04ec0abf7995b35405715d27f",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/06e6e9c24bdd.webp",
+      "bytes": 334442,
+      "sha256": "cf5902bb5dcda5d189001f2b778d548655096e5dec9173cc4ed6a235c39c1b25",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/adc3aa62bbe2.webp",
+      "bytes": 413756,
+      "sha256": "ff453554136e77f1e410c5cce0ea46dfca152c239387b60d04a0b727b78f71d0",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/d460c651928b.webp",
+      "bytes": 150570,
+      "sha256": "10249bffac7246c143439ef620c3d93d58f08568e5e82a22abecd28e0f0023cc",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/abba0d62c37c.webp",
+      "bytes": 196432,
+      "sha256": "dab2725349817c6a92031520ca633475a354385b9a2db880d99291f4e8cfdc80",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/e6e237009159.webp",
+      "bytes": 167242,
+      "sha256": "a5791a9c0364a81b50a0d5188a13c087ecbcd96f25451c15433291e92430580b",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-salon-benavento-guadalajara-09.webp",
+      "kind": "image",
+      "alt": "Boda en Salón Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/c1795d86256d.webp",
+      "bytes": 162440,
+      "sha256": "74590d15dc733f681e29c8ae44bb2cbf654504e1bfc98ca01e42ab115eb84ff8",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/4afc75bd74f1.webp",
+      "bytes": 539486,
+      "sha256": "270b46c67e58e42f147492d957f632b11da68284e380c8427995f93cd7263254",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/e0fb7059e01e.webp",
+      "bytes": 304990,
+      "sha256": "1b77be0a23340d1d0b0a650b5d9caa4006eeadb345525233ff03ff98bc55ba91",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/fa0519e0a865.webp",
+      "bytes": 427884,
+      "sha256": "d30a253b10518eace31e7d199931458429d5ab85137a5ae5ae488436928a548d",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/71c63d51f237.webp",
+      "bytes": 393480,
+      "sha256": "bba430254c56c9e3d7ff498f2cc6b7f96b925e06aa1b90b82697b0bc0a1eee39",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/70607fddba3e.webp",
+      "bytes": 265296,
+      "sha256": "328888dbd19d8c7b7f87f1ad3d2441f591706bf457cc445b8b9dbfd40c98fcae",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/0fa35e03fdd6.webp",
+      "bytes": 375728,
+      "sha256": "08fe1b2312a5b926e91415270d5ac93851842ae8402e5fbfcf339717081423e4",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/1c9ddaad22a9.webp",
+      "bytes": 389018,
+      "sha256": "ad56dde69719f8acfe0e120cc9eccd895b667b9814ec615592f893d83569f03c",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/3a449b33ff5e.webp",
+      "bytes": 241052,
+      "sha256": "2d7f0b8fa7e2876bd8528363ca26a488d9ed904a8bedf90db6f9d7a292c7803f",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-09.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/cd6b674f0f17.webp",
+      "bytes": 422862,
+      "sha256": "b4f2f53bc7514e32089660f817d826d3afb8765ed75706509a50f41da33b66f0",
+      "width": 1700,
+      "height": 1130
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-10.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/bb56c65fa8fd.webp",
+      "bytes": 257552,
+      "sha256": "dee3b4ef0b39b6be6b67fb63edc8b969aad1869f3196b732d320be5ee00bbfc1",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-11.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/ea23f153a3df.webp",
+      "bytes": 131204,
+      "sha256": "e1e542abdcdc32819209524a8dc721952f4766dd1471f11874028d55ec82ab51",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-12.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/38746a170766.webp",
+      "bytes": 91032,
+      "sha256": "92a0df8c253c12e2aeed88ec3061db51822faa2b5350accf6421ae16e347c748",
+      "width": 1700,
+      "height": 1131
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-13.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/5555d5cf5fca.webp",
+      "bytes": 456974,
+      "sha256": "b0c14c66eefd99bb1c45e9842b768e61f06936d56f84b9da481cc269be10a102",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-15.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/6f1f259e8031.webp",
+      "bytes": 329150,
+      "sha256": "61ef3112508e616d6559a1fac42a46d2a6f379dc07991fafc8a98552b352df0a",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-16.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/e318828f8fe2.webp",
+      "bytes": 282680,
+      "sha256": "305cd9d8796adfbf61691fe20e55fe9f5c44eb104d496699074f2ef5a083cf3d",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-14.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/a22490c76b86.webp",
+      "bytes": 328796,
+      "sha256": "b46edb67ec20628ec3f47f8098786ff7bb572ea659e2ae59292b76eec4f060cf",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-17.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/f4c08f7eca96.webp",
+      "bytes": 374214,
+      "sha256": "c8e5edeeeb5ce63dfc3a052b0fd9b83719963bc031f8c7cb9d4e4fb658152b6c",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/boda-en-terraza-benavento-guadalajara-18.webp",
+      "kind": "image",
+      "alt": "Boda en Terraza benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/c7caa7fa4d59.webp",
+      "bytes": 302532,
+      "sha256": "90425ffb21cb064dec9ee5bfaa74eeaa946f3ee777a3a99b8b4c55fc49922480",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-5.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/c3cfe7829ccc.webp",
+      "bytes": 269058,
+      "sha256": "baebb5a18ea17da035c672cceaac76f96b0fe1085c2279d94a950f552e5a362c",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-31.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/dfbc09f33ea5.webp",
+      "bytes": 438666,
+      "sha256": "84de27968c0e0bf4954a799630a508071c315a17cfb1d029921f2de2bc79aa0d",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-35.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/c087b45ff1cf.webp",
+      "bytes": 270048,
+      "sha256": "5320fbdc0c61e178233b6b81459f4752c2dd54b3548f70bfc29309fc6db5de31",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-15.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/18b8eaa18810.webp",
+      "bytes": 273908,
+      "sha256": "1aaebeeac14a9400e6ad9667f15ec614b21074d13cde55f587edef3c691ec47d",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-8.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/f8d3057c6aba.webp",
+      "bytes": 260072,
+      "sha256": "c82a2d9e26e4b5542a1a9eaef1db762175e88ff3136f143e0b20ed0c56ad0396",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-23.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/42c36c4077fc.webp",
+      "bytes": 257026,
+      "sha256": "489535a91d1f8da4aaa1e3ebbf4e52d69b0d52b040df2a7d1ba1f75ed859455b",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/03/BNV250110-25.webp",
+      "kind": "image",
+      "alt": "Boda en terraza en Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/7bcfdd387e88.webp",
+      "bytes": 332326,
+      "sha256": "0d6ba19f6afbc97c29ff47d0fb2ad201b489475e5a163201b818f586a9b1e307",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/a829210a1315.webp",
+      "bytes": 600738,
+      "sha256": "abf19dcfbc583e53abcf5aa0689cabf4333e9b9f949cf247ecb3282b2bed35ba",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/599023c344c6.webp",
+      "bytes": 397262,
+      "sha256": "08835f6927cc9e345f09898c9f26dfc99f28fb282f9f7b3e08c2cd6e7cc2b2ed",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/45d4c121a686.webp",
+      "bytes": 416152,
+      "sha256": "c9451e10db3ca9def980367ec4a149b1cbf1ff7ed35e7a6e134048eb9000a0f4",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/403f06e2e37a.webp",
+      "bytes": 364366,
+      "sha256": "5d5978a978b504f6aeea97905999aaca37a2cbbc9048460a78d3cbd863ea124f",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/fad249c2a6e1.webp",
+      "bytes": 215992,
+      "sha256": "20e62f69dcd78737982233e31378982ec14ccd26d5007e1ac3fec2780e75a8dd",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/28a8fd161199.webp",
+      "bytes": 336346,
+      "sha256": "f49434abc1889b074d80abf56d2042b7674c2963c915c7126304519057a79793",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/3d062d731f03.webp",
+      "bytes": 385392,
+      "sha256": "aa499441d0520de1673a65f0ed7acfaa5686473bfc7a0e4733d63c2d9af12b1f",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/e3d2d2765431.webp",
+      "bytes": 288352,
+      "sha256": "d881a2e5e4b260da4d3350deaa066da619469aa6c0a5589530ef9da3c6f576e6",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/xv-anos-benavento-guadalajara-09.webp",
+      "kind": "image",
+      "alt": "XV Años Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/04c9152120a4.webp",
+      "bytes": 334188,
+      "sha256": "1dc0fdee9556cee6af9ba3d8188e8ac49d99b78ace200f85bc55803f700e87e6",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/bd2c06f190fe.webp",
+      "bytes": 511368,
+      "sha256": "b327881aa58f8277a03fa58b242cecb3e0740e8c0db267a22d762bb49c193be9",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/969152ca08fc.webp",
+      "bytes": 283218,
+      "sha256": "316076cfb1cadaaedc06a8a57c11b1335c82beda448b434755e2aa64a8b203fa",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/4027a2f7d0ab.webp",
+      "bytes": 278754,
+      "sha256": "5118383b279c84c0d40f67aec02bffc0827cd30f7645d35d2b51aba9ccc09f44",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/9844c39bda18.webp",
+      "bytes": 231612,
+      "sha256": "ae0b33406583547d67b92c06054d42211f3f576a643815e256832185e83b2e47",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/b928de373297.webp",
+      "bytes": 251562,
+      "sha256": "487a221b48fa7a7e2c0be04c947947ed6aeae753884c0ec6f2ff26600d0916e6",
+      "width": 1700,
+      "height": 780
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "Graduación Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/ce7ff6a82bf7.webp",
+      "bytes": 278146,
+      "sha256": "c2b9a474acdf1feaff921e06f358c9419f732a3f1b37853e455d790abb71a2e7",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/graduacion-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/c0ce6d0826b6.webp",
+      "bytes": 267832,
+      "sha256": "cf28a37f9b66b5aff2b7cf789a5f6516c7804bce799056e79dd891f3c7b10608",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/68269692545d.webp",
+      "bytes": 450492,
+      "sha256": "154964577335076640aab36caeea3a6b19e2ee0d0720a88d9885fd4703bb2e84",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/61b5c1926b89.webp",
+      "bytes": 429006,
+      "sha256": "433417a50165b9232c1121ba34a84764d1186799665110e9dab1dfaa9b158f2c",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/3e4607f5d1d7.webp",
+      "bytes": 410916,
+      "sha256": "8caec33d828acbd416fdb9cb51683169b928204435df16ce18ded6bcadf8dc9b",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/54bc023def39.webp",
+      "bytes": 256248,
+      "sha256": "abfacd7a93aebe0874ca91b0d968a4e28824edf12f88dfa32c76fb0942631e49",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/a3d1b1270cfb.webp",
+      "bytes": 440082,
+      "sha256": "230c5e66f90c702bb34c2c2b74fbac8a744465c8bae6299ef2294236139c68be",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/89d02b63a476.webp",
+      "bytes": 462304,
+      "sha256": "c13cbceef763c2a89117859af253a8963ae0e3c091ecaf4b7e0ae48154241b74",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/0e1636a9b430.webp",
+      "bytes": 255552,
+      "sha256": "95a70b02884340771b93b959928d5ec95dcb9c610cf0752bd121fffef53252c5",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/bautizo-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "Bautizo Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/3543acb07254.webp",
+      "bytes": 169182,
+      "sha256": "426872c0fb05bd7b0ace8ee228e0994dc73c95c07e12f5f4acb6d4b0dbfaaed8",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Aniversario Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/863b7a042d75.webp",
+      "bytes": 448266,
+      "sha256": "8a1b40d5a2bcb32b8bc9badaabd3804afad66357f29f5f1e3dae053b2284c6d6",
+      "width": 1700,
+      "height": 1132
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Aniversario Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/cfb9ae313933.webp",
+      "bytes": 450300,
+      "sha256": "1c160f2073aa6fccf06518842e83374b936f25aab495897ba5004fbf91ecb5f6",
+      "width": 1700,
+      "height": 1132
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Aniversario Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/aeb8ace08029.webp",
+      "bytes": 461454,
+      "sha256": "7261b64b5201352d029f4c5c043b4c7b64121c3de7673acd1842023be60a3180",
+      "width": 1700,
+      "height": 1132
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Aniversario Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/2e7a444319df.webp",
+      "bytes": 376404,
+      "sha256": "2b61f265c60674503f312d89aa9fe0569fe0cbc86e4383996aa4b4e5603522bf",
+      "width": 1700,
+      "height": 1132
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Aniversario Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/943c2c14439d.webp",
+      "bytes": 330386,
+      "sha256": "b5a573e7cc4d257c28294fa1d68440cd9db577dc5b366fd79230692185fcd5a5",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/aniversario-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/db57b6cc4cff.webp",
+      "bytes": 308512,
+      "sha256": "1fba065e76418148b029f098861d3d7017c85cd7fba843c1d952b7498a2bf0ef",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-01.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/da4821cc7115.webp",
+      "bytes": 110696,
+      "sha256": "cc8bef3cf572afe269ad39e29f989aeaca14d4d9ad9ce407499d795285bb53b1",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-04.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/53483e9acdc8.webp",
+      "bytes": 325554,
+      "sha256": "ced20c926d908300c06a2209f3b992fb7a173512eeb8bde1e62ddcd3c96ac740",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-02.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/b7c1c2680477.webp",
+      "bytes": 349754,
+      "sha256": "a66cd1746bcaade8c9e6f15cd0ca3ce8a9cad5f485ed163b259706f68d51f208",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-03.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/b343b5af22ec.webp",
+      "bytes": 463708,
+      "sha256": "d6f9374bada6518431675930d9f6baf0de97a2a10d7b84b55bf219f2a81720b7",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-05.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/7b54e0c3f3e9.webp",
+      "bytes": 435392,
+      "sha256": "ae6401d2ceb236988a7ebee30f0e29c11df15abdf35f4a9ba4b2269d95ce3df6",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-06.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/4367fc517a75.webp",
+      "bytes": 327398,
+      "sha256": "4cf24c1cf8c427292d482eccf499c5dbae8a8814e8a38c101ea9dfb9e060f530",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-07.webp",
+      "kind": "image",
+      "alt": "Evento Empresarial Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/d5b19d8b1b4f.webp",
+      "bytes": 300060,
+      "sha256": "81d87439dcd93dcb8480f20456ab55cbc84d5ca4fd49604dbd3ad0cdb06e4562",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/evento-empresarial-benavento-guadalajara-08.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/galeria/"
+      ],
+      "local": "images/e6465e5ac941.webp",
+      "bytes": 276340,
+      "sha256": "c03854c5b5b4f9407df0d96ededc9eba5aff72ac38de41edc95790c1dccc1878",
+      "width": 1700,
+      "height": 1133
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/01-wedding-planner-guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/86475c41ab88.webp",
+      "bytes": 1018918,
+      "sha256": "f456f00cd2b4fe96d0294bb5e35694de3a35da09ea299cbb63b9b301189fb990",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2025/01/wedding-planner-guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/65420b1cc02b.webp",
+      "bytes": 308710,
+      "sha256": "eb17a1cd6aa7a7cacf2fe65a6474abde65b7d598a2aec4f5a6cc04672e58ec02",
+      "width": 1920,
+      "height": 1280
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-wedding-planner-guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/6af2cc01cf0e.webp",
+      "bytes": 1105248,
+      "sha256": "cb7f820249a69981c0e7c1b3fb3cec9b8cdd9548a0746412bf37511289320cb5",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-wedding-planner-guadalajara.webp",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/bfc7d7381cf7.webp",
+      "bytes": 493048,
+      "sha256": "236ad82e7029421d031ad067d0595e470264b570c5016b462151abf91601f99a",
+      "width": 1920,
+      "height": 1278
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/02-banquete-boda-benavento.webp",
+      "kind": "image",
+      "alt": "Banquete Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/2bfd713f0983.webp",
+      "bytes": 117002,
+      "sha256": "3f2b5deb7398b7d20ad083e3033c396cf92ec0e38241364c0954121134b1d709",
+      "width": 1300,
+      "height": 866
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/03-banquete-boda-benavento.webp",
+      "kind": "image",
+      "alt": "Banquete Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/ac85c54373e6.webp",
+      "bytes": 106820,
+      "sha256": "41afdadba01904c5986cfddd34c6be22d0448d045d7350ca8d6bbe8f6d7af807",
+      "width": 1300,
+      "height": 866
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/04-banquete-boda-benavento.webp",
+      "kind": "image",
+      "alt": "Banquete Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/4e8cee14f8f8.webp",
+      "bytes": 117618,
+      "sha256": "eb22eb834dea4a8421bfe71ddf42b521712a30d8303cc4b5c0a5b50ec2aeafdd",
+      "width": 1300,
+      "height": 866
+    },
+    {
+      "url": "https://benavento.com/wp-content/uploads/2024/12/05-banquete-boda-benavento.webp",
+      "kind": "image",
+      "alt": "Banquete Benavento Guadalajara",
+      "pages": [
+        "https://benavento.com/planning/"
+      ],
+      "local": "images/4ccfd553ea14.webp",
+      "bytes": 136698,
+      "sha256": "ca2b15901ead96e8d8a75995799c3f081eb9073ebca18ed26fede82c46539372",
+      "width": 1300,
+      "height": 866
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493038004570-NXYG0AF355JEOB0914ZN/Home+Sal%C3%B3n+de+Eventos+y+fiestas+en+Guadalajara+02.jpg",
+      "kind": "image",
+      "alt": "Home Salón de Eventos y fiestas en Guadalajara 02.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/688d197a221e.jpg",
+      "bytes": 412105,
+      "sha256": "f2ba58798f73ab2b7a2a41e35a436b9d45fbb35a158da7155aed44b5c3786344",
+      "width": 1200,
+      "height": 675
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699725408882-LQT2SBGOZ15NB4PF2P90/sal%C3%B3n+para+bodas+guadalajara+benavento.jpeg",
+      "kind": "image",
+      "alt": "",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/84a6a47f4b22.jpeg",
+      "bytes": 1143883,
+      "sha256": "d3be6429f868d28f620b8858ab667c46c50161951c35c6314c297495f2a8b86f",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699726180283-D1EGDG18WAF36V1VJQTT/Salon+para+bodas+benavento+guadalajara.jpg",
+      "kind": "image",
+      "alt": "Salon para bodas benavento guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/e001c0b32973.jpg",
+      "bytes": 472691,
+      "sha256": "a0b19a8f788a60f5391086611f1e0b136423b6ebbcc281fd88435cbba507bf51",
+      "width": 1581,
+      "height": 1053
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699725789625-59JAQUZN6ZENRARUKCX4/Terraza+para+bodas+Benavento+Guadalajara.jpg",
+      "kind": "image",
+      "alt": "Terraza para bodas Benavento Guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/",
+        "https://www.salondeeventosbenavento.com/jardin-y-terraza-para-bodas-en-guadalajara"
+      ],
+      "local": "images/3a43a316868b.jpg",
+      "bytes": 1226510,
+      "sha256": "3ec532a1be181935a469081689bfd5e6cdb5390f848be5e33a44db8a8c28a34c",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699727801757-OPZI72Z2KVNL1AAI1CQU/Evento+empresarial+Toyota+en+Benavento+Guadalajara.jpg",
+      "kind": "image",
+      "alt": "Evento empresarial Toyota en Benavento Guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/0521d672788f.jpg",
+      "bytes": 927608,
+      "sha256": "e8f0ab89103b6722949e4d841104259837481f3fad687ea856260d34226a95fe",
+      "width": 2048,
+      "height": 1365
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493044171263-A1O1ZN4B8THDEODNE4L0/Salones+para+XV+quince+an%CC%83os+en+Guadlajara.jpg",
+      "kind": "image",
+      "alt": "Salones para XV quince años en Guadlajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/c7b036224aff.jpg",
+      "bytes": 330201,
+      "sha256": "acc0778fc7bff7fa6b2bf224f8a391cd2a363346b3208121ec22b00c6359c3d3",
+      "width": 1200,
+      "height": 796
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493045843799-3SWGH0MUD66S3NGPPJ0C/Salones+para+graduaciones+en+Guadalajara.jpg",
+      "kind": "image",
+      "alt": "Salones para graduaciones en Guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/"
+      ],
+      "local": "images/24d81f3c9003.jpg",
+      "bytes": 265374,
+      "sha256": "0c04ce50dc27fe4b5af1bfb822c27fc2c7d32f7ea23dcc640ec70118d4df8e53",
+      "width": 1200,
+      "height": 798
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699732765121-CCTTQ5UK400ITJ52I9N9/Ingreso+Sal%C3%B3n+Benavento+Guadalajara.jpg",
+      "kind": "image",
+      "alt": "Ingreso Salón Benavento Guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/e245acb68deb.jpg",
+      "bytes": 943728,
+      "sha256": "d961a0d76b541a00940453d64538dc5b2f6b62d11800a2b9b603eb5843ae9b96",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493129829770-4C2EQO3QWMTHXESC4WP9/Motor+Lobby+Benavento+01.jpg",
+      "kind": "image",
+      "alt": "Motor Lobby Benavento 01.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/d2b94a14ff11.jpg",
+      "bytes": 236182,
+      "sha256": "53b274484caf338fafb5072ab6a30eb18bbc6db08070b4161536e266b41a2afa",
+      "width": 1200,
+      "height": 659
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699732257604-EN5TPSI88L8DFTLIRUZD/Terraza+panoramica+benavento+guadalajara.jpg",
+      "kind": "image",
+      "alt": "Terraza panoramica benavento guadalajara.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/b746e710e347.jpg",
+      "bytes": 1274640,
+      "sha256": "8daf9af81c5769a40a38418edc353e4b8f8de28463d4be7101ba11de6c4ca530",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493057029511-CBZFNWIBKW2RS3SLTOEV/Pabello%CC%81n+Benavento.jpg",
+      "kind": "image",
+      "alt": "Pabellón Benavento.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/0c660e71d03c.jpg",
+      "bytes": 594186,
+      "sha256": "d931de2d319a7a57d8dba89c50d07dc809e83af84223f5ec5d8bb46a7938e89c",
+      "width": 1200,
+      "height": 777
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1493057270995-7Z0Z77I1U0ZBEKJR82R2/Iglesia+Adjunta+Benavento.jpg",
+      "kind": "image",
+      "alt": "Iglesia Adjunta Benavento.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/7192b713796e.jpg",
+      "bytes": 199503,
+      "sha256": "d3e086fa107dcb1f179de0080f7bcd48feeef43a1ac6124d8f2333f183fe414a",
+      "width": 1200,
+      "height": 776
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699732804823-4UKL17D9PTYTCBCKHAM7/Sal%C3%B3n+de+la+Novia+Benavento.jpg",
+      "kind": "image",
+      "alt": "Salón de la Novia Benavento.jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/52207c20ad04.jpg",
+      "bytes": 495452,
+      "sha256": "f225d7c3f2188f61e74d19f977ac2f8ad91cd445fae5d9693f1b531ef9161597",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://images.squarespace-cdn.com/content/v1/58fdeff3bebafbbe9cc596f9/1699732313000-39X1ZCGT0VHTKDU32NM9/Ba%C3%B1os+benavento+3+.jpg",
+      "kind": "image",
+      "alt": "Baños benavento 3 .jpg",
+      "pages": [
+        "https://www.salondeeventosbenavento.com/instalaciones"
+      ],
+      "local": "images/dbe8d5d98564.jpg",
+      "bytes": 590888,
+      "sha256": "159cfe91ae28120dc1666bff9aaee90781a8a5d7672a1a069dbfd6d34dd5ebab",
+      "width": 2500,
+      "height": 1667
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_0209aa89758d406f918e563ebb0ec9b2~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/d3a9fdc36be9.jpg",
+      "bytes": 8364954,
+      "sha256": "3a5850fe33530399a2d165a53ec43a55a8cf98070e206193e18d394d28980722",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_0becc43c733040f4874f23a2b233de61~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/0df96a5d7380.jpg",
+      "bytes": 8855362,
+      "sha256": "f3ea69d05fda247d24c2c795ff68243a6b0e290225168c913dbb5054b11b6a7b",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_2a8a335aaba64611bf43e7339b2a22e7~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/018fefeaee4b.jpg",
+      "bytes": 7505817,
+      "sha256": "728b152436f13497c299e4e7e0956b99a9639637b18648c07999a47ece5b7785",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_2e779a2eccaa4c89b1ee699a755266ea~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/d6686794857a.jpg",
+      "bytes": 6977971,
+      "sha256": "186c233d034bfc0b2c5b7d7aed8241f4888b847ffdf05db2034f161a20183f7f",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_423511bab1db4594b5344ad76edfc006~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/15243ed6d543.jpg",
+      "bytes": 8207117,
+      "sha256": "8e8226434832e2007b03f781ab12baf325a89aaada8aab183232f5216c7f143f",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_7a31285c6f1747209b97da7c93cf197e~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/dcbbf637626a.jpg",
+      "bytes": 6870016,
+      "sha256": "944bcdebb5fa1550cab38ecadb551d38c982a01ebae7d79c7dd40f962d86551c",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_836710b5808142129a03c7be92feda61~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/7e9472e37c29.jpg",
+      "bytes": 8478172,
+      "sha256": "e73dbefa654e9ca25661c1edd10865810e0eaa2ea19d01c3146ebfee65dae7c9",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_9639d84850d242ffa5ba0a632064ae1d~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/49dcda4b9bb5.jpg",
+      "bytes": 7115777,
+      "sha256": "55aefb81c657940a8c3d08bcebf5b91e63c475e41a1ad70b3b6820d5059b617f",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    },
+    {
+      "url": "https://static.wixstatic.com/media/ba9ea7_adb86647e8d34477b9aa17417432ad1a~mv2.jpg",
+      "kind": "image",
+      "alt": "Architect project reference — 2022 proposal, not verified as-built",
+      "pages": [
+        "https://www.aearquitectos.mx/en/projects-1/benavento"
+      ],
+      "local": "images/c6422665164f.jpg",
+      "bytes": 8303865,
+      "sha256": "3529822293cd6c3c7d0600be09623f37daf7b66918a58903ee24ead67df19e56",
+      "category": "Architect proposal",
+      "width": 3840,
+      "height": 2160
+    }
+  ],
+  "externalLinks": [
+    "https://www.facebook.com/Salon.BENAVENTO",
+    "https://www.instagram.com/salon_benavento",
+    "https://www.instagram.com/salon_benavento/",
+    "https://www.youtube.com/@benaventosalondefiestasyev5017",
+    "https://www.youtube.com/channel/UCu9bGZmZkTc8lXb7c_Zrz7A"
+  ]
+}

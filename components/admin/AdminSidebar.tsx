@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useDialog } from "@/lib/ui/use-dialog";
 import { SideNav } from "@/components/admin/SideNav";
 import { signOut } from "@/app/admin/login/actions";
 
@@ -19,6 +20,7 @@ export function AdminSidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
+  const dialogRef = useDialog(drawerOpen, () => setDrawerOpen(false));
 
   // Restore the last choice after hydration (default matches the server render).
   useEffect(() => {
@@ -54,7 +56,7 @@ export function AdminSidebar({
       </svg>
     </button>
     {drawerOpen && (
-      <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-label="Menu">
+      <div className="fixed inset-0 z-40 md:hidden" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Menu">
         <button
           type="button"
           aria-label="Close menu"

@@ -10,12 +10,14 @@ import type { ImportProblem } from "@/lib/csv";
  */
 export function DoneStep({
   households,
+  updated = 0,
   guests,
   skipped,
   onDownloadSkipped,
   onImportAnother,
 }: {
   households: number;
+  updated?: number;
   guests: number;
   skipped: ImportProblem[];
   onDownloadSkipped: (problems: ImportProblem[], filename: string) => void;
@@ -25,15 +27,15 @@ export function DoneStep({
     <section className="rounded-2xl border border-hairline bg-white/60 p-6 sm:p-8">
       <p className="text-[11px] font-semibold tracking-[0.14em] text-olive uppercase">Imported</p>
       <h2 className="font-display mt-1.5 text-[32px] leading-tight font-medium text-olive-deep sm:text-[38px]">
-        Your guest list is ready
+        Import completed
       </h2>
 
       <p className="mt-3 rounded-xl bg-sage-band px-4 py-3 text-[15px] font-medium text-olive-deep tabular-nums">
         {households.toLocaleString()} {households === 1 ? "invitation" : "invitations"} ·{" "}
-        {guests.toLocaleString()} {guests === 1 ? "guest" : "guests"}
+        {guests.toLocaleString()} new {guests === 1 ? "guest" : "guests"} · {updated} existing invitations updated
       </p>
       <p className="mt-2 max-w-[62ch] text-[13px] leading-relaxed text-[#6b7167]">
-        Every invitation now has its own invite code and RSVP link, generated automatically.
+        New invitations have their own RSVP link. Existing invitations keep their links and saved responses.
       </p>
 
       {skipped.length > 0 && (

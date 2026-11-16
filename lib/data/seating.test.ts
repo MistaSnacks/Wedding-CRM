@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { WeddingScope } from "./scope";
 import { cache } from "@/lib/limiter";
-import { assign, deleteTable, guestTable, unassign, upsertTable } from "./seating";
+import {
+  assign,
+  deleteTable,
+  guestTable,
+  unassign,
+  upsertTable,
+} from "./seating";
 
 /**
  * These tests exist because the seating module is the one place in the admin
@@ -36,14 +42,35 @@ class FakeQuery {
     private store: Store,
   ) {}
 
-  select() { return this; }
-  order() { return this; }
-  limit() { return this; }
-  eq(col: string, val: unknown) { this.filters.push((r) => r[col] === val); return this; }
-  neq(col: string, val: unknown) { this.filters.push((r) => r[col] !== val); return this; }
-  in(col: string, vals: unknown[]) { this.filters.push((r) => vals.includes(r[col])); return this; }
-  single() { this.shape = "single"; return this; }
-  maybeSingle() { this.shape = "maybe"; return this; }
+  select() {
+    return this;
+  }
+  order() {
+    return this;
+  }
+  limit() {
+    return this;
+  }
+  eq(col: string, val: unknown) {
+    this.filters.push((r) => r[col] === val);
+    return this;
+  }
+  neq(col: string, val: unknown) {
+    this.filters.push((r) => r[col] !== val);
+    return this;
+  }
+  in(col: string, vals: unknown[]) {
+    this.filters.push((r) => vals.includes(r[col]));
+    return this;
+  }
+  single() {
+    this.shape = "single";
+    return this;
+  }
+  maybeSingle() {
+    this.shape = "maybe";
+    return this;
+  }
 
   private rows(): Row[] {
     this.store[this.table] ??= [];
@@ -60,7 +87,9 @@ class FakeQuery {
     if (this.op === "select") {
       affected = this.matching();
     } else if (this.op === "insert" || this.op === "upsert") {
-      const incoming = (Array.isArray(this.payload) ? this.payload : [this.payload ?? {}]) as Row[];
+      const incoming = (
+        Array.isArray(this.payload) ? this.payload : [this.payload ?? {}]
+      ) as Row[];
       for (const row of incoming) {
         const keys = CONFLICT_KEYS[this.table];
         const clash =
@@ -71,7 +100,10 @@ class FakeQuery {
           Object.assign(clash, row);
           affected.push(clash);
         } else {
-          const created = { id: `${this.table}-${this.rows().length + 1}`, ...row };
+          const created = {
+            id: `${this.table}-${this.rows().length + 1}`,
+            ...row,
+          };
           this.rows().push(created);
           affected.push(created);
         }
@@ -87,11 +119,19 @@ class FakeQuery {
     if (this.shape === "many") return { data: affected, error: null };
     if (affected.length > 0) return { data: affected[0], error: null };
     if (this.shape === "maybe") return { data: null, error: null };
-    return { data: null, error: { message: "JSON object requested, multiple (or no) rows returned" } };
+    return {
+      data: null,
+      error: {
+        message: "JSON object requested, multiple (or no) rows returned",
+      },
+    };
   }
 
   then(
-    onFulfilled?: (v: { data: unknown; error: { message: string } | null }) => unknown,
+    onFulfilled?: (v: {
+      data: unknown;
+      error: { message: string } | null;
+    }) => unknown,
     onRejected?: (e: unknown) => unknown,
   ) {
     return Promise.resolve(this.exec()).then(onFulfilled, onRejected);
@@ -100,12 +140,45 @@ class FakeQuery {
 
 function fakeDb(store: Store) {
   return {
+    async rpc(
+      name: string,
+      args: {
+        p_guest_ids: string[];
+        p_wedding_id: string;
+        p_event_id: string;
+        p_table_id: string;
+        p_actor_id: string;
+      },
+    ) {
+      if (name !== "assign_seating_group") throw new Error("Unexpected RPC");
+      for (const gid of args.p_guest_ids) {
+        const row = {
+          guest_id: gid,
+          wedding_id: args.p_wedding_id,
+          event_id: args.p_event_id,
+          table_id: args.p_table_id,
+        };
+        const old = store.seat_assignments.find(
+          (a) => a.guest_id === gid && a.event_id === args.p_event_id,
+        );
+        if (old) Object.assign(old, row);
+        else store.seat_assignments.push(row);
+        store.activity_log.push({
+          household_id: store.guests.find((g) => g.id === gid)?.household_id,
+          action: "table.assigned",
+        });
+      }
+      return { data: null, error: null };
+    },
     from(table: string) {
       return {
         select: () => new FakeQuery(table, "select", null, store),
-        insert: (payload: Row | Row[]) => new FakeQuery(table, "insert", payload, store),
-        upsert: (payload: Row | Row[]) => new FakeQuery(table, "upsert", payload, store),
-        update: (payload: Row) => new FakeQuery(table, "update", payload, store),
+        insert: (payload: Row | Row[]) =>
+          new FakeQuery(table, "insert", payload, store),
+        upsert: (payload: Row | Row[]) =>
+          new FakeQuery(table, "upsert", payload, store),
+        update: (payload: Row) =>
+          new FakeQuery(table, "update", payload, store),
         delete: () => new FakeQuery(table, "delete", null, store),
       };
     },
@@ -125,13 +198,33 @@ function scopeFor(weddingId: string): WeddingScope {
 beforeEach(() => {
   store = {
     events: [
-      { id: "event-ours", wedding_id: OURS, seating_published_at: "2026-08-01T00:00:00Z" },
+      {
+        id: "event-ours",
+        wedding_id: OURS,
+        seating_published_at: "2026-08-01T00:00:00Z",
+      },
       { id: "event-ours-2", wedding_id: OURS, seating_published_at: null },
-      { id: "event-theirs", wedding_id: THEIRS, seating_published_at: "2026-08-01T00:00:00Z" },
+      {
+        id: "event-theirs",
+        wedding_id: THEIRS,
+        seating_published_at: "2026-08-01T00:00:00Z",
+      },
     ],
     seating_tables: [
-      { id: "table-ours", wedding_id: OURS, event_id: "event-ours", name: "Table 1", capacity: 8 },
-      { id: "table-theirs", wedding_id: THEIRS, event_id: "event-theirs", name: "Head", capacity: 10 },
+      {
+        id: "table-ours",
+        wedding_id: OURS,
+        event_id: "event-ours",
+        name: "Table 1",
+        capacity: 8,
+      },
+      {
+        id: "table-theirs",
+        wedding_id: THEIRS,
+        event_id: "event-theirs",
+        name: "Head",
+        capacity: 10,
+      },
     ],
     guests: [
       { id: "guest-ours", wedding_id: OURS, household_id: "hh-ours" },
@@ -145,23 +238,23 @@ beforeEach(() => {
 
 describe("assign — cross-wedding ids", () => {
   it("refuses a tableId from another wedding instead of seating into their chart", async () => {
-    await expect(assign(scope, "guest-ours", "event-theirs", "table-theirs")).rejects.toThrow(
-      /table not found in this wedding/i,
-    );
+    await expect(
+      assign(scope, "guest-ours", "event-theirs", "table-theirs"),
+    ).rejects.toThrow(/table not found in this wedding/i);
     expect(store.seat_assignments).toHaveLength(0);
   });
 
   it("refuses a table that belongs to a different event than the one being seated", async () => {
-    await expect(assign(scope, "guest-ours", "event-ours-2", "table-ours")).rejects.toThrow(
-      /does not belong to this event/i,
-    );
+    await expect(
+      assign(scope, "guest-ours", "event-ours-2", "table-ours"),
+    ).rejects.toThrow(/does not belong to this event/i);
     expect(store.seat_assignments).toHaveLength(0);
   });
 
   it("refuses a guestId from another wedding", async () => {
-    await expect(assign(scope, "guest-theirs", "event-ours", "table-ours")).rejects.toThrow(
-      /guest not found in this wedding/i,
-    );
+    await expect(
+      assign(scope, "guest-theirs", "event-ours", "table-ours"),
+    ).rejects.toThrow(/guest not found in this wedding/i);
     expect(store.seat_assignments).toHaveLength(0);
   });
 
@@ -173,16 +266,26 @@ describe("assign — cross-wedding ids", () => {
       table_id: "table-ours",
       wedding_id: OURS,
     });
-    expect(store.activity_log[0]).toMatchObject({ household_id: "hh-ours", action: "table.assigned" });
+    expect(store.activity_log[0]).toMatchObject({
+      household_id: "hh-ours",
+      action: "table.assigned",
+    });
   });
 });
 
 describe("upsertTable — cross-wedding ids", () => {
   it("refuses to edit another wedding's table, leaving its wedding_id alone", async () => {
     await expect(
-      upsertTable(scope, { id: "table-theirs", eventId: "event-ours", name: "Stolen", capacity: 2 }),
+      upsertTable(scope, {
+        id: "table-theirs",
+        eventId: "event-ours",
+        name: "Stolen",
+        capacity: 2,
+      }),
     ).rejects.toThrow(/table not found in this wedding/i);
-    expect(store.seating_tables.find((t) => t.id === "table-theirs")).toMatchObject({
+    expect(
+      store.seating_tables.find((t) => t.id === "table-theirs"),
+    ).toMatchObject({
       wedding_id: THEIRS,
       name: "Head",
     });
@@ -191,15 +294,25 @@ describe("upsertTable — cross-wedding ids", () => {
   it("refuses to attach a new table to another wedding's event", async () => {
     const before = store.seating_tables.length;
     await expect(
-      upsertTable(scope, { eventId: "event-theirs", name: "Table 2", capacity: 6 }),
+      upsertTable(scope, {
+        eventId: "event-theirs",
+        name: "Table 2",
+        capacity: 6,
+      }),
     ).rejects.toThrow(/event not found in this wedding/i);
     expect(store.seating_tables).toHaveLength(before);
   });
 
   it("creates a table stamped with this wedding", async () => {
-    const created = await upsertTable(scope, { eventId: "event-ours", name: "Table 2", capacity: 6 });
+    const created = await upsertTable(scope, {
+      eventId: "event-ours",
+      name: "Table 2",
+      capacity: 6,
+    });
     expect(created.name).toBe("Table 2");
-    expect(store.seating_tables.find((t) => t.name === "Table 2")).toMatchObject({ wedding_id: OURS });
+    expect(
+      store.seating_tables.find((t) => t.name === "Table 2"),
+    ).toMatchObject({ wedding_id: OURS });
   });
 
   it("edits a table this wedding owns", async () => {
@@ -210,7 +323,9 @@ describe("upsertTable — cross-wedding ids", () => {
       capacity: 2,
     });
     expect(updated.name).toBe("Sweetheart");
-    expect(store.seating_tables.find((t) => t.id === "table-ours")).toMatchObject({
+    expect(
+      store.seating_tables.find((t) => t.id === "table-ours"),
+    ).toMatchObject({
       wedding_id: OURS,
       capacity: 2,
     });
@@ -220,25 +335,40 @@ describe("upsertTable — cross-wedding ids", () => {
 describe("deleteTable", () => {
   it("cannot delete another wedding's table", async () => {
     await deleteTable(scope, "table-theirs");
-    expect(store.seating_tables.some((t) => t.id === "table-theirs")).toBe(true);
+    expect(store.seating_tables.some((t) => t.id === "table-theirs")).toBe(
+      true,
+    );
   });
 });
 
-describe("guestTable — cross-wedding reads", () => {
-  it("shows nothing for an event belonging to another wedding, published or not", async () => {
-    expect(await guestTable(scope, "guest-ours", "event-theirs")).toBeNull();
-  });
-
-  it("never lists a tablemate from another wedding at a colliding table id", async () => {
-    store.seat_assignments.push(
-      { guest_id: "guest-ours", event_id: "event-ours", table_id: "table-ours", wedding_id: OURS },
-      // Same table id, different wedding: only a wedding_id filter keeps this out.
-      { guest_id: "guest-theirs", event_id: "event-ours", table_id: "table-ours", wedding_id: THEIRS },
+describe("guestTable — scoped SQL delegation", () => {
+  it("passes every scope identifier to the validated SQL read", async () => {
+    const data = { tableName: "Table 1", mates: [] };
+    const rpc = vi.fn(async () => ({ data, error: null }));
+    const result = await guestTable(
+      { weddingId: OURS, db: { rpc } as unknown as WeddingScope["db"] },
+      "guest-ours",
+      "event-ours",
     );
-    const result = await guestTable(scope, "guest-ours", "event-ours");
-    expect(result).not.toBeNull();
-    expect(result?.tableName).toBe("Table 1");
-    expect(result?.mates).toHaveLength(0);
+    expect(rpc).toHaveBeenCalledWith("guest_table_info", {
+      p_wedding_id: OURS,
+      p_guest_id: "guest-ours",
+      p_event_id: "event-ours",
+    });
+    expect(result).toEqual(data);
+  });
+  it("propagates read failures rather than hiding a missing seat", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { message: "Read unavailable" },
+    }));
+    await expect(
+      guestTable(
+        { weddingId: OURS, db: { rpc } as unknown as WeddingScope["db"] },
+        "guest-ours",
+        "event-ours",
+      ),
+    ).rejects.toThrow("Read unavailable");
   });
 });
 
@@ -247,14 +377,23 @@ describe("metrics cache invalidation", () => {
   // cache in the data layer, or the dashboard reports pre-edit numbers for up
   // to a minute and the user reasonably concludes their edit did not save.
   async function cachedOverview(): Promise<number> {
-    return cache(`metrics:${OURS}:overview`, 60, async () => Date.now() + Math.random());
+    return cache(
+      `metrics:${OURS}:overview`,
+      60,
+      async () => Date.now() + Math.random(),
+    );
   }
 
   it("assign, unassign, upsertTable and deleteTable each clear the wedding's metrics", async () => {
     for (const write of [
       () => assign(scope, "guest-ours", "event-ours", "table-ours"),
       () => unassign(scope, "guest-ours", "event-ours"),
-      () => upsertTable(scope, { eventId: "event-ours", name: "Table N", capacity: 4 }),
+      () =>
+        upsertTable(scope, {
+          eventId: "event-ours",
+          name: "Table N",
+          capacity: 4,
+        }),
       () => deleteTable(scope, "table-ours"),
     ]) {
       const before = await cachedOverview();
@@ -265,8 +404,14 @@ describe("metrics cache invalidation", () => {
   });
 
   it("leaves another wedding's cached metrics alone", async () => {
-    const theirs = await cache(`metrics:${THEIRS}:overview`, 60, async () => "theirs");
+    const theirs = await cache(
+      `metrics:${THEIRS}:overview`,
+      60,
+      async () => "theirs",
+    );
     await assign(scope, "guest-ours", "event-ours", "table-ours");
-    expect(await cache(`metrics:${THEIRS}:overview`, 60, async () => "recomputed")).toBe(theirs);
+    expect(
+      await cache(`metrics:${THEIRS}:overview`, 60, async () => "recomputed"),
+    ).toBe(theirs);
   });
 });

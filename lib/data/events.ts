@@ -103,13 +103,17 @@ async function readFacts(
   const [invitesResult, responsesResult, guestsResult] = await Promise.all([
     inviteQuery,
     responseQuery,
-    scope.db.from("guests").select("id, household_id").eq("wedding_id", scope.weddingId),
+    scope.db
+      .from("guests")
+      .select("id, household_id")
+      .eq("wedding_id", scope.weddingId),
   ]);
   if (invitesResult.error) throw new Error(invitesResult.error.message);
   if (responsesResult.error) throw new Error(responsesResult.error.message);
   if (guestsResult.error) throw new Error(guestsResult.error.message);
 
-  const guestRows: Array<{ id: string; household_id: string }> = guestsResult.data ?? [];
+  const guestRows: Array<{ id: string; household_id: string }> =
+    guestsResult.data ?? [];
   const householdOf = new Map(guestRows.map((g) => [g.id, g.household_id]));
 
   const inviteRows: EventInviteFact[] = invitesResult.data ?? [];
@@ -133,7 +137,10 @@ async function readFacts(
 }
 
 /** Confirms an event belongs to this wedding before any write touches it. */
-async function requireEvent(scope: WeddingScope, id: string): Promise<EventDetailRow> {
+async function requireEvent(
+  scope: WeddingScope,
+  id: string,
+): Promise<EventDetailRow> {
   const { data, error } = await scope.db
     .from("events")
     .select(EVENT_COLS)
@@ -178,7 +185,10 @@ export async function list(scope: WeddingScope): Promise<EventWithCounts[]> {
   });
 }
 
-export async function get(scope: WeddingScope, id: string): Promise<EventDetailRow> {
+export async function get(
+  scope: WeddingScope,
+  id: string,
+): Promise<EventDetailRow> {
   return requireEvent(scope, id);
 }
 
@@ -401,83 +411,15 @@ export async function applyInviteDelta(
   delta: InviteDelta,
   actorId?: string,
 ): Promise<{ added: number; removed: number }> {
-  await requireEvent(scope, eventId);
-
-  // An id in both halves has no coherent intent; drop it from each.
-  const removeSet = new Set(delta.remove);
-  const toAdd = [...new Set(delta.add)].filter((id) => !removeSet.has(id));
-  const addSet = new Set(delta.add);
-  const toRemove = [...removeSet].filter((id) => !addSet.has(id));
-  if (toAdd.length === 0 && toRemove.length === 0) return { added: 0, removed: 0 };
-
-  let addedIds: string[] = [];
-  if (toAdd.length > 0) {
-    // Only households in this wedding may be invited.
-    const { data: valid, error: validError } = await scope.db
-      .from("households")
-      .select("id")
-      .eq("wedding_id", scope.weddingId)
-      .in("id", toAdd);
-    if (validError) throw new Error(validError.message);
-    const validRows: Array<{ id: string }> = valid ?? [];
-    addedIds = validRows.map((h) => h.id);
-
-    if (addedIds.length > 0) {
-      const { error } = await scope.db.from("household_event_invites").upsert(
-        addedIds.map((householdId) => ({
-          household_id: householdId,
-          event_id: eventId,
-          wedding_id: scope.weddingId,
-        })),
-        { onConflict: "household_id,event_id", ignoreDuplicates: true },
-      );
-      if (error) throw new Error(error.message);
-
-      const { data: guests, error: guestsError } = await scope.db
-        .from("guests")
-        .select("id")
-        .eq("wedding_id", scope.weddingId)
-        .in("household_id", addedIds);
-      if (guestsError) throw new Error(guestsError.message);
-      const guestRows: Array<{ id: string }> = guests ?? [];
-
-      if (guestRows.length > 0) {
-        const { error: responseError } = await scope.db.from("guest_event_responses").upsert(
-          guestRows.map((g) => ({
-            guest_id: g.id,
-            event_id: eventId,
-            wedding_id: scope.weddingId,
-          })),
-          { onConflict: "guest_id,event_id", ignoreDuplicates: true },
-        );
-        if (responseError) throw new Error(responseError.message);
-      }
-    }
-  }
-
-  if (toRemove.length > 0) {
-    const { error } = await scope.db
-      .from("household_event_invites")
-      .delete()
-      .eq("wedding_id", scope.weddingId)
-      .eq("event_id", eventId)
-      .in("household_id", toRemove);
-    if (error) throw new Error(error.message);
-
-    const { error: statusError } = await scope.db.rpc("recompute_rsvp_status", {
-      p_wedding_id: scope.weddingId,
-      p_household_ids: toRemove,
-    });
-    if (statusError) throw new Error(statusError.message);
-  }
-
-  await activity.log(scope, {
-    actorType: "admin",
-    actorId,
-    action: "event.invites_changed",
-    payload: { eventId, added: addedIds, removed: toRemove },
+  const { data, error } = await scope.db.rpc("apply_event_invite_delta", {
+    p_wedding_id: scope.weddingId,
+    p_event_id: eventId,
+    p_add: delta.add,
+    p_remove: delta.remove,
+    p_actor_id: actorId,
   });
-  return { added: addedIds.length, removed: toRemove.length };
+  if (error) throw new Error(error.message);
+  return data as { added: number; removed: number };
 }
 
 /**
@@ -494,8 +436,14 @@ export async function setInvites(
 ): Promise<{ added: number; removed: number }> {
   const current = await invitedHouseholdIds(scope, eventId);
   const { toAdd, toRemove } = inviteDiff(current, householdIds);
-  if (toAdd.length === 0 && toRemove.length === 0) return { added: 0, removed: 0 };
-  return applyInviteDelta(scope, eventId, { add: toAdd, remove: toRemove }, actorId);
+  if (toAdd.length === 0 && toRemove.length === 0)
+    return { added: 0, removed: 0 };
+  return applyInviteDelta(
+    scope,
+    eventId,
+    { add: toAdd, remove: toRemove },
+    actorId,
+  );
 }
 
 /**
@@ -505,7 +453,10 @@ export async function setInvites(
  * which filters by event id again — the same function `list()` uses for its
  * counts, so the dialog and the list can never disagree.
  */
-export async function impactOf(scope: WeddingScope, eventId: string): Promise<DeletionImpact> {
+export async function impactOf(
+  scope: WeddingScope,
+  eventId: string,
+): Promise<DeletionImpact> {
   await requireEvent(scope, eventId);
   const facts = await readFacts(scope, eventId);
   return deletionImpact(eventId, facts.invites, facts.responses);

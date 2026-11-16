@@ -249,11 +249,12 @@ describe("suggestCategory", () => {
 });
 
 describe("buildBudgetSeedPlan — shape", () => {
-  it("emits the client's ten categories in sheet order", () => {
+  it("emits eleven categories after reconciling the ambiguous boundary", () => {
     expect(plan.categories.map((c) => c.name)).toEqual([
       "Venue",
       "Food and Beverage",
       "Music + Photography",
+      "Other Vendors",
       "Attire + Beauty",
       "Gifts",
       "Flowers + Decor",
@@ -262,14 +263,14 @@ describe("buildBudgetSeedPlan — shape", () => {
       "Hotels",
       "Flights",
     ]);
-    expect(plan.categories.map((c) => c.sortOrder)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(plan.categories.map((c) => c.sortOrder)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
-  it("emits 81 items — 75 from the sheet plus 6 reconciliation rows", () => {
-    expect(plan.totals.itemCount).toBe(81);
-    expect(plan.totals.reconciliationItemCount).toBe(6);
+  it("emits 79 items after resolving the single-figure category boundary", () => {
+    expect(plan.totals.itemCount).toBe(79);
+    expect(plan.totals.reconciliationItemCount).toBe(5);
     const fromSheet = plan.categories.flatMap((c) => c.items).filter((i) => i.line !== null);
-    expect(fromSheet).toHaveLength(75);
+    expect(fromSheet).toHaveLength(74);
   });
 
   it("does not emit the grand-total row as a category or an item", () => {
@@ -303,7 +304,7 @@ describe("buildBudgetSeedPlan — totals", () => {
   });
 
   it("computes the forecast rather than trusting the sheet's $60,170", () => {
-    expect(plan.totals.estimatedCents).toBe(6247000);
+    expect(plan.totals.estimatedCents).toBe(6297000);
     expect(plan.printedGrandTotal.estimatedCents).toBe(6017000);
   });
 
@@ -315,7 +316,7 @@ describe("buildBudgetSeedPlan — totals", () => {
       expect(c.estimatedCents, c.name).toBe(est);
     }
     expect(plan.categories.reduce((t, c) => t + c.benchmarkCents, 0)).toBe(4096200);
-    expect(plan.categories.reduce((t, c) => t + c.estimatedCents, 0)).toBe(6247000);
+    expect(plan.categories.reduce((t, c) => t + c.estimatedCents, 0)).toBe(6297000);
   });
 
   // One expect per category, and each also pins the difference from the printed
@@ -325,6 +326,7 @@ describe("buildBudgetSeedPlan — totals", () => {
     ["Venue", 807900, 1537000, 0, 0],
     ["Food and Beverage", 993300, 1650000, 0, 0],
     ["Music + Photography", 698400, 830000, 0, 0],
+    ["Other Vendors", 0, 50000, 0, 0],
     ["Attire + Beauty", 409300, 520000, 0, 0],
     ["Gifts", 426100, 200000, 0, 0],
     ["Flowers + Decor", 172200, 500000, 0, 0],
@@ -462,14 +464,13 @@ describe("buildBudgetSeedPlan — the sheet's own arithmetic", () => {
     for (const { i } of under) expect(i.isReconciliation).toBe(true);
   });
 
-  it("R2: carries a stale total into one negative row", () => {
+  it("uses neighboring totals to distinguish real lines 22 and 24 without a phantom reconciliation", () => {
     const music = category("Music + Photography");
-    const row = music.items[music.items.length - 1];
-    expect(row.name).toBe(RECONCILIATION_OVER_ITEMIZED);
-    expect(row.estimatedCents).toBe(-100000);
-    expect(row.benchmarkCents).toBeNull();
-    expect(row.notes).toContain("$8,300");
-    expect(row.notes).toContain("$9,300");
+    expect(music.items.some(i => i.name === "Harp - ceremony" && i.line === 22)).toBe(true);
+    expect(music.items.some(i => i.isReconciliation)).toBe(false);
+    expect(music.items.reduce((n,i) => n + (i.estimatedCents ?? 0), 0)).toBe(830000);
+    expect(category("Other Vendors").line).toBe(24);
+    expect(category("Other Vendors").items.map(i => i.name)).toEqual(["Lion Dance"]);
   });
 
   it("names the benchmark from data, never from a constant", () => {
@@ -483,12 +484,12 @@ describe("buildBudgetSeedPlan — the sheet's own arithmetic", () => {
     expect(same?.notes).not.toContain(LABEL);
   });
 
-  it("creates exactly six reconciliation rows and no others", () => {
+  it("creates only the five genuine reconciliation rows", () => {
     const rows = plan.categories.flatMap((c) => c.items).filter((i) => i.isReconciliation);
-    expect(rows).toHaveLength(6);
+    expect(rows).toHaveLength(5);
     expect(rows.every((r) => r.line === null)).toBe(true);
     expect(rows.reduce((t, r) => t + (r.benchmarkCents ?? 0), 0)).toBe(130000);
-    expect(rows.reduce((t, r) => t + (r.estimatedCents ?? 0), 0)).toBe(780000);
+    expect(rows.reduce((t, r) => t + (r.estimatedCents ?? 0), 0)).toBe(880000);
   });
 
   it("E2: flags every row where qty × each disagrees with the recorded cost by a dollar or more", () => {
@@ -525,9 +526,9 @@ describe("buildBudgetSeedPlan — the sheet's own arithmetic", () => {
     expect(g2).toMatchObject({
       column: "estimated",
       printedCents: 6017000,
-      headerCents: 6247000,
-      computedCents: 6247000,
-      differenceCents: 230000,
+      headerCents: 6297000,
+      computedCents: 6297000,
+      differenceCents: 280000,
     });
     expect(codes(plan, "G2")).toHaveLength(1);
     expect(codes(plan, "G1")).toHaveLength(1); // categories are a dollar light
@@ -539,7 +540,7 @@ describe("buildBudgetSeedPlan — the sheet's own arithmetic", () => {
       expect(a.resolution.length, a.code).toBeGreaterThan(0);
     }
     expect(new Set(plan.anomalies.map((a) => a.code))).toEqual(
-      new Set(["F1", "P1", "E2", "E3", "Q1", "R1", "R2", "G1", "G2"]),
+      new Set(["F1", "P1", "E2", "E3", "Q1", "R1", "G1", "G2"]),
     );
   });
 });
@@ -598,5 +599,26 @@ describe("buildBudgetSeedPlan — synthetic sheets", () => {
         synthetic(["Total,,,$100,$100,,", "Total Cost,,,$100,$100,,", "Cake,,,$100,$100,,"].join("\n")),
       ),
     ).toThrow(/second grand-total/);
+  });
+});
+
+
+describe("ambiguous budget boundaries", () => {
+  it("keeps an ambiguous row as an item when its following rows do not match the candidate total", () => {
+    const plan = buildBudgetSeedPlan(`Item,Qty,Each,Reference Actual,Estimate,Our Actual
+Music,,,100,100,
+Known,1,,100,100,
+Ambiguous,,,,50,
+Extra,1,,,40,`);
+    expect(plan.categories).toHaveLength(1);
+    expect(plan.categories[0].items.some(i => i.name === "Ambiguous")).toBe(true);
+    expect(plan.categories[0].items.some(i => i.name === RECONCILIATION_OVER_ITEMIZED)).toBe(true);
+  });
+  it("does not rely on the real vendor names for boundary reconciliation", () => {
+    const renamed = buildBudgetSeedPlan(SHEET.replace("Other Vendors", "Special entertainment").replace("Harp - ceremony", "Ceremony strings"));
+    expect(renamed.categories.find(c => c.name === "Special entertainment")?.items.map(i => i.name)).toEqual(["Lion Dance"]);
+    expect(renamed.categories.find(c => c.name === "Music + Photography")?.items.some(i => i.name === "Ceremony strings")).toBe(true);
+    expect(renamed.totals.itemCount).toBe(79);
+    expect(renamed.totals.estimatedCents).toBe(6297000);
   });
 });

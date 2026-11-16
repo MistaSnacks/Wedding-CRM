@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { serverClient } from "@/lib/supabase/server";
 import { adminDb } from "@/lib/supabase/admin";
@@ -10,20 +11,21 @@ export type AdminContext = {
 };
 
 /** Resolve the signed-in admin + their wedding membership, or redirect. */
-export async function requireAdmin(): Promise<AdminContext> {
+export const requireAdmin = cache(async (): Promise<AdminContext> => {
   const supabase = await serverClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
-  const { data: membership } = await adminDb()
+  const { data: membership, error } = await adminDb()
     .from("wedding_members")
     .select("wedding_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
+  if (error) throw new Error("Could not verify admin membership. Please retry.");
   if (!membership) redirect("/admin/login?error=no_access");
 
   return {
@@ -32,7 +34,7 @@ export async function requireAdmin(): Promise<AdminContext> {
     weddingId: membership.wedding_id,
     role: membership.role,
   };
-}
+});
 
 /**
  * Write gate for server actions. Viewers are read-only.

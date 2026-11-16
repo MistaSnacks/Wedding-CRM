@@ -60,6 +60,9 @@ export type GuestRow = {
 
 export type EventRow = {
   id: string;
+  ends_at?: string|null;
+  venue_address?: string|null;
+  dress_code?: string|null;
   name: string;
   starts_at: string | null;
   venue_name: string | null;
@@ -93,6 +96,7 @@ export type ResponseRow = {
 
 export type QuestionRow = {
   id: string;
+  event_id?: string | null;
   label: Record<Locale, string>;
   type: "text" | "boolean" | "select";
   options: unknown;
@@ -138,10 +142,15 @@ export type SeatAssignmentRow = {
 export type SubmitRsvpPayload = {
   responses: Array<{ guest_id: string; event_id: string; attending: Attending; meal_option_id?: string | null }>;
   new_plus_ones?: Array<{
+    guest_id?: string;
+    client_id?: string;
     first_name: string;
     last_name: string;
     responses: Array<{ event_id: string; attending: Attending; meal_option_id?: string | null }>;
   }>;
+  remove_plus_one_ids?: string[];
+  actor_id?: string;
+  confirmation?: { recipient: string; subject: string; html: string };
   guest_fields?: Array<{ guest_id: string; dietary_restrictions?: string; allergies?: string }>;
   answers?: Array<{ question_id: string; guest_id?: string | null; value: unknown }>;
   via: "guest" | "admin";

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { matchesGuestQuery } from "@/lib/search/guest-query";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { deleteHousehold } from "@/app/admin/(dashboard)/guests/actions";
+import { RsvpStatusBadge } from "@/components/admin/RsvpStatusBadge";
 
 export type GuestListRow = {
   id: string;
@@ -17,13 +18,6 @@ export type GuestListRow = {
   plus_one_slots: number;
   rsvp_status: string;
   invite_code: string;
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  completed: "bg-sage-band text-olive-deep",
-  started: "bg-[#f3edd8] text-[#7a6420]",
-  declined: "bg-blush text-rose",
-  pending: "bg-[#f1f0ea] text-[#6b7167]",
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -78,8 +72,8 @@ export function GuestList(props: {
               <th className="px-4 py-3">HOUSEHOLD</th>
               <th className="px-4 py-3">GUESTS</th>
               <th className="px-4 py-3">CONTACT</th>
-              <th className="px-4 py-3">RULES</th>
-              <th className="px-4 py-3">STATUS</th>
+              <th className="px-4 py-3">PARTY SIZE</th>
+              <th className="px-4 py-3">REPLY</th>
               <th className="px-4 py-3 text-right">CODE</th>
               <th className="px-4 py-3" />
             </tr>
@@ -97,18 +91,16 @@ export function GuestList(props: {
                 </td>
                 <td className="px-4 py-3.5 text-[13px] text-[#4a5147]">{h.email ?? "—"}</td>
                 <td className="px-4 py-3.5 text-[13px] text-[#4a5147]">
-                  Max {h.max_party_size}
-                  {h.plus_one_slots > 0 ? ` · +${h.plus_one_slots}` : ""}
+                  Up to {h.max_party_size}
+                  {h.plus_one_slots > 0 ? ` · ${h.plus_one_slots} plus-one${h.plus_one_slots > 1 ? "s" : ""}` : ""}
                 </td>
                 <td className="px-4 py-3.5">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.05em] uppercase ${STATUS_BADGE[h.rsvp_status]}`}>
-                    {h.rsvp_status}
-                  </span>
+                  <RsvpStatusBadge status={h.rsvp_status} />
                 </td>
-                <td className="px-4 py-3.5 text-right font-mono text-[12px] tracking-wider text-muted">{h.invite_code}</td>
+                <td className="whitespace-nowrap px-4 py-3.5 text-right font-mono text-[12px] tracking-wider text-muted">{h.invite_code}</td>
                 <td className="px-4 py-3.5 text-right">
                   {props.canDelete && (
-                    <ConfirmButton label="Delete" confirmLabel="Delete all?" action={deleteHousehold.bind(null, h.id)} />
+                    <ConfirmButton label="Remove" confirmLabel="Remove? You can put them back." action={deleteHousehold.bind(null, h.id)} />
                   )}
                 </td>
               </tr>
@@ -140,9 +132,7 @@ export function GuestList(props: {
                 {h.guests.map((g) => `${g.first_name} ${g.last_name}`).join(", ") || "No guests yet"}
               </span>
             </span>
-            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold tracking-[0.05em] uppercase ${STATUS_BADGE[h.rsvp_status]}`}>
-              {h.rsvp_status}
-            </span>
+            <RsvpStatusBadge status={h.rsvp_status} />
           </Link>
         ))}
         {!rows.length && (

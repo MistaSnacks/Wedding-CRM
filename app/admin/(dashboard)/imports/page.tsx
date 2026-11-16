@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { createHash } from "node:crypto";
 import { requireAdmin } from "@/lib/admin-auth";
 import { forWedding } from "@/lib/data/scope";
 import { loadImportContext } from "@/lib/data/imports";
 import { ImportWizard } from "@/components/admin/ImportWizard";
-import { ExportCenter, type ExportReport } from "@/components/admin/ExportCenter";
+import { ExportCenter } from "@/components/admin/ExportCenter";
+import { REPORTS } from "@/lib/reports/catalog";
 import { ReviewInbox, type AppliedItem, type InboxItem } from "@/components/admin/ReviewInbox";
 import * as submissions from "@/lib/data/submissions";
 import { classify, scoreCandidates } from "@/lib/sync/match";
@@ -11,21 +13,6 @@ import { parseSubmission } from "@/lib/sync/sheet";
 import { configuredReader, loadCandidatePool } from "@/lib/sync/run";
 
 export const dynamic = "force-dynamic";
-
-const REPORTS: ExportReport[] = [
-  { key: "guest-list", label: "Full guest list", group: "Guest lists", description: "Everyone, with RSVPs, meals, dietary notes, and tables" },
-  { key: "households", label: "Household list", group: "Guest lists", description: "One row per household — contacts, party size, invite code" },
-  { key: "addresses", label: "Mailing addresses", group: "Guest lists", description: "One row per household, ready for envelopes or a mail house" },
-  { key: "rsvp-status", label: "RSVP progress", group: "RSVPs", description: "How many in each household have answered" },
-  { key: "attending", label: "Attending guests", group: "RSVPs", description: "Everyone who said yes, with their meal choice" },
-  { key: "declined", label: "Declined guests", group: "RSVPs", description: "Everyone who said no" },
-  { key: "pending", label: "Awaiting reply", group: "RSVPs", description: "Invited guests who haven't answered yet" },
-  { key: "caterer", label: "Caterer report", group: "For your vendors", description: "Attending guests with meals, kids' meals, and dietary needs" },
-  { key: "meals", label: "Meal counts", group: "For your vendors", description: "Totals for each dish" },
-  { key: "dietary", label: "Dietary restrictions", group: "For your vendors", description: "Guests with dietary notes or allergies, and their tables" },
-  { key: "accessibility", label: "Accessibility requests", group: "For your vendors", description: "Guests who asked for accommodations" },
-  { key: "seating", label: "Seating chart", group: "For your vendors", description: "Who sits at which table, per event" },
-];
 
 export default async function ImportsPage() {
   // Page-level gating is the layout's requireAdmin: this route also hosts the
@@ -38,10 +25,11 @@ export default async function ImportsPage() {
 
   // The review inbox: score each waiting response against the guest list here,
   // server-side, so the browser never sees the whole directory.
-  const [pending, applied, pool] = await Promise.all([
+  const [pending, applied, pool, syncHealth] = await Promise.all([
     submissions.listByStatus(scope, "pending"),
     submissions.listApplied(scope),
     loadCandidatePool(scope),
+    submissions.latestRun(scope),
   ]);
 
   const inboxItems: InboxItem[] = pending.map((row) => {
@@ -49,6 +37,7 @@ export default async function ImportsPage() {
     const decision = classify(s, scoreCandidates(s, pool), pool);
     return {
       id: row.id,
+      version: createHash("sha256").update(JSON.stringify(row.raw)).digest("hex"),
       name: `${s.first} ${s.last}`.trim(),
       email: s.email,
       phone: s.phone,
@@ -66,7 +55,7 @@ export default async function ImportsPage() {
               score: c.score,
               reasons: c.reasons,
             }))
-          : [],
+          : decision.bucket === "auto_email" ? [{ householdId: decision.householdId, householdName: pool.find(c=>c.householdId===decision.householdId)?.householdName ?? "Household", guestName: `${s.first} ${s.last}`, score: 1, reasons:[decision.reason] }] : [],
     };
   });
 
@@ -95,14 +84,15 @@ export default async function ImportsPage() {
 
       {/* Real enforcement is requireEditor() inside the server actions; this
           only hides a surface a viewer could not use anyway. */}
-      {canImport && <ImportWizard events={context.events} mealOptions={context.mealOptions} />}
+      {canImport && <ImportWizard weddingId={admin.weddingId} events={context.events} mealOptions={context.mealOptions} />}
 
-      {(inboxItems.length > 0 || appliedItems.length > 0) && (
+      {(
         <ReviewInbox
           items={inboxItems}
           applied={appliedItems}
           connected={connected}
           canEdit={canImport}
+          health={syncHealth}
         />
       )}
 
@@ -111,7 +101,13 @@ export default async function ImportsPage() {
         <p className="mt-0.5 text-[12.5px] text-muted">
           Pick a report and it downloads straight to your computer.
         </p>
-        <ExportCenter reports={REPORTS} />
+        <p className="mt-2 text-[13px] text-ink">
+          Want to look before you download?{" "}
+          <Link href="/admin/reports" className="font-medium text-olive-deep underline underline-offset-2 hover:text-rose">
+            See reports on screen →
+          </Link>
+        </p>
+        <ExportCenter reports={REPORTS} events={context.events} />
         <div className="mt-4 flex gap-2">
           <Link
             href="/admin/print/escort-cards"

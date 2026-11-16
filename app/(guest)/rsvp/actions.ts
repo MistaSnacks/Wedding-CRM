@@ -4,7 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { defaultScope } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
-import { matchHouseholds, type EntrySearchResult } from "@/lib/domain/entry-match";
+import {
+  matchHouseholds,
+  type EntrySearchResult,
+} from "@/lib/domain/entry-match";
 import { createGuestSession } from "@/lib/guest-session";
 import { rateLimit } from "@/lib/limiter";
 
@@ -32,11 +35,21 @@ async function clientKey(prefix: string): Promise<string> {
   return `${prefix}:${ip}`;
 }
 
-export async function findParty(_prev: FindPartyResult | null, formData: FormData): Promise<FindPartyResult> {
-  const name = String(formData.get("name") ?? "").slice(0, 120).trim();
-  const email = String(formData.get("email") ?? "").slice(0, 120).trim();
+export async function findParty(
+  _prev: FindPartyResult | null,
+  formData: FormData,
+): Promise<FindPartyResult> {
+  const name = String(formData.get("name") ?? "")
+    .slice(0, 120)
+    .trim();
+  const email = String(formData.get("email") ?? "")
+    .slice(0, 120)
+    .trim();
 
-  const limit = await rateLimit(await clientKey("find"), { limit: 10, windowSec: 60 });
+  const limit = await rateLimit(await clientKey("find"), {
+    limit: 10,
+    windowSec: 60,
+  });
   if (!limit.ok) return { status: "rate_limited" };
 
   // Two boxes, either works. Try the email first (exact match), then the
@@ -49,7 +62,7 @@ export async function findParty(_prev: FindPartyResult | null, formData: FormDat
   if (tries.length === 0) return { status: "too_short" };
 
   const scope = defaultScope();
-  const all = await households.list(scope);
+  const all = await households.entryList(scope);
 
   let last: FindPartyResult = { status: "none" };
   for (const q of tries) {
@@ -59,13 +72,20 @@ export async function findParty(_prev: FindPartyResult | null, formData: FormDat
   return last;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function enterParty(_prev: EnterPartyResult | null, formData: FormData): Promise<EnterPartyResult> {
+export async function enterParty(
+  _prev: EnterPartyResult | null,
+  formData: FormData,
+): Promise<EnterPartyResult> {
   const id = String(formData.get("household") ?? "");
   if (!UUID_RE.test(id)) return { status: "not_found" };
 
-  const limit = await rateLimit(await clientKey("enter"), { limit: 20, windowSec: 60 });
+  const limit = await rateLimit(await clientKey("enter"), {
+    limit: 20,
+    windowSec: 60,
+  });
   if (!limit.ok) return { status: "rate_limited" };
 
   const scope = defaultScope();

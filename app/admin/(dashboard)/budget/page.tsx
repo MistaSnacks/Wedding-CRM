@@ -1,5 +1,6 @@
+import { splitBudgetByCurrency, currencyMoney } from "@/lib/data/budget-currency";
 import { requireAdmin } from "@/lib/admin-auth";
-import { defaultScope } from "@/lib/data/scope";
+import { forWedding } from "@/lib/data/scope";
 import * as budget from "@/lib/data/budget";
 import { calendarDayIn } from "@/lib/format/wedding-date";
 import { formatMoney } from "@/lib/format/money";
@@ -34,7 +35,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function BudgetPage() {
   const admin = await requireAdmin();
-  const scope = defaultScope();
+  const scope = forWedding(admin.weddingId);
   const now = new Date();
 
   const { data: weddingRow } = await scope.db
@@ -118,11 +119,27 @@ export default async function BudgetPage() {
   // she has already started is a page that has stopped paying attention.
   const isEmpty = totals.itemCount === 0 && categories.length === 0;
 
+  if (totals.mixedCurrency || totals.currencies.some(c => c !== tree.currency)) {
+    return <div className="flex flex-col gap-7">
+      <h1 className="text-[22px] font-semibold text-ink">Budget by currency</h1>
+      <p className="text-sm text-muted">Each currency has its own totals. Your overall spending limit and category targets apply to {tree.currency}; amounts are never converted or added across currencies.</p>
+      <a href="/admin/budget/headcount" className="text-sm text-olive underline">Headcount-linked estimates</a>
+      <a href="/api/export/budget" className="text-sm text-olive underline">Export budget</a>
+      {splitBudgetByCurrency(tree, now).map(ledger => <section key={ledger.currency} className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">{ledger.currency}</h2>
+        <p className="text-sm">Forecast {currencyMoney(ledger.totals.forecastCents, ledger.currency)} · Paid {currencyMoney(ledger.totals.paidCents, ledger.currency)} · Still to pay {currencyMoney(ledger.totals.dueCents, ledger.currency)}</p>
+        <BudgetTable tree={ledger} benchmarkLabel={tree.benchmarkLabel} currency={ledger.currency} canEdit={canEdit} timeZone={timeZone} weddingDay={wedding?.wedding_date ?? null} />
+      </section>)}
+      <BudgetSetup totalCents={totals.maxSpendCents} benchmarkLabel={tree.benchmarkLabel} benchmarkTotalCents={0} categories={setupCategories.map(c => ({ ...c, benchmarkCents: 0 }))} canEdit={canEdit} />
+    </div>;
+  }
+
   return (
     <div className="flex flex-col gap-5">
+      <div className="flex gap-4 text-sm text-olive"><a href="/admin/budget/headcount" className="underline">Headcount-linked estimates</a><a href="/api/export/budget" className="underline">Export budget</a><a href="/admin/vendors/tasks" className="underline">Tasks & payments</a></div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[22px] font-semibold text-ink">Budget</h1>
+          <h1 className="text-[22px] font-semibold text-ink">Budget · {tree.currency}</h1>
           <p className="mt-0.5 text-[13.5px] text-[#6b7167]">{subtitle}</p>
         </div>
         {canEdit && (

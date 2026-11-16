@@ -40,3 +40,24 @@ describe("cache", () => {
     expect(await cache("c1", 60, fn)).toBe(2);
   });
 });
+
+describe("shared limiter",()=>{
+  afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();vi.restoreAllMocks();});
+  it("uses one atomic Redis call with a hashed key and honors TTL",async()=>{
+    vi.stubEnv('UPSTASH_REDIS_REST_URL','https://redis.example');vi.stubEnv('UPSTASH_REDIS_REST_TOKEN','test');
+    const fetcher=vi.fn().mockResolvedValue({ok:true,json:async()=>({result:[4,17]})});vi.stubGlobal('fetch',fetcher);
+    expect(await rateLimit('private@example.test',{limit:3})).toEqual({ok:false,retryAfterSec:17});
+    const command=JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(command[0]).toBe('EVAL');expect(command[3]).toMatch(/^guest-crm:limit:[a-f0-9]{64}$/);
+    expect(command.join(' ')).not.toContain('private@example.test');
+  });
+  it("fails closed when the shared backend is unavailable",async()=>{
+    vi.stubEnv('UPSTASH_REDIS_REST_URL','https://redis.example');vi.stubEnv('UPSTASH_REDIS_REST_TOKEN','test');
+    vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('offline')));vi.spyOn(console,'error').mockImplementation(()=>{});
+    expect(await rateLimit('failure')).toEqual({ok:false,retryAfterSec:30});
+  });
+  it("does not serve process-local cached data in production",async()=>{
+    vi.stubEnv('NODE_ENV','production');let calls=0;const fn=async()=>++calls;
+    expect(await cache('fresh',60,fn)).toBe(1);expect(await cache('fresh',60,fn)).toBe(2);
+  });
+});

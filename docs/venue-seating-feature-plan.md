@@ -2,6 +2,8 @@
 
 Status: interactive concept implemented on September 4, 2026 at `/venue-preview`; production integration remains proposed. No database changes were required for the sample-data prototype. The booked reception space and measured plan still need confirmation.
 
+**Multi-tenant sequencing updated September 11, 2026: 3D venue functionality is the very last feature phase**, after the wedding CRM, connected workflows, and professional planner layer. This feature design is a reference, not an instruction to advance 3D work ahead of the [current roadmap](multi-tenant-roadmap.md). See [deferred venue research](multi-tenant-venue-research.md) for competitor evidence, demand-report sources, catalog approaches, and pricing uncertainties.
+
 ## Intended experience
 
 Juliet opens Reception → Seating and sees the actual venue beneath her tables. She can switch between a scaled floor plan, a 3D view and the existing assignment list. Clicking a table opens its guest list, capacity, meals and dietary notes. Moving a household to that table updates the same RSVP-linked seating assignments used by reports and place cards.

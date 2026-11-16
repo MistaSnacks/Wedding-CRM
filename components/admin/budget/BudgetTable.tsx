@@ -112,6 +112,27 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
 
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
+  const activeItem = useRef<string | null>(null);
+  const detailGeneration = useRef(0);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const refreshDetail = useCallback(async (itemId: string) => {
+    const generation = ++detailGeneration.current;
+    setDetailError(null);
+    try {
+      const result = await loadBudgetItemDetail(itemId);
+      if (generation !== detailGeneration.current || activeItem.current !== itemId) return;
+      if (!result.ok || !result.item || result.item.id !== itemId) {
+        setDetailError(result.message ?? "These details could not be loaded. Try again.");
+        return;
+      }
+      setDetail({ qty: result.item.qty, unitPriceCents: result.item.unit_price_cents,
+        notes: result.item.notes, receiptUrls: Object.fromEntries((result.payments ?? []).map(p => [p.id, p.receipt_url])) });
+    } catch {
+      if (generation === detailGeneration.current && activeItem.current === itemId)
+        setDetailError("The details could not be loaded. Check your connection and try again.");
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -181,7 +202,7 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
   const defaultBalanceDue = calendarDaysBefore(props.weddingDay, 30);
 
   const commit = useCallback(
-    (step: CommitStep) => {
+    (step: CommitStep): Promise<boolean> => new Promise((resolve) => {
       setStatus({ kind: "saving", message: `Saving · ${step.subject}` });
       startTransition(async () => {
         step.optimistic?.();
@@ -190,9 +211,11 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
           if (!result.ok) {
             step.rollback?.();
             setStatus({ kind: "error", message: outcomeMessage(result, step.failed) });
+            resolve(false);
             return;
           }
           step.onSaved?.();
+          if (activeItem.current) await refreshDetail(activeItem.current);
           // Four actions return a warning on their success branch — a payment
           // schedule that now exceeds the price, for one. Reading only `ok` threw
           // those away, so the one sentence telling her the numbers no longer add
@@ -201,13 +224,15 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
             kind: "saved",
             message: result.message ? `Saved · ${step.subject} — ${result.message}` : `Saved · ${step.subject}`,
           });
+          resolve(true);
         } catch {
           step.rollback?.();
-          setStatus({ kind: "error", message: `${step.failed} The connection dropped, so nothing was changed.` });
+          setStatus({ kind: "error", message: `${step.failed} Check the latest values before retrying; the response could not be confirmed.` });
+          resolve(false);
         }
       });
-    },
-    [startTransition],
+    }),
+    [startTransition, refreshDetail],
   );
 
   const flashSaved = useCallback((key: string) => {
@@ -304,24 +329,14 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
     openerRef.current = opener ?? null;
     setOpenItemId(itemId);
     setDetail(null);
-    startDetail(async () => {
-      try {
-        const result = await loadBudgetItemDetail(itemId);
-        if (!result.ok || result.item === undefined) return;
-        setDetail({
-          qty: result.item.qty,
-          unitPriceCents: result.item.unit_price_cents,
-          notes: result.item.notes,
-          receiptUrls: Object.fromEntries((result.payments ?? []).map((p) => [p.id, p.receipt_url])),
-        });
-      } catch {
-        // The drawer is still usable for everything the tree knows; only the
-        // fields that need this read stay disabled.
-      }
-    });
+    activeItem.current = itemId;
+    startDetail(() => refreshDetail(itemId));
   }
 
   function closeDrawer() {
+    activeItem.current = null;
+    detailGeneration.current += 1;
+    setDetailError(null);
     setOpenItemId(null);
     setDetail(null);
     openerRef.current?.focus();
@@ -345,6 +360,7 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <SaveStatus state={status} />
+      <p className="text-xs text-muted">All amounts in this ledger are {currency}.</p>
 
       {/* Desktop ledger. No `overflow-hidden` on this wrapper — see the docblock. */}
       <div className="rounded-xl border border-hairline max-md:hidden">
@@ -416,7 +432,7 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
                         commit({
                           subject: `${name} added to ${category.category.name}`,
                           failed: `${name} wasn't added.`,
-                          attempt: () => createBudgetItem(category.category.id, name),
+                          attempt: () => createBudgetItem(category.category.id, name, currency),
                         })
                       }
                     />
@@ -473,13 +489,16 @@ export function BudgetTable(props: BudgetTableProps): React.JSX.Element {
           commit({
             subject: `New line added to ${categoryName}`,
             failed: "That line wasn't added.",
-            attempt: () => createBudgetItem(categoryId, "New line"),
+            attempt: () => createBudgetItem(categoryId, "New line", currency),
           })
         }
       />
 
       {openRollup !== null && (
         <ItemDrawer
+          key={openRollup.item.id}
+          detailError={detailError}
+          onRetryDetail={() => { if (activeItem.current) startDetail(() => refreshDetail(activeItem.current!)); }}
           rollup={openRollup}
           categories={categoryOptions}
           vendors={vendors}

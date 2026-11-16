@@ -10,8 +10,16 @@ export type LayoutTable = {
   shape: "round" | "rect";
   capacity: number;
   guestIds: string[];
+  /** Live editor only: round, long or head table (head is the banquet shape). */
+  kind?: "round" | "long" | "head";
 };
-export type DemoGuest = { id: string; name: string; household: string };
+export type DemoGuest = {
+  id: string;
+  name: string;
+  household: string;
+  /** Real household id, when the guest comes from the saved guest list. */
+  householdId?: string;
+};
 /** Everything the browser keeps for the sample plan. */
 export type Draft = { tables: LayoutTable[]; guests: DemoGuest[] };
 
@@ -207,7 +215,9 @@ export function setShape(
   return { ...next, ...clampPosition(next, next.x, next.z) };
 }
 export function setCapacity(t: LayoutTable, capacity: number): LayoutTable {
-  const seats = Math.max(1, Math.min(16, Math.round(capacity)));
+  // Up to 16 seats, or the table's saved size when Seating made it bigger,
+  // so a 20-seat table can still lose one seat without dropping to 16.
+  const seats = Math.max(1, Math.min(Math.max(16, t.capacity), Math.round(capacity)));
   if (seats < t.guestIds.length)
     throw new Error(
       `${t.guestIds.length} guests are already seated at ${t.name}. Move someone first.`,

@@ -11,12 +11,26 @@
  * event *times*, which are real instants and do go through the venue's zone.
  */
 
-/** The calendar day as text: `"2027-06-12"` → `"June 12, 2027"`. */
-export function formatCalendarDate(date: string | null): string | null {
+/**
+ * The languages guests read, and the regional form each date is written in.
+ * Anything else falls back to English, the same way `localeOf` does for email.
+ */
+const DATE_LOCALES: Record<string, string> = { en: "en-US", es: "es-MX", vi: "vi-VN" };
+
+/**
+ * The calendar day as text: `"2027-06-12"` → `"June 12, 2027"`.
+ *
+ * `locale` is the guest's language (`"en"`, `"es"`, `"vi"`), so the same stored
+ * day reads `"12 de junio de 2027"` or `"12 tháng 6, 2027"` where it should.
+ */
+export function formatCalendarDate(date: string | null, locale: string = "en"): string | null {
   if (!date) return null;
   const ms = Date.parse(`${date}T00:00:00Z`);
   if (Number.isNaN(ms)) return null;
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(ms));
+  return new Intl.DateTimeFormat(DATE_LOCALES[locale] ?? DATE_LOCALES.en, {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(new Date(ms));
 }
 
 /** Today's calendar day in `timeZone`, as `[year, month, day]`. */
@@ -62,6 +76,25 @@ export function daysUntilCalendarDate(date: string, now: Date, timeZone: string)
 export function calendarDayIn(instant: Date, timeZone: string): string {
   const [year, month, day] = calendarDayAt(instant, timeZone);
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * The day an instant falls on at the venue, written for a guest:
+ * `"2027-07-02T06:59:00Z"` in Los Angeles → `"July 1, 2027"`.
+ *
+ * This is how the RSVP deadline is shown. The deadline is stored as a real
+ * moment (23:59 at the venue), and the day a guest must reply by is the day
+ * that moment falls on there, not the day it is in UTC.
+ */
+export function formatInstantDay(
+  instant: string | null,
+  timeZone: string,
+  locale: string = "en",
+): string | null {
+  if (!instant) return null;
+  const ms = Date.parse(instant);
+  if (Number.isNaN(ms)) return null;
+  return formatCalendarDate(calendarDayIn(new Date(ms), timeZone), locale);
 }
 
 /**

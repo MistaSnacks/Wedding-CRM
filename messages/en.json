@@ -1,7 +1,7 @@
 {
   "entry": {
     "eyebrow": "YOU ARE INVITED TO THE WEDDING OF",
-    "date": "September 18, 2027 · Guadalajara, México",
+    "date": "{date} · {place}",
     "rsvp": "RSVP",
     "searchPrompt": "Enter your full name as it appears on your invitation to find your party.",
     "namePlaceholder": "Your full name",
@@ -49,12 +49,12 @@
     "reviewDeclining": "Declining",
     "reviewNoMeal": "No meal selected",
     "submit": "Send our RSVP",
-    "autosave": "Your progress saves automatically",
+    "autosave": "Your progress saves when you continue.",
     "confirmedTitle": "Thank you!",
     "confirmedBody": "Your RSVP has been received. We can't wait to celebrate with you.",
     "confirmedEdit": "You can return to this page to make changes until {date}.",
     "deadlinePassed": "The RSVP deadline has passed. If something has changed, please reach out to Juliet & Juan directly.",
-    "yourTable": "RECEPTION SEATING",
+    "yourTable": "YOUR SEATING",
     "yourTableTitle": "{name}, you're at {table}",
     "seatedWith": "SEATED WITH YOU",
     "more": "+{count} more",
@@ -68,8 +68,16 @@
       "rate_limited": "Too many attempts — please wait a minute and try again.",
       "deadline_passed": "The RSVP deadline has passed. Please contact Juliet & Juan directly.",
       "not_found": "We couldn't find your invitation. Please use the link from your email.",
-      "unknown": "Something went wrong. Please try again."
-    }
+      "unknown": "Something went wrong. Please try again.",
+      "invalid_payload": "Please check each name and answer, then try again.",
+      "invalid_meal": "Please choose a meal offered for this event.",
+      "invalid_answer": "Please check your answers and try again.",
+      "incomplete_rsvp": "Please answer for every guest and event and select each required meal before submitting."
+    },
+    "reviewPending": "Not answered",
+    "declinedBody": "Your response has been received. Thank you for letting us know. We will miss you.",
+    "editResponse": "Edit our response",
+    "addCalendar": "Add invited events to my calendar"
   },
   "common": {
     "loading": "One moment…",

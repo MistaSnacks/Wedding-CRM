@@ -5,15 +5,25 @@ import * as households from "@/lib/data/households";
 import * as rsvp from "@/lib/data/rsvp";
 import * as seating from "@/lib/data/seating";
 import { RsvpFlow } from "@/components/guest/RsvpFlow";
-import type { GuestRow, EventRow, MealOptionRow, QuestionRow, ResponseRow } from "@/lib/types";
+import type {
+  EventRow,
+  MealOptionRow,
+  QuestionRow,
+  ResponseRow,
+} from "@/lib/types";
 
 export type GuestTableInfo = {
+  eventName: string;
   guestName: string;
   tableName: string;
   mates: Array<{ first_name: string; last_name: string }>;
-} | null;
+};
 
-export default async function HouseholdRsvpPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function HouseholdRsvpPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
   const { token } = await params;
   const scope = defaultScope();
   const household = await households.byAccessToken(scope, token);
@@ -26,19 +36,26 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
     rsvp.getDeadlineContext(scope),
     getLocale(),
   ]);
-  const deadlinePassed = deadline ? new Date(deadline).getTime() < Date.now() : false;
+  const deadlinePassed = deadline
+    ? new Date(deadline).getTime() < Date.now()
+    : false;
 
-  // Guest-facing seat reveal (first published event with an assignment wins)
-  let tableInfo: GuestTableInfo = null;
-  const publishedEvent = context.events.find((e) => e.seating_published_at);
-  if (publishedEvent && context.guests.length) {
-    for (const g of context.guests as GuestRow[]) {
-      const t = await seating.guestTable(scope, g.id, publishedEvent.id);
-      if (t) {
-        tableInfo = { guestName: g.first_name, tableName: t.tableName, mates: t.mates };
-        break;
-      }
-    }
+  const tables: GuestTableInfo[] = [];
+  for (const event of context.allEvents.filter((e) => e.seating_published_at)) {
+    const assignments = await Promise.all(
+      context.guests.map(async (g) => ({
+        g,
+        table: await seating.guestTable(scope, g.id, event.id),
+      })),
+    );
+    for (const { g, table } of assignments)
+      if (table)
+        tables.push({
+          eventName: event.name,
+          guestName: `${g.first_name} ${g.last_name}`,
+          tableName: table.tableName,
+          mates: table.mates,
+        });
   }
 
   return (
@@ -51,7 +68,7 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
         plusOneSlots: household.plus_one_slots,
         rsvpStatus: household.rsvp_status,
       }}
-      guests={context.guests as GuestRow[]}
+      guests={context.guests}
       events={context.events as EventRow[]}
       meals={context.meals as MealOptionRow[]}
       questions={context.questions as QuestionRow[]}
@@ -59,7 +76,8 @@ export default async function HouseholdRsvpPage({ params }: { params: Promise<{ 
       deadline={deadline}
       timeZone={timeZone}
       deadlinePassed={deadlinePassed}
-      tableInfo={tableInfo}
+      tables={tables}
+      answers={context.answers}
     />
   );
 }

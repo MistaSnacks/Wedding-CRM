@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { defaultScope } from "@/lib/data/scope";
+import { requireAdmin } from "@/lib/admin-auth";
+import { restoreHousehold } from "./actions";
+import { forWedding } from "@/lib/data/scope";
 import * as households from "@/lib/data/households";
 import type { HouseholdFilter } from "@/lib/types";
 import { NewHouseholdForm } from "@/components/admin/NewHouseholdForm";
@@ -9,16 +11,16 @@ export const dynamic = "force-dynamic";
 
 const FILTERS: Array<{ key: HouseholdFilter; label: string }> = [
   { key: "all", label: "All" },
-  { key: "pending", label: "Pending" },
-  { key: "started", label: "Started" },
-  { key: "attending", label: "Attending" },
-  { key: "declined", label: "Declined" },
+  { key: "pending", label: "No reply yet" },
+  { key: "started", label: "Partly replied" },
+  { key: "attending", label: "Coming" },
+  { key: "declined", label: "Not coming" },
   { key: "families", label: "Families" },
-  { key: "plus_ones", label: "Plus ones" },
+  { key: "plus_ones", label: "Plus-ones" },
   { key: "children", label: "Children" },
-  { key: "missing_meal", label: "Missing meal" },
-  { key: "dietary", label: "Dietary" },
-  { key: "accessibility", label: "Accessibility" },
+  { key: "missing_meal", label: "No meal chosen" },
+  { key: "dietary", label: "Dietary notes" },
+  { key: "accessibility", label: "Accessibility needs" },
   { key: "no_table", label: "No table" },
   { key: "vip", label: "VIP" },
 ];
@@ -29,15 +31,22 @@ export default async function GuestsPage({
   searchParams: Promise<{ q?: string; filter?: string; new?: string }>;
 }) {
   const params = await searchParams;
-  const scope = defaultScope();
-  const filter = (FILTERS.some((f) => f.key === params.filter) ? params.filter : "all") as HouseholdFilter;
+  const admin = await requireAdmin();
+  const scope = forWedding(admin.weddingId);
+  const archived = await households.list(scope, true);
+  const filter = (
+    FILTERS.some((f) => f.key === params.filter) ? params.filter : "all"
+  ) as HouseholdFilter;
   // Text filtering happens live in the client; the chip filter stays server-side.
   const rows = await households.search(scope, { filter });
 
   const listRows: GuestListRow[] = rows.map((h) => ({
     id: h.id,
     display_name: h.display_name,
-    guests: h.guests.map((g) => ({ first_name: g.first_name, last_name: g.last_name })),
+    guests: h.guests.map((g) => ({
+      first_name: g.first_name,
+      last_name: g.last_name,
+    })),
     email: h.email,
     phone: h.phone,
     max_party_size: h.max_party_size,
@@ -70,7 +79,29 @@ export default async function GuestsPage({
         ))}
       </div>
 
-      <GuestList rows={listRows} initialQuery={params.q ?? ""} filter={filter} canDelete />
+      {archived.length > 0 && (
+        <details className="rounded-xl border border-hairline p-4">
+          <summary>Archived households ({archived.length})</summary>
+          {archived.map((h) => (
+            <div className="mt-3 flex justify-between text-sm" key={h.id}>
+              <span>
+                {h.display_name} · {h.guests.length} guests
+              </span>
+              {admin.role !== "viewer" && (
+                <form action={restoreHousehold.bind(null, h.id)}>
+                  <button className="underline">Restore</button>
+                </form>
+              )}
+            </div>
+          ))}
+        </details>
+      )}
+      <GuestList
+        rows={listRows}
+        initialQuery={params.q ?? ""}
+        filter={filter}
+        canDelete={admin.role !== "viewer"}
+      />
     </div>
   );
 }

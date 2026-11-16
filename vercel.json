@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/save-the-date",
       "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/cron/automations",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

@@ -1,20 +1,48 @@
-import { createHousehold } from "@/app/admin/(dashboard)/guests/actions";
+import { GuestMutationForm } from "./GuestMutationForm";
+import { createHouseholdForm } from "@/app/admin/(dashboard)/guests/actions";
 
 export function NewHouseholdForm() {
   return (
-    <form
-      action={createHousehold}
+    <GuestMutationForm
+      action={createHouseholdForm}
       className="flex flex-col gap-3 rounded-xl border border-hairline bg-paper p-5"
     >
+      <input type="hidden" name="operation_id" value={crypto.randomUUID()} />
       <h2 className="text-[14.5px] font-semibold text-ink">New household</h2>
-      <div className="flex gap-2">
-        <input name="display_name" required placeholder="Display name (e.g. The Smith Family)" className="flex-1 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive" />
-        <input name="primary_contact_name" placeholder="Primary contact" className="w-56 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive" />
+      <div className="flex gap-2 max-md:flex-col">
+        <input
+          aria-label="display name"
+          name="display_name"
+          required
+          placeholder="Display name (e.g. The Smith Family)"
+          className="flex-1 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+        />
+        <input
+          aria-label="primary contact name"
+          name="primary_contact_name"
+          placeholder="Primary contact"
+          className="w-56 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+        />
       </div>
-      <div className="flex gap-2">
-        <input name="email" type="email" placeholder="Email" className="flex-1 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive" />
-        <input name="phone" placeholder="Phone" className="w-44 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive" />
-        <select name="preferred_locale" className="w-24 rounded-lg border border-[#dddbd0] bg-white px-2 py-2.5 text-[13.5px]">
+      <div className="flex gap-2 max-md:flex-col">
+        <input
+          aria-label="email"
+          name="email"
+          type="email"
+          placeholder="Email"
+          className="flex-1 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+        />
+        <input
+          aria-label="phone"
+          name="phone"
+          placeholder="Phone"
+          className="w-44 rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+        />
+        <select
+          aria-label="preferred locale"
+          name="preferred_locale"
+          className="w-24 rounded-lg border border-[#dddbd0] bg-white px-2 py-2.5 text-[13.5px]"
+        >
           <option value="en">EN</option>
           <option value="es">ES</option>
           <option value="vi">VI</option>
@@ -23,15 +51,29 @@ export function NewHouseholdForm() {
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-[13px] text-[#4a5147]">
           Max party
-          <input name="max_party_size" type="number" min={1} defaultValue={2} className="w-16 rounded-lg border border-[#dddbd0] bg-white px-2 py-2 text-center text-[13.5px]" />
+          <input
+            name="max_party_size"
+            type="number"
+            min={1}
+            defaultValue={2}
+            className="w-16 rounded-lg border border-[#dddbd0] bg-white px-2 py-2 text-center text-[13.5px]"
+          />
         </label>
         <label className="flex items-center gap-2 text-[13px] text-[#4a5147]">
           Plus-one slots
-          <input name="plus_one_slots" type="number" min={0} defaultValue={0} className="w-16 rounded-lg border border-[#dddbd0] bg-white px-2 py-2 text-center text-[13.5px]" />
+          <input
+            name="plus_one_slots"
+            type="number"
+            min={0}
+            defaultValue={0}
+            className="w-16 rounded-lg border border-[#dddbd0] bg-white px-2 py-2 text-center text-[13.5px]"
+          />
         </label>
       </div>
       <textarea
+        aria-label="guest names"
         name="guest_names"
+        required
         rows={3}
         placeholder={"Guest names, one per line:\nJohn Smith\nSarah Smith"}
         className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
@@ -41,6 +83,6 @@ export function NewHouseholdForm() {
           Create household
         </button>
       </div>
-    </form>
+    </GuestMutationForm>
   );
 }

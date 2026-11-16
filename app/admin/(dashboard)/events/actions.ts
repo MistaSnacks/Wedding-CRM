@@ -8,6 +8,8 @@ import * as events from "@/lib/data/events";
 import { EventValidationError } from "@/lib/data/events";
 import type { DeletionImpact } from "@/lib/data/event-rules";
 import { toInstant } from "@/components/admin/events/when";
+import { PartialSaveError, saveWeddingDetails as saveDetails } from "@/lib/data/wedding-details";
+import type { WeddingDetailsErrors } from "@/lib/domain/wedding-details";
 
 /**
  * Server actions for event management.
@@ -322,5 +324,81 @@ export async function setHouseholdInvite(
   } catch (error) {
     unstable_rethrow(error);
     return { ok: false, message: readableError(error) };
+  }
+}
+
+export type WeddingDetailsFormState = {
+  ok: boolean;
+  fieldErrors?: WeddingDetailsErrors & { form?: string };
+  /** The new wedding day is in the past. The card asks her to confirm it. */
+  needsPastConfirm?: boolean;
+  /** The names of the events that moved with the wedding day. */
+  moved?: string[];
+};
+
+/**
+ * The "Wedding details" card: the wedding day, the reply-by date and the city
+ * guests see. Events on the old wedding day move with it (see
+ * `lib/data/wedding-details.ts` for the order of the writes). The time zone is
+ * not part of the form; the stored one is used.
+ */
+export async function saveWeddingDetails(
+  _prev: WeddingDetailsFormState,
+  formData: FormData,
+): Promise<WeddingDetailsFormState> {
+  try {
+    const admin = await requireEditor();
+    const scope = forWedding(admin.weddingId);
+    const expected = String(formData.get("expectedMoves") ?? "");
+
+    const result = await saveDetails(
+      scope,
+      {
+        weddingDay: String(formData.get("weddingDay") ?? ""),
+        replyBy: String(formData.get("replyBy") ?? ""),
+        locationLine: String(formData.get("locationLine") ?? ""),
+        confirmPastDay: formData.get("confirmPastDay") === "yes",
+      },
+      {
+        now: new Date(),
+        actorId: admin.userId,
+        expectedMoves: expected.length > 0 ? expected.split(",") : [],
+      },
+    );
+
+    if ("unexpectedMoves" in result) {
+      revalidatePath("/admin/events");
+      const names = result.unexpectedMoves;
+      return {
+        ok: false,
+        fieldErrors: {
+          form: `${names.join(", ")} ${names.length === 1 ? "is" : "are"} now on the wedding day too, so ${names.length === 1 ? "it" : "they"} would move as well. Check the list and save again.`,
+        },
+      };
+    }
+    if (!result.ok) {
+      return { ok: false, fieldErrors: result.fieldErrors, needsPastConfirm: result.needsPastConfirm };
+    }
+
+    // The header's reply-by countdown is on every admin page, and the guest
+    // pages and email previews read these values too.
+    revalidatePath("/admin", "layout");
+    revalidatePath("/rsvp", "layout");
+    return { ok: true, moved: result.moved };
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof PartialSaveError) {
+      revalidatePath("/admin/events");
+      return { ok: false, fieldErrors: { form: error.message } };
+    }
+    const readOnly = error instanceof Error && error.message.startsWith("Forbidden");
+    return {
+      ok: false,
+      fieldErrors: {
+        form: readOnly
+          ? "Your access is view only, so you cannot change the wedding details."
+          : "The wedding details did not save. Nothing was changed. Try again.",
+      },
+    };
   }
 }

@@ -2,6 +2,8 @@
 
 **Status:** Deferred. Revisit **after the current client (Juliet & Juan) is situated / live.**
 **Audience:** future multi-tenant SaaS product, not the single current wedding.
+**Current sequencing (September 11, 2026):** the [multi-tenant wedding CRM roadmap](multi-tenant-roadmap.md) adds connected RSVP/seating/catering consequences, reviewed document extraction, relevant next actions, and couple/planner approvals. It supersedes historical sequencing below. **3D venue functionality is the very last feature phase.**
+**Optional venue research (saved September 6, 2026):** [Realistic venue previews, competitor findings, demand reports, and catalog economics](multi-tenant-venue-research.md). Deferred for a future go/no-go decision; this is not an implementation commitment. The historical scope and competitive claims below should be read with that newer research.
 **Written:** 2026-07-05, from a competitive scan of Zola, The Knot, WeddingWire, Say I Do, Joy,
 Aisle Planner, PerfectTablePlan, Prismm/Cvent, Wedibox, SeatYourself, TopTablePlanner, SeatLogic.
 
@@ -32,8 +34,7 @@ So the roadmap is about **owning the gaps**, in priority order:
 Recommended sequence: **1 + 2 first** (days each, immediately demoable, no competitor parity),
 then **3** (signature differentiator), then **4** (the "wow", largest build).
 
-Explicitly **out of scope**: 3D walkthroughs / scaled CAD floor plans (Prismm/Merri). Wrong lane
-for a couple-facing CRM. At most, cheap "venue prop" blocks (dance floor / head table) later.
+Historical scope excluded 3D walkthroughs and scaled CAD floor plans. The September 11 decision now reserves 3D venue functionality for the **very last multi-tenant feature phase**, after the core CRM and planner workflows. Ordinary 2D seating can support earlier phases without a 3D dependency; see the [current roadmap](multi-tenant-roadmap.md).
 
 ---
 

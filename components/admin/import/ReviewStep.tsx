@@ -27,6 +27,7 @@ export function ReviewStep({
   fixed,
   warningsAdded,
   columnMatches,
+  importLabel,
 }: {
   summary: ImportSummary;
   filename: string;
@@ -45,6 +46,7 @@ export function ReviewStep({
   /** Warnings the most recent repair added, so the count moving can be explained. */
   warningsAdded: number;
   columnMatches: ReactNode;
+  importLabel?: string;
 }) {
   const { invitations, namedGuests, unnamedSeats, extras, problems, preview } = summary;
   const fixableHere = problems.errors.filter((e) => fixFor(e) !== null).length;
@@ -126,7 +128,7 @@ export function ReviewStep({
           role="alert"
           className="mt-6 rounded-xl border border-blush-border bg-blush px-4 py-3 text-[13px] leading-relaxed text-rose-deep"
         >
-          <p className="font-semibold">Nothing was imported.</p>
+          <p className="font-semibold">The import needs attention.</p>
           {commitErrors.map((e, i) => (
             <p key={i} className="mt-1">
               {e.line > 1 ? `Row ${e.line}: ` : ""}
@@ -134,7 +136,7 @@ export function ReviewStep({
             </p>
           ))}
           <p className="mt-1.5 text-[12.5px] text-[#7d5348]">
-            Your guest list is unchanged. You can fix the file and try again.
+            Review the message and retry the same import. Completed imports are protected against duplicate retries.
           </p>
         </div>
       )}
@@ -149,7 +151,7 @@ export function ReviewStep({
           >
             {importing
               ? "Importing…"
-              : `Import ${namedGuests.toLocaleString()} ${namedGuests === 1 ? "guest" : "guests"}`}
+              : importLabel ?? `Import ${namedGuests.toLocaleString()} ${namedGuests === 1 ? "guest" : "guests"}`}
           </button>
           {problems.errors.length > 0 && (
             <p className="max-w-[46ch] text-[12.5px] leading-relaxed text-[#6b7167]">

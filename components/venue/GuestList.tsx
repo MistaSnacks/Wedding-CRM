@@ -40,7 +40,7 @@ export default function GuestList({
   onDrop: (id: string, ids: string[], label: string) => void;
   onSeat: (ids: string[], label: string) => void;
   onPick: (ids: string[], label: string) => void;
-  onAddGuest: (name: string, family: string) => boolean;
+  onAddGuest: (name: string, family: string) => boolean | Promise<boolean>;
   onRemoveGuest: (id: string) => void;
 }) {
   const [search, setSearch] = useState(""),
@@ -48,7 +48,8 @@ export default function GuestList({
     [ghost, setGhost] = useState<Drag | null>(null),
     [newName, setNewName] = useState(""),
     [newFamily, setNewFamily] = useState(""),
-    [adding, setAdding] = useState(false);
+    [adding, setAdding] = useState(false),
+    [saving, setSaving] = useState(false);
   const drag = useRef<Drag | null>(null);
   const cancelRef = useRef(() => {});
   function cancel() {
@@ -299,12 +300,18 @@ export default function GuestList({
       <div className="venue-add">
         {adding ? (
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (onAddGuest(newName, newFamily)) {
-                setNewName("");
-                setNewFamily("");
-                setAdding(false);
+              if (saving) return;
+              setSaving(true);
+              try {
+                if (await onAddGuest(newName, newFamily)) {
+                  setNewName("");
+                  setNewFamily("");
+                  setAdding(false);
+                }
+              } finally {
+                setSaving(false);
               }
             }}
           >
@@ -334,8 +341,8 @@ export default function GuestList({
               </datalist>
             </label>
             <div className="venue-row">
-              <button type="submit" className="venue-primary">
-                Add to the list
+              <button type="submit" className="venue-primary" disabled={saving}>
+                {saving ? "Adding…" : "Add to the list"}
               </button>
               <button type="button" onClick={() => setAdding(false)}>
                 Cancel

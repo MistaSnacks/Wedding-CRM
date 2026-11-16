@@ -3,13 +3,14 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import type { ActivityRow } from "@/lib/types";
+import { activityLabel } from "@/lib/domain/activity-labels";
 
 type FeedItem = ActivityRow & { householdName: string };
 
 const BADGES: Record<string, { label: string; cls: string }> = {
-  "rsvp.completed": { label: "COMPLETED", cls: "bg-sage-band text-olive-deep" },
+  "rsvp.completed": { label: "REPLIED", cls: "bg-sage-band text-olive-deep" },
   "rsvp.started": { label: "STARTED", cls: "bg-[#f3edd8] text-[#7a6420]" },
-  "rsvp.declined": { label: "DECLINED", cls: "bg-blush text-rose" },
+  "rsvp.declined": { label: "NOT COMING", cls: "bg-blush text-rose" },
   "plus_one.added": { label: "PLUS ONE", cls: "bg-blush text-rose" },
   "import.completed": { label: "IMPORT", cls: "bg-sage-band text-olive-deep" },
   "table.assigned": { label: "SEATED", cls: "bg-sage-band text-olive-deep" },
@@ -60,7 +61,7 @@ export function RecentFeed({ items }: { items: FeedItem[] }) {
                 <span className="block truncate text-[13.5px] font-semibold text-ink">{item.householdName}</span>
               )}
               <span className="block truncate text-[12.5px] text-muted">
-                {String((item.payload as { name?: string })?.name ?? item.action.replace(/\./g, " "))}
+                {String((item.payload as { name?: string })?.name ?? activityLabel(item.action))}
               </span>
             </span>
             {badge && (

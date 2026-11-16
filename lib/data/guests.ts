@@ -23,53 +23,25 @@ export async function create(
     ageType?: AgeType;
     relationship?: string;
     origin?: "named" | "plus_one";
+    operationId?: string;
   },
   actorId?: string,
 ): Promise<GuestRow> {
-  const { data, error } = await scope.db
-    .from("guests")
-    .insert({
-      wedding_id: scope.weddingId,
-      household_id: g.householdId,
-      first_name: g.firstName.trim(),
-      last_name: g.lastName.trim(),
-      age_type: g.ageType ?? "adult",
-      relationship: g.relationship ?? null,
-      origin: g.origin ?? "named",
-    })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
-
-  // pending response rows for every invited event
-  const { data: invites } = await scope.db
-    .from("household_event_invites")
-    .select("event_id")
-    .eq("wedding_id", scope.weddingId)
-    .eq("household_id", g.householdId);
-  if (invites?.length) {
-    await scope.db.from("guest_event_responses").insert(
-      invites.map((i: { event_id: string }) => ({
-        guest_id: data.id,
-        event_id: i.event_id,
-        wedding_id: scope.weddingId,
-      })),
-    );
-  }
-
-  invalidateMetrics(scope);
-  await activity.log(scope, {
-    householdId: g.householdId,
-    guestId: data.id,
-    actorType: "admin",
-    actorId,
-    action: "guest.added",
-    payload: { name: `${g.firstName} ${g.lastName}` },
+  const { data, error } = await scope.db.rpc("create_guest_atomic", {
+    p_wedding_id: scope.weddingId,
+    p_input: g,
+    p_actor_id: actorId,
+    p_operation_id: g.operationId ?? crypto.randomUUID(),
   });
+  if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
   return data as GuestRow;
 }
 
-export async function countNamed(scope: WeddingScope, householdId: string): Promise<number> {
+export async function countNamed(
+  scope: WeddingScope,
+  householdId: string,
+): Promise<number> {
   const { count, error } = await scope.db
     .from("guests")
     .select("id", { count: "exact", head: true })
@@ -118,7 +90,11 @@ export async function update(
   });
 }
 
-export async function remove(scope: WeddingScope, id: string, actorId?: string): Promise<void> {
+export async function remove(
+  scope: WeddingScope,
+  id: string,
+  actorId?: string,
+): Promise<void> {
   const { data, error } = await scope.db
     .from("guests")
     .delete()

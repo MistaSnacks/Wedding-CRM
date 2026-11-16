@@ -1,5 +1,4 @@
 import type { WeddingScope } from "./scope";
-import * as activity from "./activity";
 
 export type MemberRole = "owner" | "editor" | "viewer";
 
@@ -33,7 +32,7 @@ export async function list(scope: WeddingScope): Promise<Member[]> {
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
 
-  const { data: userList, error: uErr } = await scope.db.auth.admin.listUsers({ perPage: 1000 });
+  const { data: userList, error: uErr } = await allUsers(scope);
   if (uErr) throw new Error(uErr.message);
   const emailById = new Map(userList.users.map((u) => [u.id, u.email ?? ""]));
 
@@ -45,27 +44,11 @@ export async function list(scope: WeddingScope): Promise<Member[]> {
   }));
 }
 
-async function ownerCount(scope: WeddingScope): Promise<number> {
-  const { count, error } = await scope.db
-    .from("wedding_members")
-    .select("user_id", { count: "exact", head: true })
-    .eq("wedding_id", scope.weddingId)
-    .eq("role", "owner");
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
-
-async function roleOf(scope: WeddingScope, userId: string): Promise<MemberRole | null> {
-  const { data } = await scope.db
-    .from("wedding_members")
-    .select("role")
-    .eq("wedding_id", scope.weddingId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return (data?.role as MemberRole) ?? null;
-}
-
-export type InviteResult = { userId: string; created: boolean; emailed: boolean };
+export type InviteResult = {
+  userId: string;
+  created: boolean;
+  emailed: boolean;
+};
 
 /**
  * Invite someone to this wedding's dashboard, idempotently.
@@ -77,18 +60,25 @@ export type InviteResult = { userId: string; created: boolean; emailed: boolean 
  */
 export async function invite(
   scope: WeddingScope,
-  args: { email: string; role: MemberRole; actorId?: string; redirectTo?: string },
+  args: {
+    email: string;
+    role: MemberRole;
+    actorId?: string;
+    redirectTo?: string;
+  },
 ): Promise<InviteResult> {
   const email = args.email.trim().toLowerCase();
-  if (!email.includes("@")) throw new Error("A valid email address is required.");
+  if (!email.includes("@"))
+    throw new Error("A valid email address is required.");
 
   let userId: string | null = null;
   let created = false;
   let emailed = false;
 
-  const { data: invited, error: inviteErr } = await scope.db.auth.admin.inviteUserByEmail(email, {
-    redirectTo: args.redirectTo,
-  });
+  const { data: invited, error: inviteErr } =
+    await scope.db.auth.admin.inviteUserByEmail(email, {
+      redirectTo: args.redirectTo,
+    });
 
   if (!inviteErr && invited?.user) {
     userId = invited.user.id;
@@ -97,27 +87,24 @@ export async function invite(
   } else {
     // Already registered (or invite blocked): find the existing user and just
     // grant access. Their sign-in path is the normal magic link at /admin/login.
-    const { data: userList, error: listErr } = await scope.db.auth.admin.listUsers({ perPage: 1000 });
+    const { data: userList, error: listErr } = await allUsers(scope);
     if (listErr) throw new Error(inviteErr?.message ?? listErr.message);
-    const existing = userList.users.find((u) => u.email?.toLowerCase() === email);
-    if (!existing) throw new Error(inviteErr?.message ?? `Could not invite ${email}.`);
+    const existing = userList.users.find(
+      (u) => u.email?.toLowerCase() === email,
+    );
+    if (!existing)
+      throw new Error(inviteErr?.message ?? `Could not invite ${email}.`);
     userId = existing.id;
   }
 
-  const { error: memberErr } = await scope.db
-    .from("wedding_members")
-    .upsert(
-      { wedding_id: scope.weddingId, user_id: userId, role: args.role },
-      { onConflict: "user_id,wedding_id" },
-    );
-  if (memberErr) throw new Error(memberErr.message);
-
-  await activity.log(scope, {
-    actorType: "admin",
-    actorId: args.actorId,
-    action: "member.invited",
-    payload: { email, role: args.role, created },
+  const { error: memberErr } = await scope.db.rpc("manage_wedding_member", {
+    p_wedding_id: scope.weddingId,
+    p_user_id: userId,
+    p_role: args.role,
+    p_actor_id: args.actorId,
+    p_remove: false,
   });
+  if (memberErr) throw new Error(memberErr.message);
 
   return { userId: userId!, created, emailed };
 }
@@ -127,25 +114,14 @@ export async function setRole(
   scope: WeddingScope,
   args: { userId: string; role: MemberRole; actorId?: string },
 ): Promise<void> {
-  const current = await roleOf(scope, args.userId);
-  if (!current) throw new Error("That person is not a member of this wedding.");
-  if (current === "owner" && args.role !== "owner" && (await ownerCount(scope)) <= 1) {
-    throw new Error("This wedding must keep at least one owner.");
-  }
-
-  const { error } = await scope.db
-    .from("wedding_members")
-    .update({ role: args.role })
-    .eq("wedding_id", scope.weddingId)
-    .eq("user_id", args.userId);
-  if (error) throw new Error(error.message);
-
-  await activity.log(scope, {
-    actorType: "admin",
-    actorId: args.actorId,
-    action: "member.role_changed",
-    payload: { userId: args.userId, from: current, to: args.role },
+  const { error } = await scope.db.rpc("manage_wedding_member", {
+    p_wedding_id: scope.weddingId,
+    p_user_id: args.userId,
+    p_role: args.role,
+    p_actor_id: args.actorId,
+    p_remove: false,
   });
+  if (error) throw new Error(error.message);
 }
 
 /** Remove a member. Refuses to remove the last owner or the actor themselves. */
@@ -153,26 +129,23 @@ export async function remove(
   scope: WeddingScope,
   args: { userId: string; actorId?: string },
 ): Promise<void> {
-  if (args.userId === args.actorId) {
-    throw new Error("You can't remove your own access.");
-  }
-  const current = await roleOf(scope, args.userId);
-  if (!current) return; // already gone — idempotent
-  if (current === "owner" && (await ownerCount(scope)) <= 1) {
-    throw new Error("This wedding must keep at least one owner.");
-  }
-
-  const { error } = await scope.db
-    .from("wedding_members")
-    .delete()
-    .eq("wedding_id", scope.weddingId)
-    .eq("user_id", args.userId);
-  if (error) throw new Error(error.message);
-
-  await activity.log(scope, {
-    actorType: "admin",
-    actorId: args.actorId,
-    action: "member.removed",
-    payload: { userId: args.userId, role: current },
+  const { error } = await scope.db.rpc("manage_wedding_member", {
+    p_wedding_id: scope.weddingId,
+    p_user_id: args.userId,
+    p_role: null,
+    p_actor_id: args.actorId,
+    p_remove: true,
   });
+  if (error) throw new Error(error.message);
+}
+
+async function allUsers(scope: WeddingScope) {
+  const users: Array<{ id: string; email?: string }> = [];
+  for (let page = 1; ; page++) {
+    const result = await scope.db.auth.admin.listUsers({ page, perPage: 1000 });
+    if (result.error) return { data: { users }, error: result.error };
+    users.push(...result.data.users);
+    if (result.data.users.length < 1000)
+      return { data: { users }, error: null };
+  }
 }

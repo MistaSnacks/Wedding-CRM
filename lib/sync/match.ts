@@ -190,7 +190,7 @@ export function scoreCandidates(
     scored[0].reasons.push(`another household (${runnerUp.householdName}) scores nearly as high`);
   }
 
-  return scored.slice(0, MAX_CANDIDATES);
+  return scored.filter((c,i,a)=>a.findIndex(other=>other.householdId===c.householdId)===i).slice(0, MAX_CANDIDATES);
 }
 
 export function classify(
@@ -200,7 +200,12 @@ export function classify(
 ): Classification {
   const email = normalizeEmail(submission.email);
   if (email) {
-    const identity = pool.find((c) => normalizeEmail(c.householdEmail) === email);
+    const matches = pool.filter((c) => normalizeEmail(c.householdEmail) === email);
+    const uniqueHouseholds = new Set(matches.map(c => c.householdId));
+    const identity = uniqueHouseholds.size === 1 ? matches[0] : undefined;
+    if (uniqueHouseholds.size > 1) {
+      return { bucket: "review", multiPerson: isMultiPerson(submission), candidates: matches.filter((c,i,a)=>a.findIndex(other=>other.householdId===c.householdId)===i).slice(0,MAX_CANDIDATES).map(c=>({ guestId:c.guestId,guestName:`${c.firstName} ${c.lastName}`,householdId:c.householdId,householdName:c.householdName,given:0,surname:0,score:0,reasons:["This email is shared by multiple households. Confirm which household sent the response."] })) };
+    }
     if (identity) {
       return {
         bucket: "auto_email",

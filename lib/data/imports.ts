@@ -43,10 +43,11 @@ export type ImportHouseholdInput = {
 
 /** Shared by both import server actions so validate and commit see the same context. */
 export async function loadImportContext(scope: WeddingScope): Promise<ImportContext> {
-  const [{ data: events }, { data: meals }] = await Promise.all([
+  const [{ data: events, error: eventsError }, { data: meals, error: mealsError }] = await Promise.all([
     scope.db.from("events").select("id, name").eq("wedding_id", scope.weddingId).order("sort_order"),
     scope.db.from("meal_options").select("id, name").eq("wedding_id", scope.weddingId).order("sort_order"),
   ]);
+  if(eventsError)throw new Error(eventsError.message);if(mealsError)throw new Error(mealsError.message);
   return { events: events ?? [], mealOptions: meals ?? [] };
 }
 
@@ -72,11 +73,13 @@ export async function finishRun(
   stats?: unknown,
   errorReport?: unknown,
 ): Promise<void> {
-  await scope.db
+  const { error } = await scope.db
     .from("imports")
     .update({ status, stats: stats ?? null, error_report: errorReport ?? null })
     .eq("wedding_id", scope.weddingId)
-    .eq("id", id);
+    .eq("id", id)
+    .neq("status","committed");
+  if(error)throw new Error(error.message);
 }
 
 /**

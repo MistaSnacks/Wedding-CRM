@@ -1,6 +1,7 @@
 import { sendMagicLink } from "@/app/admin/login/actions";
 
 const ERRORS: Record<string, string> = {
+  expired_link: "That sign-in link expired or has already been used. Request a new link below.",
   invalid: "That doesn't look like an email address.",
   rate_limited: "Too many attempts — wait a few minutes.",
   send_failed: "Couldn't send the link. Try again.",
@@ -21,6 +22,7 @@ export function LoginCard({ error, sent }: { error?: string; sent?: boolean }) {
           <form action={sendMagicLink} className="mt-4 flex flex-col gap-3">
             <input
               name="email"
+              aria-label="Email address"
               type="email"
               required
               placeholder="you@example.com"

@@ -12,13 +12,19 @@ export async function sendMagicLink(formData: FormData): Promise<void> {
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  const limit = await rateLimit(`admin-login:${ip}`, { limit: 5, windowSec: 300 });
+  const limit = await rateLimit(`admin-login:${ip}`, {
+    limit: 5,
+    windowSec: 300,
+  });
   if (!limit.ok) redirect("/admin/login?error=rate_limited");
 
   const supabase = await serverClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${env().NEXT_PUBLIC_APP_URL}/admin/auth/callback` },
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${env().NEXT_PUBLIC_APP_URL}/admin/auth/callback`,
+    },
   });
   if (error) redirect("/admin/login?error=send_failed");
   redirect("/admin/login?sent=1");

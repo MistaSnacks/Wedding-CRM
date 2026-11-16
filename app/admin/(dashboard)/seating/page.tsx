@@ -1,4 +1,7 @@
-import { defaultScope } from "@/lib/data/scope";
+import { forWedding } from "@/lib/data/scope";
+import { requireAdmin } from "@/lib/admin-auth";
+import { loadReportData } from "@/lib/reports/guest-reports";
+import { SeatingTools } from "@/components/admin/SeatingTools";
 import * as households from "@/lib/data/households";
 import { liveResponses } from "@/lib/data/event-rules";
 import * as seating from "@/lib/data/seating";
@@ -13,57 +16,78 @@ export default async function SeatingPage({
   searchParams: Promise<{ event?: string }>;
 }) {
   const params = await searchParams;
-  const scope = defaultScope();
-
-  const { data: events } = await scope.db
-    .from("events")
-    .select("id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order")
-    .eq("wedding_id", scope.weddingId)
-    .order("sort_order");
-  const allEvents = (events ?? []) as EventRow[];
-  const event = allEvents.find((e) => e.id === params.event) ?? allEvents[allEvents.length - 1];
-
-  if (!event) {
-    return <p className="text-sm text-muted">Create an event first (seed data provides Ceremony + Reception).</p>;
-  }
-
-  const [tables, assignments, hhs, { data: responses }, { data: invites }, { data: meals }] = await Promise.all([
-    seating.listTables(scope, event.id),
-    seating.listAssignments(scope, event.id),
-    households.list(scope),
-    scope.db.from("guest_event_responses").select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via").eq("wedding_id", scope.weddingId).eq("event_id", event.id),
-    scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId).eq("event_id", event.id),
-    scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
-  ]);
-
-  // Only invite-backed responses reach the canvas: a retained "yes" from a
-  // household un-invited from this event must not appear as an unseated
-  // attendee or pad the attending denominator.
-  const live = liveResponses(
-    (responses ?? []) as ResponseRow[],
-    invites ?? [],
-    hhs.flatMap((h) => h.guests.map((g) => ({ id: g.id, household_id: h.id }))),
+  const admin = await requireAdmin();
+  const scope = forWedding(admin.weddingId);
+  const data = await loadReportData(scope);
+  const allEvents = data.events;
+  const event =
+    allEvents.find((e) => e.id === params.event) ??
+    allEvents[allEvents.length - 1];
+  if (!event) return <p>Create an event before arranging seating.</p>;
+  const tables = data.tables.filter((t) => t.event_id === event.id);
+  const assignments = data.seats.filter((a) => a.event_id === event.id);
+  const hhs = data.hhs;
+  const live = data.responses.filter((r) => r.event_id === event.id);
+  const meals = data.meals.filter(
+    (m) => !m.event_id || m.event_id === event.id,
   );
+  if (admin.role === "viewer")
+    return (
+      <SeatingTools
+        canEdit={false}
+        eventId={event.id}
+        tables={tables}
+        assignments={assignments}
+        households={hhs.map((h) => ({
+          id: h.id,
+          displayName: h.display_name,
+          guests: h.guests.map((g) => ({
+            id: g.id,
+            name: `${g.first_name} ${g.last_name}`,
+          })),
+        }))}
+        attendingIds={live
+          .filter((r) => r.attending === "yes")
+          .map((r) => r.guest_id)}
+      />
+    );
 
   return (
-    <SeatingCanvas
-      event={event}
-      allEvents={allEvents}
-      tables={tables}
-      assignments={assignments}
-      householdsWithGuests={hhs.map((h) => ({
-        id: h.id,
-        displayName: h.display_name,
-        guests: h.guests.map((g) => ({
-          id: g.id,
-          name: `${g.first_name} ${g.last_name}`,
-          ageType: g.age_type,
-          origin: g.origin,
-          dietary: Boolean(g.dietary_restrictions || g.allergies),
-        })),
-      }))}
-      responses={live}
-      meals={(meals ?? []) as MealOptionRow[]}
-    />
+    <>
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-hairline bg-white/75 px-5 py-3.5">
+        <div className="min-w-0 flex-1 basis-64">
+          <p className="text-[14px] font-semibold text-ink">See {event.name} in 3D</p>
+          <p className="text-[13px] text-muted">
+            Walk through the terrace, move tables and seat guests there. It is the same chart: every change saves here
+            too.
+          </p>
+        </div>
+        <a
+          href={`/venue-preview?event=${event.id}`}
+          className="rounded-lg bg-olive-deep px-4 py-2.5 text-[13.5px] font-semibold text-cream transition-colors hover:bg-olive-deeper"
+        >
+          Open the 3D venue
+        </a>
+      </div>
+      <SeatingCanvas
+        event={event}
+        allEvents={allEvents}
+        tables={tables}
+        assignments={assignments}
+        householdsWithGuests={hhs.map((h) => ({
+          id: h.id,
+          displayName: h.display_name,
+          guests: h.guests.map((g) => ({
+            id: g.id,
+            name: `${g.first_name} ${g.last_name}`,
+            ageType: g.age_type,
+            origin: g.origin,
+            dietary: Boolean(g.dietary_restrictions || g.allergies),
+          })),
+        }))}
+        responses={live}
+        meals={(meals ?? []) as MealOptionRow[]}
+      />
+    </>
   );
 }

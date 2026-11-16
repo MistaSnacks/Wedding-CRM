@@ -4,6 +4,14 @@ import * as events from "@/lib/data/events";
 import { EventsScreen, type EventView } from "@/components/admin/events/EventsScreen";
 import type { HouseholdView } from "@/components/admin/events/InvitePicker";
 import { formatWhen, toFields } from "@/components/admin/events/when";
+import type { WeddingDetailsView } from "@/components/admin/events/WeddingDetailsCard";
+import {
+  describeWeddingDetails,
+  previewDayMove,
+  replyByDay,
+  timeZoneLabel,
+  weddingFactsFromRow,
+} from "@/lib/domain/wedding-details";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +26,11 @@ export default async function EventsPage() {
 
   const [rows, wedding, householdRows, inviteRows, replyRows, guestRows] = await Promise.all([
     events.list(scope),
-    scope.db.from("weddings").select("timezone").eq("id", scope.weddingId).single(),
+    scope.db
+      .from("weddings")
+      .select("wedding_date, rsvp_deadline, timezone, theme")
+      .eq("id", scope.weddingId)
+      .single(),
     scope.db
       .from("households")
       .select("id, display_name, tags, guests(first_name, last_name)")
@@ -36,7 +48,19 @@ export default async function EventsPage() {
     scope.db.from("guests").select("id, household_id").eq("wedding_id", scope.weddingId),
   ]);
 
-  const timeZone: string = wedding.data?.timezone ?? "America/Los_Angeles";
+  if (wedding.error) throw new Error(wedding.error.message);
+  const facts = weddingFactsFromRow(wedding.data);
+  const timeZone = facts.timeZone;
+  const summary = describeWeddingDetails(facts);
+  const details: WeddingDetailsView = {
+    whenSentence: summary.when,
+    replyBySentence: summary.replyBy,
+    timeZoneLabel: timeZoneLabel(timeZone),
+    weddingDay: facts.weddingDate ?? "",
+    replyBy: replyByDay(facts.rsvpDeadline, timeZone),
+    locationLine: facts.locationLine,
+    dayMove: previewDayMove(rows, facts.weddingDate, timeZone),
+  };
 
   const invitedByEvent = new Map<string, string[]>();
   const invites: Array<{ event_id: string; household_id: string }> = inviteRows.data ?? [];
@@ -106,5 +130,5 @@ export default async function EventsPage() {
     };
   });
 
-  return <EventsScreen events={views} households={households} />;
+  return <EventsScreen details={details} events={views} households={households} />;
 }

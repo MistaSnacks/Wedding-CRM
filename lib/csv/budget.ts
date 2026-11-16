@@ -424,7 +424,31 @@ export function buildBudgetSeedPlan(
       benchmark: cellAt(row, columns.benchmark),
       estimated: cellAt(row, columns.estimated),
     };
-    const kind = classifyBudgetRow(cells);
+    let kind = classifyBudgetRow(cells);
+    // A one-figure row is structurally ambiguous. Promote it only when both
+    // neighboring groups reconcile exactly: the preceding category is already
+    // complete and this row's figure equals the following item subtotal.
+    const previous = categories[categories.length - 1];
+    if (kind === "item" && previous && !cells.qty && !cells.each && !cells.benchmark && cells.estimated) {
+      const previousEstimate = sumKnown(previous.items.map(i => i.estimatedCents));
+      const previousBenchmark = sumKnown(previous.items.map(i => i.benchmarkCents));
+      const precedingComplete = previous.headerEstimatedCents !== null && previousEstimate === previous.headerEstimatedCents &&
+        (previous.headerBenchmarkCents === null || previousBenchmark === previous.headerBenchmarkCents);
+      if (precedingComplete) {
+        let followingTotal = 0, followingItems = 0;
+        for (let next = index + 1; next < rows.length; next++) {
+          const r = rows[next];
+          const c = { item: cellAt(r, columns.item), qty: cellAt(r, columns.qty), each: cellAt(r, columns.each), benchmark: cellAt(r, columns.benchmark), estimated: cellAt(r, columns.estimated) };
+          const followingKind = classifyBudgetRow(c);
+          if (followingKind === "category" || followingKind === "grand-total") break;
+          if (followingKind === "blank") continue;
+          followingItems++;
+          followingTotal += readMoneyCell(c.estimated, next + 1, "estimate").cents ?? 0;
+        }
+        const candidateTotal = readMoneyCell(cells.estimated, line, "estimate").cents;
+        if (followingItems > 0 && candidateTotal !== null && candidateTotal > 0 && followingTotal === candidateTotal) kind = "category";
+      }
+    }
     if (kind === "blank") continue;
 
     if (kind === "grand-total") {

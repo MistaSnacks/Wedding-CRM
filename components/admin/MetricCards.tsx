@@ -5,32 +5,32 @@ import type { OverviewMetrics } from "@/lib/types";
 export function MetricCards({ m }: { m: OverviewMetrics }) {
   const cards = [
     {
-      label: "GUESTS ATTENDING",
+      label: "GUESTS COMING",
       value: String(m.guestsAttending),
       accent: `of ${m.guestsInvited} invited`,
-      sub: `${m.adultsAttending} adults · ${m.childrenAttending} children · ${m.infantsAttending} infants`,
+      sub: `${m.adultsAttending} ${m.adultsAttending === 1 ? "adult" : "adults"} · ${m.childrenAttending} ${m.childrenAttending === 1 ? "child" : "children"} · ${m.infantsAttending} ${m.infantsAttending === 1 ? "infant" : "infants"}`,
       rose: false,
     },
     {
-      label: "HOUSEHOLDS RESPONDED",
-      value: String(m.householdsResponded),
-      accent: `of ${m.householdsInvited} invited`,
-      sub: `${m.householdsPending} pending`,
+      label: "NOT COMING",
+      value: String(m.guestsDeclined),
+      accent: m.guestsDeclined === 1 ? "guest" : "guests",
+      sub: `${m.guestsPending} guests have not answered yet`,
       rose: false,
     },
     {
-      label: "RSVP COMPLETION",
+      label: "REPLIES FINISHED",
       value: `${m.completionPct}%`,
-      accent: `${m.plusOnesAdded} plus ones added`,
-      sub: `${m.guestsDeclined} guests declined so far`,
+      accent: `${m.householdsResponded} of ${m.householdsInvited} households`,
+      sub: `${m.plusOnesAdded} plus-one${m.plusOnesAdded === 1 ? "" : "s"} added by guests`,
       rose: false,
     },
     {
-      label: "NEEDS ATTENTION",
-      value: String(m.guestsWithoutTable + m.dietaryCount === 0 ? 0 : m.guestsWithoutTable),
-      accent: "guests without a table",
-      sub: `${m.dietaryCount} dietary · ${m.accessibilityCount} accessibility`,
-      rose: true,
+      label: "STILL TO SEAT",
+      value: String(m.guestsWithoutTable),
+      accent: m.guestsWithoutTable === 1 ? "guest coming, no table" : "guests coming, no table",
+      sub: `${m.dietaryCount} dietary note${m.dietaryCount === 1 ? "" : "s"} · ${m.accessibilityCount} accessibility request${m.accessibilityCount === 1 ? "" : "s"}`,
+      rose: m.guestsWithoutTable > 0,
     },
   ];
 

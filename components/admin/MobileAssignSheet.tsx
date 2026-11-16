@@ -1,4 +1,5 @@
 "use client";
+import { useDialog } from "@/lib/ui/use-dialog";
 
 /**
  * Phone seating: arranging the room stays on desktop; here you can see each
@@ -16,10 +17,11 @@ export function MobileAssignSheet(props: {
   onUnassign: (guestId: string) => void;
   onClose: () => void;
 }) {
+  const dialogRef = useDialog(true, props.onClose);
   const seatsLeft = props.capacity - props.seated.length;
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-label={`Seat people at ${props.tableLabel}`}>
+    <div className="fixed inset-0 z-50" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Seat people at ${props.tableLabel}`}>
       <button type="button" aria-label="Close" onClick={props.onClose} className="absolute inset-0 bg-black/30" />
       <div className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col gap-4 overflow-y-auto rounded-t-2xl bg-paper px-5 pb-8 pt-4 shadow-[0_-12px_40px_rgba(0,0,0,0.25)]">
         <div className="mx-auto h-1 w-10 rounded-full bg-[#d8d5c8]" />

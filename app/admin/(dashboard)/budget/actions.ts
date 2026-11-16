@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { invalidateCache } from "@/lib/limiter";
 import { unstable_rethrow } from "next/navigation";
 import { requireAdmin, requireEditor } from "@/lib/admin-auth";
 import { forWedding, type WeddingScope } from "@/lib/data/scope";
@@ -392,7 +393,7 @@ export async function saveBudgetItemCost(
       itemId,
       field,
       cents: parsed.cents,
-      ...(warning ? { warnings: [warning] } : {}),
+      ...(warning ? { message: warning } : {}),
     };
   } catch (error) {
     unstable_rethrow(error);
@@ -458,12 +459,13 @@ export async function loadBudgetItemDetail(itemId: string): Promise<ItemDetailRe
 export async function addBudgetItem(
   categoryId: string,
   name: string,
+  currency?: string,
 ): Promise<{ ok: boolean; message?: string; itemId?: string }> {
   try {
     const admin = await requireEditor();
     const scope = forWedding(admin.weddingId);
 
-    const { item } = await budget.createItem(scope, { categoryId, name }, admin.userId);
+    const { item } = await budget.createItem(scope, { categoryId, name, ...(currency ? { currency } : {}) }, admin.userId);
     revalidateBudget();
     return { ok: true, itemId: item.id };
   } catch (error) {
@@ -476,8 +478,9 @@ export async function addBudgetItem(
 export async function createBudgetItem(
   categoryId: string,
   name: string,
+  currency?: string,
 ): Promise<{ ok: boolean; message?: string; itemId?: string }> {
-  return addBudgetItem(categoryId, name);
+  return addBudgetItem(categoryId, name, currency);
 }
 
 /**
@@ -566,7 +569,7 @@ export async function saveItem(
       ok: true,
       savedId: item.id,
       message: `Saved · ${item.name}`,
-      ...(warning ? { warnings: [warning] } : {}),
+      ...(warning ? { message: warning } : {}),
     };
   } catch (error) {
     unstable_rethrow(error);
@@ -733,7 +736,7 @@ export async function savePayment(
       ok: true,
       savedId: payment.id,
       message: `Saved · ${payment.label}`,
-      ...(warning ? { warnings: [warning] } : {}),
+      ...(warning ? { message: warning } : {}),
     };
   } catch (error) {
     unstable_rethrow(error);
@@ -744,6 +747,7 @@ export async function savePayment(
 
 /** One installment, as the drawer's form collects it — raw text, parsed here. */
 export type PaymentFormValues = {
+  operationId?: string;
   label: string;
   amount: string;
   dueDate: string | null;
@@ -762,7 +766,7 @@ export async function addBudgetPayment(
 
     const { payment, warning } = await budget.createPayment(
       scope,
-      { itemId, label: values.label, amountCents: amount.cents, dueDate: values.dueDate },
+      { itemId, label: values.label, amountCents: amount.cents, dueDate: values.dueDate, operationId: values.operationId },
       admin.userId,
     );
     revalidateBudget(payment.vendor_id);
@@ -903,47 +907,16 @@ export async function splitItemDeposit(
       return { ok: false, message: "That’s the whole thing — add it as a single payment instead." };
     }
 
-    // Payments before the price, and the first one is undone if the second
-    // fails. Writing the price first meant a rejected payment left the line
-    // showing a new cost with no schedule behind it — and because the failure
-    // path never revalidated, the screen kept displaying the old number while
-    // the database held the new one.
-    const first = await budget.createPayment(
-      scope,
-      { itemId, label: "Deposit", kind: "deposit", amountCents: split.deposit, dueDate: depositDue },
-      admin.userId,
-    );
+    const { data: created, error } = await scope.db.rpc("split_budget_payment_schedule", {
+      p_wedding_id: scope.weddingId, p_item_id: itemId, p_total: total.cents, p_deposit: split.deposit,
+      p_deposit_due: depositDue || null, p_balance_due: balanceDue || null, p_actor_id: admin.userId,
+    });
+    if (error) throw new Error(error.message);
+    invalidateCache(`metrics:${scope.weddingId}`);
+    revalidateBudget();
+    revalidatePath("/admin/vendors/tasks");
+    return { ok: true, message: created ? "Payment schedule added. Existing budget prices are preserved." : "This payment schedule was already added." };
 
-    let second;
-    try {
-      second = await budget.createPayment(
-        scope,
-        {
-          itemId,
-          label: "Final balance",
-          kind: "final",
-          amountCents: split.balance,
-          dueDate: balanceDue,
-        },
-        admin.userId,
-      );
-    } catch (error) {
-      unstable_rethrow(error);
-      await budget.removePayment(scope, first.payment.id, admin.userId).catch(() => {});
-      revalidateBudget(null);
-      return { ok: false, message: readableError(error) };
-    }
-
-    const { item } = await budget.updateItem(
-      scope,
-      itemId,
-      { contractedCents: total.cents },
-      admin.userId,
-    );
-
-    revalidateBudget(item.vendor_id);
-    const warning = first.warning ?? second.warning;
-    return { ok: true, ...(warning ? { message: warning } : {}) };
   } catch (error) {
     unstable_rethrow(error);
     return { ok: false, message: readableError(error) };

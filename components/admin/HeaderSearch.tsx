@@ -4,13 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { matchesGuestQuery } from "@/lib/search/guest-query";
 import { fetchDirectory, type DirectoryEntry } from "@/app/admin/(dashboard)/search-actions";
-
-const STATUS_BADGE: Record<string, string> = {
-  completed: "bg-sage-band text-olive-deep",
-  started: "bg-[#f3edd8] text-[#7a6420]",
-  declined: "bg-blush text-rose",
-  pending: "bg-[#f1f0ea] text-[#6b7167]",
-};
+import { RsvpStatusBadge } from "@/components/admin/RsvpStatusBadge";
 
 export function HeaderSearch() {
   const router = useRouter();
@@ -116,9 +110,7 @@ export function HeaderSearch() {
                   {h.guests.map((g) => `${g.first_name} ${g.last_name}`).join(", ")}
                 </span>
               </span>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em] ${STATUS_BADGE[h.rsvp_status] ?? ""}`}>
-                {h.rsvp_status}
-              </span>
+              <RsvpStatusBadge status={h.rsvp_status} size="sm" />
             </button>
           ))}
           {!matches.length && (

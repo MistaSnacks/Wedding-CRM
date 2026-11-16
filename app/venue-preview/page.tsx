@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
-import VenuePrototype from "@/components/venue/VenuePrototype";
+import VenueLive from "@/components/venue/VenueLive";
+import { loadVenue } from "@/lib/venue/live-load";
 import "./venue.css";
+import "./live.css";
+
 export const metadata: Metadata = {
-  title: "Benavento · Venue Lab",
+  title: "Benavento · Your reception in 3D",
   robots: { index: false, follow: false },
 };
-export default function VenuePreview() {
-  return <VenuePrototype />;
+export const dynamic = "force-dynamic";
+
+export default async function VenuePreview({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>;
+}) {
+  const { event } = await searchParams;
+  const venue = await loadVenue(event);
+  return <VenueLive venue={venue} />;
 }

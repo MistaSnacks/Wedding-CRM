@@ -12,7 +12,7 @@
   --blush-border: #f2d9d4;
   --sage-band: #e9f4e1;
   --ink: #1c231b;
-  --muted: #8a8f86;
+  --muted: #6b7167;
   --paper: #f8f7ef;
   --hairline: #ecebe4;
 }
@@ -54,3 +54,5 @@ body {
     display: none !important;
   }
 }
+
+:focus-visible { outline: 2px solid var(--olive-deep); outline-offset: 3px; }

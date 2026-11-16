@@ -1,17 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
+
+import { rememberLocale } from "@/app/(guest)/rsvp/h/[token]/actions";
 
 const LOCALES = ["en", "es", "vi"] as const;
 
 export function LanguageSwitcher({ current }: { current: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [pending, startTransition] = useTransition();
 
   function setLocale(locale: string) {
     document.cookie = `NEXT_LOCALE=${locale};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
-    startTransition(() => router.refresh());
+    document.documentElement.lang = locale;
+    startTransition(async () => {
+      if (pathname.startsWith("/rsvp/h/"))
+        await rememberLocale(pathname.split("/")[3], locale);
+      router.refresh();
+    });
   }
 
   return (

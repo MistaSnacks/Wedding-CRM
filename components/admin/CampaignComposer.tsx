@@ -21,10 +21,14 @@ export function CampaignComposer() {
   const [previewLocale, setPreviewLocale] = useState("en");
   const [sent, setSent] = useState<number | null>(null);
   const [testSent, setTestSent] = useState(false);
+  const [previewOnly, setPreviewOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAllSkipped, setShowAllSkipped] = useState(false);
   const [pending, startTransition] = useTransition();
   const [channel, setChannel] = useState<"email" | "manual">("email");
+  // Reminders and invitations are already written, in three languages.
+  const [type, setType] = useState("reminder");
+  const ownWords = !["reminder", "invitation"].includes(type);
 
   // Any edit while a review is open makes the review stale.
   const invalidate = () => {
@@ -57,14 +61,14 @@ export function CampaignComposer() {
   });
 
   const doTest = withForm(async (fd) => {
-    await sendTestToMe(fd);
+    const result = await sendTestToMe(fd);
+    setPreviewOnly(result.previewOnly);
     setTestSent(true);
   });
 
   const doSend = withForm(async (fd) => {
-    const count = review?.count ?? 0;
-    await sendCampaign(fd);
-    setSent(count);
+    const result = await sendCampaign(fd);
+    setSent(result.queued);
     setReview(null);
     router.refresh();
   });
@@ -80,60 +84,71 @@ export function CampaignComposer() {
 
   return (
     <form ref={formRef} onChange={invalidate} className="flex flex-col gap-3 rounded-xl border border-hairline p-5">
-      <h2 className="text-[14.5px] font-semibold text-ink">Compose</h2>
+      <h2 className="text-[14.5px] font-semibold text-ink">Send an email</h2>
       <div className="flex gap-2 max-md:flex-col">
         <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-          TYPE
-          <select name="type" className={inputCls}>
-            <option value="reminder">RSVP reminder</option>
-            <option value="invitation">Invitation (magic link + code)</option>
-            <option value="save_the_date">Save the date</option>
-            <option value="thank_you">Thank you</option>
-            <option value="custom">Custom message</option>
+          WHAT TO SEND
+          <select name="type" className={inputCls} value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="reminder">A reminder to reply</option>
+            <option value="invitation">The invitation, with their RSVP link</option>
+            <option value="save_the_date">A save-the-date (you write it)</option>
+            <option value="thank_you">A thank-you (you write it)</option>
+            <option value="custom">Your own message</option>
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-          AUDIENCE
+          WHO GETS IT
           <select name="audience" className={inputCls}>
-            <option value="not_responded">Hasn&apos;t responded</option>
-            <option value="all">Everyone</option>
-            <option value="attending">Attending</option>
-            <option value="declined">Declined</option>
+            <option value="not_responded">Households that have not replied</option>
+            <option value="all">Every household</option>
+            <option value="attending">Households that are coming</option>
+            <option value="declined">Households that are not coming</option>
           </select>
         </label>
         <label className="flex flex-1 flex-col gap-1 text-[11px] font-semibold tracking-wide text-[#6b7167]">
-          CHANNEL
+          HOW
           <select name="channel" className={inputCls} onChange={(e) => setChannel(e.target.value as "email" | "manual")}>
-            <option value="email">Email</option>
-            <option value="manual">Log only (paper / offline send)</option>
+            <option value="email">Send by email</option>
+            <option value="manual">Only keep a note (I sent it another way)</option>
           </select>
         </label>
       </div>
-      <input
-        name="subject"
-        placeholder="Subject (custom messages — templates localize automatically)"
-        className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
-      />
-      <textarea
-        name="body"
-        rows={3}
-        placeholder="Body (custom messages only)"
-        className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
-      />
+      {ownWords ? (
+        <>
+          <input
+            name="subject"
+            aria-label="Subject line"
+            placeholder="Subject line"
+            className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+          />
+          <textarea
+            name="body"
+            rows={4}
+            aria-label="Your message"
+            placeholder="Your message. Everyone gets exactly this text, in the language you write it in."
+            className="rounded-lg border border-[#dddbd0] bg-white px-3.5 py-2.5 text-[13.5px] outline-none focus:border-olive"
+          />
+        </>
+      ) : (
+        <p className="rounded-lg bg-paper px-3.5 py-2.5 text-[13px] text-muted">
+          This email is already written in English, Spanish and Vietnamese. Each household gets it in their own
+          language with their personal RSVP link. Use “Check before sending” to read it.
+        </p>
+      )}
 
       {error && (
         <p className="rounded-lg bg-blush px-3.5 py-2.5 text-[12.5px] text-rose-deep">{error}</p>
       )}
       {sent !== null && (
         <p className="rounded-lg bg-sage-band px-3.5 py-2.5 text-[12.5px] text-olive-deep">
-          {sent > 0 ? `Sent to ${sent} household${sent === 1 ? "" : "s"}.` : "Logged."}
+          {sent > 0 ? `Queued for ${sent} household${sent === 1 ? "" : "s"}.` : "Logged."}
         </p>
       )}
 
       {!review && (
         <div className="flex items-center justify-between gap-3 max-md:flex-col max-md:items-stretch">
           <p className="text-[12px] text-muted">
-            Sent in each guest&apos;s language with their personal RSVP link.
+            Nothing is sent until you check the list of households and confirm.
           </p>
           <div className="flex items-center gap-2 max-md:flex-col max-md:items-stretch">
             {channel === "email" && (
@@ -143,7 +158,7 @@ export function CampaignComposer() {
                 disabled={pending}
                 className="rounded-lg border border-[#dddbd0] px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose disabled:opacity-50"
               >
-                {testSent ? "Test sent — check your inbox" : "Send a test to me"}
+                {testSent ? (previewOnly ? "Preview saved locally — no email sent" : "Test sent — check your inbox") : "Send a test to myself"}
               </button>
             )}
             {channel === "email" ? (
@@ -153,7 +168,7 @@ export function CampaignComposer() {
                 disabled={pending}
                 className="rounded-lg bg-olive-deep px-5 py-2.5 text-[13.5px] font-semibold text-cream transition-all duration-200 hover:-translate-y-px hover:bg-rose hover:shadow-[0_8px_18px_rgba(177,117,101,0.35)] active:scale-[0.97] disabled:opacity-50 motion-reduce:transition-none"
               >
-                {pending ? "Looking…" : "Review campaign"}
+                {pending ? "Looking…" : "Check before sending"}
               </button>
             ) : (
               <button
@@ -177,7 +192,7 @@ export function CampaignComposer() {
               <>
                 {" "}
                 <strong>{review.skippedNames.length}</strong> ha
-                {review.skippedNames.length === 1 ? "s" : "ve"} no email address and will be skipped.
+                {review.skippedNames.length === 1 ? "s" : "ve"} no usable email or delivery is suppressed and will be skipped.
               </>
             )}
           </p>

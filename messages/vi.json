@@ -1,7 +1,7 @@
 {
   "entry": {
     "eyebrow": "TRÂN TRỌNG KÍNH MỜI ĐẾN LỄ CƯỚI CỦA",
-    "date": "Ngày 18 tháng 9, 2027 · Guadalajara, México",
+    "date": "Ngày {date} · {place}",
     "rsvp": "PHẢN HỒI",
     "searchPrompt": "Nhập họ tên đầy đủ như trên thiệp mời để tìm nhóm của bạn.",
     "namePlaceholder": "Họ và tên của bạn",
@@ -49,12 +49,12 @@
     "reviewDeclining": "Không tham dự",
     "reviewNoMeal": "Chưa chọn món",
     "submit": "Gửi phản hồi",
-    "autosave": "Tiến trình của bạn được lưu tự động",
+    "autosave": "Tiến trình được lưu khi bạn tiếp tục.",
     "confirmedTitle": "Cảm ơn bạn!",
     "confirmedBody": "Chúng tôi đã nhận được phản hồi của bạn. Rất mong được chung vui cùng bạn!",
     "confirmedEdit": "Bạn có thể quay lại trang này để thay đổi cho đến ngày {date}.",
     "deadlinePassed": "Đã qua hạn phản hồi. Nếu có thay đổi, vui lòng liên hệ trực tiếp với Juliet & Juan.",
-    "yourTable": "SƠ ĐỒ CHỖ NGỒI TIỆC",
+    "yourTable": "CHỖ NGỒI CỦA BẠN",
     "yourTableTitle": "{name}, bạn ngồi ở {table}",
     "seatedWith": "NGỒI CÙNG BẠN",
     "more": "+{count} nữa",
@@ -68,8 +68,16 @@
       "rate_limited": "Quá nhiều lần thử — vui lòng đợi một phút rồi thử lại.",
       "deadline_passed": "Đã qua hạn phản hồi. Vui lòng liên hệ trực tiếp Juliet & Juan.",
       "not_found": "Không tìm thấy thiệp mời của bạn. Vui lòng dùng liên kết trong email.",
-      "unknown": "Đã xảy ra lỗi. Vui lòng thử lại."
-    }
+      "unknown": "Đã xảy ra lỗi. Vui lòng thử lại.",
+      "invalid_payload": "Vui lòng kiểm tra tên và câu trả lời rồi thử lại.",
+      "invalid_meal": "Vui lòng chọn món ăn dành cho sự kiện này.",
+      "invalid_answer": "Vui lòng kiểm tra câu trả lời và thử lại.",
+      "incomplete_rsvp": "Vui lòng trả lời cho từng khách, từng sự kiện và chọn các món ăn bắt buộc."
+    },
+    "reviewPending": "Chưa trả lời",
+    "declinedBody": "Chúng tôi đã nhận được phản hồi. Cảm ơn bạn đã thông báo. Chúng tôi sẽ nhớ bạn.",
+    "editResponse": "Sửa phản hồi",
+    "addCalendar": "Thêm sự kiện được mời vào lịch"
   },
   "common": {
     "loading": "Chờ một chút…",

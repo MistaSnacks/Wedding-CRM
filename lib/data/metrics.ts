@@ -1,6 +1,7 @@
 import type { WeddingScope } from "./scope";
 import type { OverviewMetrics, ResponseRow, GuestRow, HouseholdRow, MealOptionRow } from "@/lib/types";
 import { liveResponses } from "./event-rules";
+import { loadReportData } from "@/lib/reports/guest-reports";
 import { cache } from "@/lib/limiter";
 
 /**
@@ -27,49 +28,36 @@ export function mealCounts(
   }));
 }
 
+/**
+ * Where each guest stands across all their events.
+ *
+ * Coming: said yes to at least one event. Not coming: said no to at least one
+ * and yes to none. A guest who declined the reception and has not answered the
+ * welcome party counts as not coming, the way the couple reads it. Requiring a
+ * "no" for every event showed "0 not coming" while eight guests had declined.
+ */
+export function guestStanding(responses: Array<{ guest_id: string; attending: string }>): {
+  attendingIds: Set<string>;
+  declinedIds: Set<string>;
+} {
+  const attendingIds = new Set(responses.filter((r) => r.attending === "yes").map((r) => r.guest_id));
+  const declinedIds = new Set(
+    responses.filter((r) => r.attending === "no" && !attendingIds.has(r.guest_id)).map((r) => r.guest_id),
+  );
+  return { attendingIds, declinedIds };
+}
+
 export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
   return cache(`metrics:${scope.weddingId}:overview`, 60, async () => {
-    const [{ data: households }, { data: guests }, { data: responses }, { data: invites }, { data: meals }, { data: tables }, { data: seats }] =
-      await Promise.all([
-        scope.db.from("households").select("id, rsvp_status").eq("wedding_id", scope.weddingId),
-        scope.db
-          .from("guests")
-          .select("id, household_id, age_type, origin, dietary_restrictions, allergies, accessibility_needs")
-          .eq("wedding_id", scope.weddingId),
-        scope.db
-          .from("guest_event_responses")
-          .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
-          .eq("wedding_id", scope.weddingId),
-        scope.db.from("household_event_invites").select("household_id, event_id").eq("wedding_id", scope.weddingId),
-        scope.db.from("meal_options").select("id, name, is_kids_meal, sort_order, event_id, is_active, name_i18n").eq("wedding_id", scope.weddingId),
-        scope.db.from("seating_tables").select("id").eq("wedding_id", scope.weddingId),
-        scope.db.from("seat_assignments").select("guest_id").eq("wedding_id", scope.weddingId),
-      ]);
+    const data = await loadReportData(scope);
+    const hh = data.hhs;
+    const gs = hh.flatMap(h => h.guests);
+    const rs = data.responses;
+    const ms = data.meals;
+    const tables = data.tables;
+    const seatSet = new Set(data.seats.map(s => `${s.guest_id}:${s.event_id}`));
 
-    const hh = (households ?? []) as Pick<HouseholdRow, "id" | "rsvp_status">[];
-    const gs = (guests ?? []) as GuestRow[];
-    // Only invite-backed responses count. A household un-invited from an
-    // event keeps its old rows (so re-inviting restores them), and counting
-    // those orphans would report meals and attendance for guests the couple
-    // removed from the event.
-    const rs = liveResponses(
-      (responses ?? []) as ResponseRow[],
-      invites ?? [],
-      gs.map((g) => ({ id: g.id, household_id: g.household_id })),
-    );
-    const ms = (meals ?? []) as MealOptionRow[];
-    const seatSet = new Set((seats ?? []).map((s: { guest_id: string }) => s.guest_id));
-
-    // A guest "attends" if they said yes to at least one event.
-    const attendingIds = new Set(rs.filter((r) => r.attending === "yes").map((r) => r.guest_id));
-    const declinedIds = new Set(
-      gs
-        .map((g) => g.id)
-        .filter((id) => {
-          const mine = rs.filter((r) => r.guest_id === id);
-          return mine.length > 0 && mine.every((r) => r.attending === "no");
-        }),
-    );
+    const { attendingIds, declinedIds } = guestStanding(rs);
     const pendingIds = gs.map((g) => g.id).filter((id) => !attendingIds.has(id) && !declinedIds.has(id));
 
     const responded = hh.filter((h) => h.rsvp_status === "completed" || h.rsvp_status === "declined").length;
@@ -77,10 +65,7 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
     const byAge = (age: string) =>
       gs.filter((g) => g.age_type === age && attendingIds.has(g.id)).length;
 
-    const mealCountsResult = mealCounts(
-      rs,
-      [...ms].sort((a, b) => a.sort_order - b.sort_order),
-    );
+    const mealCountsResult = data.events.flatMap(e => mealCounts(rs.filter(r => r.event_id === e.id), ms.filter(m => !m.event_id || m.event_id === e.id)).map(m => ({ ...m, name: `${e.name}: ${m.name}` })));
 
     return {
       householdsInvited: hh.length,
@@ -96,10 +81,10 @@ export async function overview(scope: WeddingScope): Promise<OverviewMetrics> {
       childrenAttending: byAge("child"),
       infantsAttending: byAge("infant"),
       mealCounts: mealCountsResult,
-      dietaryCount: gs.filter((g) => g.dietary_restrictions || g.allergies).length,
-      accessibilityCount: gs.filter((g) => g.accessibility_needs).length,
+      dietaryCount: gs.filter((g) => attendingIds.has(g.id) && (g.dietary_restrictions || g.allergies)).length,
+      accessibilityCount: gs.filter((g) => attendingIds.has(g.id) && g.accessibility_needs).length,
       tablesCount: (tables ?? []).length,
-      guestsWithoutTable: [...attendingIds].filter((id) => !seatSet.has(id)).length,
+      guestsWithoutTable: new Set(rs.filter(r => r.attending === "yes" && !seatSet.has(`${r.guest_id}:${r.event_id}`)).map(r => r.guest_id)).size,
     };
   });
 }

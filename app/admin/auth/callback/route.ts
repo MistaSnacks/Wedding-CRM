@@ -12,12 +12,30 @@ export async function GET(request: Request) {
   if (code) {
     // PKCE flow: the emailed link redirects here with ?code=
     const supabase = await serverClient();
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error)
+      return NextResponse.redirect(
+        `${env().NEXT_PUBLIC_APP_URL}/admin/login?error=expired_link`,
+      );
   } else if (tokenHash && type) {
     // token_hash flow: works for admin-generated links (no email needed,
     // no PKCE verifier) — the standard Supabase SSR verify pattern.
     const supabase = await serverClient();
-    await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-  }
+    if (!["invite", "magiclink", "email"].includes(type))
+      return NextResponse.redirect(
+        `${env().NEXT_PUBLIC_APP_URL}/admin/login?error=expired_link`,
+      );
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    });
+    if (error)
+      return NextResponse.redirect(
+        `${env().NEXT_PUBLIC_APP_URL}/admin/login?error=expired_link`,
+      );
+  } else
+    return NextResponse.redirect(
+      `${env().NEXT_PUBLIC_APP_URL}/admin/login?error=expired_link`,
+    );
   return NextResponse.redirect(`${env().NEXT_PUBLIC_APP_URL}/admin`);
 }

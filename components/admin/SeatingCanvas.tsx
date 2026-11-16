@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SeatingTools } from "./SeatingTools";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   DndContext,
@@ -102,6 +104,7 @@ export function SeatingCanvas(props: {
       ];
     },
   );
+  const router = useRouter();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
@@ -187,7 +190,8 @@ export function SeatingCanvas(props: {
         const result = await step.attempt();
         if (!result.ok) fail(result.message ?? step.failed);
       } catch {
-        fail(`${step.failed} The connection dropped, so nothing was changed.`);
+        fail(`${step.failed} The connection dropped. Refreshing the saved chart before you retry.`);
+        router.refresh();
       }
     });
   }
@@ -219,7 +223,7 @@ export function SeatingCanvas(props: {
         kind === "guest"
           ? assignGuest(guestIds[0], props.event.id, table.id)
           : assignHousehold(guestIds, props.event.id, table.id),
-      failed: `Nobody was seated at ${table.name} — that change didn't save.`,
+      failed: `The assignment to ${table.name} could not be confirmed.`,
       retry: () => seat(kind, guestIds, table),
     });
   }
@@ -319,6 +323,8 @@ export function SeatingCanvas(props: {
     setOpenTableId((cur) => (cur === tableId ? null : tableId));
   }
 
+  const tools = <SeatingTools eventId={props.event.id} tables={props.tables} assignments={assignments} households={props.householdsWithGuests} attendingIds={[...attendingIds]} />;
+
   if (isMobile) {
     const openTable = props.tables.find((t) => t.id === openTableId) ?? null;
     return (
@@ -326,7 +332,7 @@ export function SeatingCanvas(props: {
         <div>
           <h1 className="text-[22px] font-semibold text-ink">Seating — {props.event.name}</h1>
           <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
-            {props.tables.length} tables · {seatedCount} of {attendingCount} attending guests seated
+            {props.tables.length} {props.tables.length === 1 ? "table" : "tables"} · {seatedCount} of {attendingCount} guests who are coming have a seat
           </p>
         </div>
         {props.allEvents.length > 1 && (
@@ -345,6 +351,7 @@ export function SeatingCanvas(props: {
           </div>
         )}
         {failure && <SeatingAlert failure={failure} />}
+        {tools}
         <p className="rounded-[10px] bg-blush px-3.5 py-3 text-[12px] leading-relaxed text-rose-deep">
           Arrange tables on a computer — here you can seat people. Tap a table to start.
         </p>
@@ -373,7 +380,7 @@ export function SeatingCanvas(props: {
         })}
         {!props.tables.length && (
           <p className="rounded-xl border border-hairline px-4 py-8 text-center text-[13px] text-muted">
-            No tables yet — add them from a computer.
+            No tables yet. Add tables on a computer or in the 3D venue.
           </p>
         )}
         {openTable && (
@@ -405,7 +412,7 @@ export function SeatingCanvas(props: {
           <div className="flex-1">
             <h1 className="text-[22px] font-semibold text-ink">Seating — {props.event.name}</h1>
             <p className="mt-0.5 text-[13.5px] text-[#6b7167]">
-              {props.tables.length} tables · {seatedCount} of {attendingCount} attending guests seated
+              {props.tables.length} {props.tables.length === 1 ? "table" : "tables"} · {seatedCount} of {attendingCount} guests who are coming have a seat
             </p>
           </div>
 
@@ -428,6 +435,8 @@ export function SeatingCanvas(props: {
           <button
             type="button"
             onClick={() => publish(!props.event.seating_published_at)}
+            aria-pressed={Boolean(props.event.seating_published_at)}
+            title="While enabled, subsequent saved seating edits are immediately visible to guests."
             className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-[12.5px] font-semibold transition-colors ${
               props.event.seating_published_at ? "bg-sage-band text-olive-deep" : "border border-[#dddbd0] text-[#6b7167]"
             }`}
@@ -439,11 +448,11 @@ export function SeatingCanvas(props: {
             >
               <span className="h-[13px] w-[13px] rounded-full bg-white" />
             </span>
-            Visible to guests
+            {props.event.seating_published_at ? "Guests can see their table" : "Let guests see their table"}
           </button>
 
           <Link
-            href="/admin/print/escort-cards"
+            href={`/admin/print/escort-cards?event=${props.event.id}`}
             className="rounded-lg border border-[#dddbd0] px-4 py-2.5 text-[13.5px] font-medium text-ink transition-colors hover:border-rose hover:text-rose"
           >
             Escort cards
@@ -458,6 +467,7 @@ export function SeatingCanvas(props: {
         </div>
 
         {failure && <SeatingAlert failure={failure} />}
+        {tools}
 
         {adding && (
           <AddTableForm
@@ -503,7 +513,7 @@ export function SeatingCanvas(props: {
             })}
             {!props.tables.length && (
               <p className="absolute inset-0 flex items-center justify-center text-[13px] text-muted">
-                No tables yet — click &quot;Add table&quot; to start the room.
+                No tables yet. Press “Add table” to start the room.
               </p>
             )}
 
@@ -523,7 +533,7 @@ export function SeatingCanvas(props: {
 
           <aside className="flex w-[280px] flex-shrink-0 flex-col gap-3 rounded-[14px] border border-hairline p-5">
             <div className="flex items-center">
-              <h2 className="flex-1 text-[14.5px] font-semibold text-ink">Unassigned</h2>
+              <h2 className="flex-1 text-[14.5px] font-semibold text-ink">Need a seat</h2>
               <span className="rounded-full bg-blush px-2.5 py-0.5 text-[11px] font-semibold text-rose">
                 {unassigned.reduce((n, h) => n + h.guests.length, 0)}
               </span>

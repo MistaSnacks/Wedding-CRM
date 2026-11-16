@@ -3,7 +3,7 @@ import type { HouseholdRow } from "@/lib/types";
 import * as activity from "./activity";
 
 export type CommType = "save_the_date" | "invitation" | "reminder" | "thank_you" | "custom";
-export type RecipientStatus = "queued" | "sent" | "delivered" | "opened" | "bounced" | "failed";
+export type RecipientStatus = "queued" | "sent" | "delivered" | "opened" | "bounced" | "failed" | "skipped" | "suppressed";
 
 export async function create(
   scope: WeddingScope,
@@ -37,17 +37,18 @@ export async function create(
     // id from another wedding would otherwise be read here and written into
     // this wedding's recipient rows — mailing a stranger, and leaking their
     // address into our data in the process. Foreign ids simply match nothing.
-    const { data: hhs } = await scope.db
+    const { data: hhs, error: hErr } = await scope.db
       .from("households")
       .select("id, email")
       .eq("wedding_id", scope.weddingId)
       .in("id", c.householdIds);
+    if (hErr) throw new Error(hErr.message);
     const rows = (hhs ?? []).map((h: { id: string; email: string | null }) => ({
       wedding_id: scope.weddingId,
       communication_id: commId,
       household_id: h.id,
       email: h.email,
-      status: c.channel === "manual" ? "sent" : "queued",
+      status: c.channel === "manual" ? "sent" : h.email ? "queued" : "skipped",
     }));
     const { error: rErr } = await scope.db.from("communication_recipients").insert(rows);
     if (rErr) throw new Error(rErr.message);
@@ -68,12 +69,13 @@ export async function setRecipientMessageId(
   householdId: string,
   resendMessageId: string,
 ): Promise<void> {
-  await scope.db
+  const { error } = await scope.db
     .from("communication_recipients")
     .update({ resend_message_id: resendMessageId, status: "sent", updated_at: new Date().toISOString() })
     .eq("wedding_id", scope.weddingId)
     .eq("communication_id", commId)
     .eq("household_id", householdId);
+  if (error) throw new Error(error.message);
 }
 
 /**
@@ -90,21 +92,24 @@ export async function markByMessageId(
   status: RecipientStatus,
 ): Promise<boolean> {
   const rank: Record<RecipientStatus, number> = {
-    queued: 0, sent: 1, delivered: 2, opened: 3, bounced: 4, failed: 4,
+    queued: 0, sent: 1, delivered: 2, opened: 3, bounced: 4, failed: 4, skipped: 4, suppressed: 4,
   };
-  const { data } = await scope.db
+  const { data, error: readError } = await scope.db
     .from("communication_recipients")
     .select("id, status")
     .eq("wedding_id", scope.weddingId)
     .eq("resend_message_id", resendMessageId)
     .maybeSingle();
+  if (readError) throw new Error(readError.message);
   if (!data) return false;
   if (rank[data.status as RecipientStatus] >= rank[status]) return true; // idempotent / no downgrade
-  await scope.db
+  const { error: writeError } = await scope.db
     .from("communication_recipients")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("wedding_id", scope.weddingId)
-    .eq("id", data.id);
+    .eq("id", data.id)
+    .eq("status", data.status);
+  if (writeError) throw new Error(writeError.message);
   return true;
 }
 
@@ -125,17 +130,23 @@ export async function needsReminder(scope: WeddingScope, days = 7): Promise<Hous
     .from("households")
     .select("*")
     .eq("wedding_id", scope.weddingId)
-    .in("rsvp_status", ["pending", "started"]);
+    .in("rsvp_status", ["pending", "started"])
+    .is("archived_at", null);
   if (error) throw new Error(error.message);
 
   const cutoff = new Date(Date.now() - days * 86400_000).toISOString();
-  const { data: recent } = await scope.db
+  const { data: recent, error: recentError } = await scope.db
     .from("communication_recipients")
     .select("household_id, communications!inner(type, sent_at)")
     .eq("wedding_id", scope.weddingId)
     .eq("communications.type", "reminder")
+    .in("status", ["sent", "delivered", "opened"])
     .gte("communications.sent_at", cutoff);
 
+  if (recentError) throw new Error(recentError.message);
   const recentlyReminded = new Set((recent ?? []).map((r: { household_id: string }) => r.household_id));
-  return ((hhs ?? []) as HouseholdRow[]).filter((h) => !recentlyReminded.has(h.id));
+  const { data: queued, error: queueError } = await scope.db.from("email_outbox").select("household_id").eq("wedding_id", scope.weddingId).in("kind", ["reminder", "auto_reminder"]).in("state", ["pending", "processing", "sent"]).gte("created_at", cutoff);
+  if (queueError) throw new Error(queueError.message);
+  for (const r of queued ?? []) if (r.household_id) recentlyReminded.add(r.household_id);
+  return ((hhs ?? []) as HouseholdRow[]).filter((h) => h.email?.trim() && !recentlyReminded.has(h.id));
 }

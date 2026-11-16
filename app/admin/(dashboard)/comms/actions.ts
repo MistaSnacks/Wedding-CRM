@@ -1,148 +1,64 @@
 "use server";
+import { revalidatePath } from 'next/cache';
+import { requireEditor } from '@/lib/admin-auth';
+import { forWedding, type WeddingScope } from '@/lib/data/scope';
+import * as households from '@/lib/data/households';
+import * as comms from '@/lib/data/comms';
+import { sendEmail, invitationHtml, reminderHtml, emailShell, escapeHtml, resolveEmail } from '@/lib/email/send';
+import { weddingFactsFor } from '@/lib/data/wedding-public';
+import { emailStrings, localeOf } from '@/lib/email/strings';
+import { env } from '@/lib/env';
+import { z } from 'zod';
+import { processOutbox } from '@/lib/email/outbox';
+import type { HouseholdRow } from '@/lib/types';
+import { normalizeCompose, renderCampaign, type Compose } from '@/lib/domain/campaign-compose';
 
-import { revalidatePath } from "next/cache";
-import { requireEditor } from "@/lib/admin-auth";
-import { forWedding, type WeddingScope } from "@/lib/data/scope";
-import * as households from "@/lib/data/households";
-import * as comms from "@/lib/data/comms";
-import { sendEmail, invitationHtml, reminderHtml, emailShell } from "@/lib/email/send";
-import { emailStrings, localeOf } from "@/lib/email/strings";
-import { reviewToken, splitRecipients, tokenMatches } from "@/lib/domain/campaign-review";
-import type { CommType } from "@/lib/data/comms";
-import type { HouseholdFilter, HouseholdRow } from "@/lib/types";
-
-export type SendSummary = { sent: number; skippedNoEmail: number };
-
-export type CampaignReview = {
-  token: string;
-  count: number;
-  skippedNames: string[];
-  previews: Array<{ locale: string; subject: string; html: string }>;
-};
-
-type Compose = {
-  type: CommType;
-  audience: HouseholdFilter | "not_responded";
-  channel: "email" | "manual";
-  customSubject: string;
-  customBody: string;
-};
-
-function parseCompose(formData: FormData): Compose {
-  return {
-    type: String(formData.get("type") ?? "reminder") as CommType,
-    audience: String(formData.get("audience") ?? "pending") as Compose["audience"],
-    channel: String(formData.get("channel") ?? "email") as Compose["channel"],
-    customSubject: String(formData.get("subject") ?? "").trim(),
-    customBody: String(formData.get("body") ?? "").trim(),
-  };
+export type CampaignReview = { token: string; count: number; skippedNames: string[]; previews: Array<{locale:string;subject:string;html:string}> };
+export type SendSummary = { queued: number; skippedNoEmail: number };
+function parseCompose(fd: FormData): Compose { return normalizeCompose(Object.fromEntries(fd)); }
+async function audience(scope: WeddingScope,c:Compose) {
+  let targets = await households.search(scope,{filter:c.audience==='not_responded'?'all':c.audience,limit:1000});
+  if(c.audience==='not_responded')targets=targets.filter(h=>['pending','started'].includes(h.rsvp_status));
+  if(c.type==='reminder'&&c.audience==='not_responded'){const eligible=new Set((await comms.needsReminder(scope)).map(h=>h.id));targets=targets.filter(h=>!h.email||eligible.has(h.id));}
+  const {data:suppressed,error}=await scope.db.from('email_suppressions').select('email').eq('wedding_id',scope.weddingId);
+  if(error) throw new Error(error.message);
+  const blocked=new Set((suppressed??[]).map(r=>r.email));
+  return {targets,emailable:targets.filter(h=>h.email?.trim()&&!blocked.has(h.email.trim().toLowerCase())),skipped:targets.filter(h=>!h.email?.trim()||blocked.has(h.email.trim().toLowerCase()))};
 }
-
-async function resolveAudience(scope: WeddingScope, audience: Compose["audience"]): Promise<HouseholdRow[]> {
-  const filter: HouseholdFilter = audience === "not_responded" ? "pending" : (audience as HouseholdFilter);
-  let targets = await households.search(scope, { filter, limit: 1000 });
-  if (audience === "not_responded") {
-    targets = targets.filter((h) => h.rsvp_status === "pending" || h.rsvp_status === "started");
-  }
-  return targets;
+function render(h:Pick<HouseholdRow,'access_token'|'invite_code'|'preferred_locale'>,c:Compose) { return renderCampaign(h,c,{appUrl:env().NEXT_PUBLIC_APP_URL,invitationHtml,reminderHtml,emailShell,escapeHtml,emailStrings,localeOf}); }
+export async function reviewCampaign(fd:FormData):Promise<CampaignReview>{
+ const admin=await requireEditor();const scope=forWedding(admin.weddingId);const c=parseCompose(fd);
+ const {emailable,skipped}=await audience(scope,c);
+ const recipients=emailable.map(h=>({householdId:h.id,to:h.email!,locale:localeOf(h.preferred_locale),...render(h,c)}));
+ const {data,error}=await scope.db.from('campaign_drafts').insert({wedding_id:scope.weddingId,actor_id:admin.userId,compose:c,recipients,skipped:skipped.map(h=>h.display_name)}).select('id').single();
+ if(error)throw new Error(error.message);
+ const previews=recipients.filter((r,i,a)=>a.findIndex(v=>v.locale===r.locale)===i).map(({locale,subject,html})=>({locale,subject,html}));
+ if(!previews.length)previews.push({locale:'en',...render({access_token:'preview',invite_code:'XXXX-XXXX',preferred_locale:'en'},c)});
+ // Queued mail keeps merge fields so delivery writes the day current at send time; the preview shows today's values.
+ const wedding=await weddingFactsFor(scope);
+ return {token:data.id,count:recipients.length,skippedNames:skipped.map(h=>h.display_name),previews:previews.map(p=>resolveEmail(p,wedding))};
 }
-
-function renderFor(h: Pick<HouseholdRow, "access_token" | "invite_code" | "preferred_locale">, c: Compose): { subject: string; html: string } {
-  if (c.type === "invitation") {
-    return invitationHtml({ accessToken: h.access_token, inviteCode: h.invite_code, locale: h.preferred_locale });
-  }
-  if (c.type === "reminder") {
-    return reminderHtml({ accessToken: h.access_token, locale: h.preferred_locale });
-  }
-  const s = emailStrings[localeOf(h.preferred_locale)];
-  return {
-    subject: c.customSubject || s.reminderSubject,
-    html: emailShell({
-      heading: c.customSubject || "A note from Juliet & Juan",
-      body: c.customBody.replace(/\n/g, "<br/>"),
-      cta: { label: s.reminderCta, url: `${process.env.NEXT_PUBLIC_APP_URL}/rsvp/h/${h.access_token}` },
-    }),
-  };
+export async function sendTestToMe(fd:FormData):Promise<{previewOnly:boolean}>{
+ const admin=await requireEditor();const c=parseCompose(fd);
+ // Tests never include a real household bearer credential.
+ const {subject,html}=resolveEmail(render({access_token:'preview',invite_code:'XXXX-XXXX',preferred_locale:'en'},c),await weddingFactsFor(forWedding(admin.weddingId)));
+ const result=await sendEmail({to:admin.email,subject:`[Test] ${subject}`,html});
+ return {previewOnly:!result.id};
 }
-
-/** Computes who a campaign reaches and renders the exact email — sends nothing. */
-export async function reviewCampaign(formData: FormData): Promise<CampaignReview> {
-  const admin = await requireEditor();
-  const scope = forWedding(admin.weddingId);
-  const c = parseCompose(formData);
-
-  const targets = await resolveAudience(scope, c.audience);
-  const { emailable, skipped } = splitRecipients(targets);
-
-  const seen = new Set<string>();
-  const previews: CampaignReview["previews"] = [];
-  for (const h of emailable) {
-    const locale = localeOf(h.preferred_locale);
-    if (seen.has(locale)) continue;
-    seen.add(locale);
-    previews.push({ locale, ...renderFor(h, c) });
-  }
-  // A campaign to zero emailable households still deserves a truthful review.
-  if (!previews.length) {
-    previews.push({
-      locale: "en",
-      ...renderFor({ access_token: "preview", invite_code: "XXXX-XXXX", preferred_locale: "en" }, c),
-    });
-  }
-
-  return {
-    token: reviewToken(emailable.length, c.audience, c.type),
-    count: emailable.length,
-    skippedNames: skipped.map((h) => h.display_name),
-    previews,
-  };
-}
-
-/** Sends the rendered campaign to the signed-in admin only; never recorded in History. */
-export async function sendTestToMe(formData: FormData): Promise<void> {
-  const admin = await requireEditor();
-  const scope = forWedding(admin.weddingId);
-  const c = parseCompose(formData);
-
-  const targets = await resolveAudience(scope, c.audience);
-  const sample =
-    splitRecipients(targets).emailable[0] ??
-    ({ access_token: "preview", invite_code: "XXXX-XXXX", preferred_locale: "en" } as HouseholdRow);
-  const { subject, html } = renderFor(sample, c);
-  await sendEmail({ to: admin.email, subject: `[Test] ${subject}`, html });
-}
-
-export async function sendCampaign(formData: FormData): Promise<void> {
-  const admin = await requireEditor();
-  const scope = forWedding(admin.weddingId);
-  const c = parseCompose(formData);
-
-  const targets = await resolveAudience(scope, c.audience);
-  const { emailable } = splitRecipients(targets);
-
-  // The send must match what was reviewed — if the audience changed in
-  // between, push the admin back to review rather than surprising them.
-  const token = String(formData.get("review_token") ?? "");
-  if (c.channel === "email" && !tokenMatches(token, emailable.length, c.audience, c.type)) {
-    throw new Error("This list changed since you reviewed it — please review the campaign again.");
-  }
-
-  const comm = await comms.create(scope, {
-    type: c.type,
-    channel: c.channel,
-    subject: c.customSubject || undefined,
-    audienceFilter: { audience: c.audience },
-    sentBy: admin.userId,
-    householdIds: targets.map((h) => h.id),
-  });
-
-  if (c.channel === "email") {
-    for (const h of emailable) {
-      const { subject, html } = renderFor(h, c);
-      const { id } = await sendEmail({ to: h.email!, subject, html });
-      if (id) await comms.setRecipientMessageId(scope, comm.id, h.id, id);
-    }
-  }
-
-  revalidatePath("/admin/comms");
+export async function sendCampaign(fd:FormData):Promise<SendSummary>{
+ const admin=await requireEditor();const scope=forWedding(admin.weddingId);const c=parseCompose(fd);
+ if(c.channel==='manual'){
+ const targets=await households.search(scope,{filter:c.audience==='not_responded'?'all':c.audience,limit:1000});
+ await comms.create(scope,{type:c.type,channel:'manual',subject:c.customSubject,sentBy:admin.userId,householdIds:targets.filter(h=>c.audience!=='not_responded'||['pending','started'].includes(h.rsvp_status)).map(h=>h.id)});
+ revalidatePath('/admin/comms');return {queued:0,skippedNoEmail:0};
+ }
+ const id=z.uuid().parse(fd.get('review_token'));
+ const {data:d,error}=await scope.db.from('campaign_drafts').select('compose,recipients,skipped').eq('wedding_id',scope.weddingId).eq('actor_id',admin.userId).eq('id',id).single();
+ if(error||!d)throw new Error('Review the campaign again before sending.');
+ if(JSON.stringify(d.compose)!==JSON.stringify(c)&&Object.keys(c).some(k=>d.compose[k]!==c[k as keyof Compose]))throw new Error('This message changed. Review it again.');
+ const queued=await scope.db.rpc('queue_campaign',{p_wedding:scope.weddingId,p_actor:admin.userId,p_draft:id});
+ if(queued.error)throw new Error(queued.error.message);
+ // A worker failure leaves the approved queue durable; it never repeats the campaign.
+ try { await processOutbox(scope,{limit:5}); } catch(e) { console.error('Initial delivery batch deferred',e); }
+ revalidatePath('/admin/comms');return {queued:d.recipients.length,skippedNoEmail:d.skipped.length};
 }

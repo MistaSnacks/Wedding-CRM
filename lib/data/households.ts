@@ -1,3 +1,6 @@
+import type { EntryHousehold } from "@/lib/domain/entry-match";
+import { readAll } from "./query";
+import { matchesGuestQuery } from "@/lib/search/guest-query";
 import type { WeddingScope } from "./scope";
 import type {
   HouseholdRow,
@@ -10,7 +13,6 @@ import type {
 } from "@/lib/types";
 import * as activity from "./activity";
 import { liveResponses } from "./event-rules";
-import { newAccessToken, newInviteCode } from "./imports";
 import { normalizeInviteCode } from "@/lib/domain/invitation-rules";
 import { invalidateCache } from "@/lib/limiter";
 
@@ -35,64 +37,79 @@ export type HouseholdDetail = HouseholdWithGuests & {
   activity: ActivityRow[];
 };
 
-export async function list(scope: WeddingScope): Promise<HouseholdWithGuests[]> {
-  const { data, error } = await scope.db
-    .from("households")
-    .select(`${HOUSEHOLD_COLS}, guests(*)`)
-    .eq("wedding_id", scope.weddingId)
-    .order("display_name");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as HouseholdWithGuests[];
+export async function list(
+  scope: WeddingScope,
+  archived = false,
+): Promise<HouseholdWithGuests[]> {
+  return readAll<HouseholdWithGuests>(() => {
+    let q = scope.db
+      .from("households")
+      .select(`${HOUSEHOLD_COLS}, guests(*)`)
+      .eq("wedding_id", scope.weddingId)
+      .order("display_name")
+      .order("id");
+    q = archived ? q.not("archived_at", "is", null) : q.is("archived_at", null);
+    return q as unknown as ReturnType<
+      Parameters<typeof readAll<HouseholdWithGuests>>[0]
+    >;
+  });
+}
+
+/** Name lookup never fetches access tokens, contacts beyond matching email, or notes. */
+export async function entryList(
+  scope: WeddingScope,
+): Promise<EntryHousehold[]> {
+  return readAll<EntryHousehold>(() =>
+    scope.db
+      .from("households")
+      .select("id,display_name,email,guests(first_name,last_name)")
+      .eq("wedding_id", scope.weddingId)
+      .is("archived_at", null)
+      .order("id"),
+  );
 }
 
 export async function search(
   scope: WeddingScope,
   q: { text?: string; filter?: HouseholdFilter; limit?: number },
 ): Promise<HouseholdWithGuests[]> {
-  let query = scope.db
-    .from("households")
-    .select(`${HOUSEHOLD_COLS}, guests(*)`)
-    .eq("wedding_id", scope.weddingId)
-    .order("display_name")
-    .limit(q.limit ?? 200);
-
-  if (q.text?.trim()) {
-    const t = q.text.trim();
-    // Match household name/email/phone; guest names matched below in JS
-    query = query.or(`display_name.ilike.%${t}%,email.ilike.%${t}%,phone.ilike.%${t}%`);
-  }
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  let rows = (data ?? []) as unknown as HouseholdWithGuests[];
-
-  // Guest-name text search fallback: widen to all, filter in JS
-  if (q.text?.trim() && rows.length === 0) {
-    const all = await list(scope);
-    const t = q.text.trim().toLowerCase();
-    rows = all.filter((h) =>
-      h.guests.some((g) => `${g.first_name} ${g.last_name}`.toLowerCase().includes(t)),
-    );
-  }
-
+  let rows = await list(scope);
+  if (q.text?.trim()) rows = rows.filter((h) => matchesGuestQuery(q.text!, h));
   const f = q.filter ?? "all";
-  if (f === "all") return rows;
+  if (f === "all") return q.limit ? rows.slice(0, q.limit) : rows;
 
   // Response-dependent filters need responses
   const needsResponses = ["attending", "missing_meal", "no_table"].includes(f);
   let responses: ResponseRow[] = [];
   let assignedGuestIds = new Set<string>();
   if (needsResponses) {
-    const [{ data: r }, { data: invites }, { data: seats }] = await Promise.all([
-      scope.db
-        .from("guest_event_responses")
-        .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
-        .eq("wedding_id", scope.weddingId),
-      scope.db
-        .from("household_event_invites")
-        .select("household_id, event_id")
-        .eq("wedding_id", scope.weddingId),
-      scope.db.from("seat_assignments").select("guest_id").eq("wedding_id", scope.weddingId),
+    const [r, invites, seats] = await Promise.all([
+      readAll<ResponseRow>(() =>
+        scope.db
+          .from("guest_event_responses")
+          .select(
+            "guest_id,event_id,attending,meal_option_id,responded_at,responded_via",
+          )
+          .eq("wedding_id", scope.weddingId)
+          .order("guest_id")
+          .order("event_id"),
+      ),
+      readAll<{ household_id: string; event_id: string }>(() =>
+        scope.db
+          .from("household_event_invites")
+          .select("household_id,event_id")
+          .eq("wedding_id", scope.weddingId)
+          .order("household_id")
+          .order("event_id"),
+      ),
+      readAll<{ guest_id: string; event_id: string }>(() =>
+        scope.db
+          .from("seat_assignments")
+          .select("guest_id,event_id")
+          .eq("wedding_id", scope.weddingId)
+          .order("guest_id")
+          .order("event_id"),
+      ),
     ]);
     // Only invite-backed responses: a retained "yes" from an event the
     // household was since un-invited from must not surface it under
@@ -100,9 +117,16 @@ export async function search(
     responses = liveResponses(
       (r ?? []) as ResponseRow[],
       invites ?? [],
-      rows.flatMap((h) => h.guests.map((g) => ({ id: g.id, household_id: h.id }))),
+      rows.flatMap((h) =>
+        h.guests.map((g) => ({ id: g.id, household_id: h.id })),
+      ),
     );
-    assignedGuestIds = new Set((seats ?? []).map((s: { guest_id: string }) => s.guest_id));
+    assignedGuestIds = new Set(
+      (seats ?? []).map(
+        (s: { guest_id: string; event_id: string }) =>
+          `${s.guest_id}:${s.event_id}`,
+      ),
+    );
   }
   const attendingGuestIds = new Set(
     responses.filter((r) => r.attending === "yes").map((r) => r.guest_id),
@@ -121,13 +145,16 @@ export async function search(
       case "families":
         return h.guests.length >= 3;
       case "plus_ones":
-        return h.plus_one_slots > 0 || h.guests.some((g) => g.origin === "plus_one");
+        return (
+          h.plus_one_slots > 0 || h.guests.some((g) => g.origin === "plus_one")
+        );
       case "children":
         return h.guests.some((g) => g.age_type !== "adult");
       case "missing_meal":
         return h.guests.some((g) =>
           responses.some(
-            (r) => r.guest_id === g.id && r.attending === "yes" && !r.meal_option_id,
+            (r) =>
+              r.guest_id === g.id && r.attending === "yes" && !r.meal_option_id,
           ),
         );
       case "dietary":
@@ -135,7 +162,14 @@ export async function search(
       case "accessibility":
         return h.guests.some((g) => g.accessibility_needs);
       case "no_table":
-        return h.guests.some((g) => attendingGuestIds.has(g.id) && !assignedGuestIds.has(g.id));
+        return h.guests.some((g) =>
+          responses.some(
+            (r) =>
+              r.guest_id === g.id &&
+              r.attending === "yes" &&
+              !assignedGuestIds.has(`${g.id}:${r.event_id}`),
+          ),
+        );
       case "vip":
         return h.guests.some((g) => g.is_vip) || h.tags.includes("VIP");
       default:
@@ -144,7 +178,10 @@ export async function search(
   });
 }
 
-export async function getDetail(scope: WeddingScope, id: string): Promise<HouseholdDetail> {
+export async function getDetail(
+  scope: WeddingScope,
+  id: string,
+): Promise<HouseholdDetail> {
   const { data, error } = await scope.db
     .from("households")
     .select(`${HOUSEHOLD_COLS}, guests(*)`)
@@ -154,17 +191,29 @@ export async function getDetail(scope: WeddingScope, id: string): Promise<Househ
   if (error) throw new Error(error.message);
   const household = data as unknown as HouseholdWithGuests;
 
-  const [{ data: invites }, { data: responses }, { data: answers }, act] = await Promise.all([
+  const [
+    { data: invites, error: inviteError },
+    { data: responses, error: responseError },
+    { data: answers, error: answerError },
+    act,
+  ] = await Promise.all([
     scope.db
       .from("household_event_invites")
-      .select("event_id, events(id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order)")
+      .select(
+        "event_id, events(id, name, starts_at, venue_name, rsvp_enabled, seating_published_at, sort_order)",
+      )
       .eq("wedding_id", scope.weddingId)
       .eq("household_id", id),
     scope.db
       .from("guest_event_responses")
-      .select("guest_id, event_id, attending, meal_option_id, responded_at, responded_via")
+      .select(
+        "guest_id, event_id, attending, meal_option_id, responded_at, responded_via",
+      )
       .eq("wedding_id", scope.weddingId)
-      .in("guest_id", household.guests.map((g) => g.id)),
+      .in(
+        "guest_id",
+        household.guests.map((g) => g.id),
+      ),
     scope.db
       .from("rsvp_answers")
       .select("question_id, household_id, guest_id, value")
@@ -173,6 +222,8 @@ export async function getDetail(scope: WeddingScope, id: string): Promise<Househ
     activity.forHousehold(scope, id),
   ]);
 
+  for (const error of [inviteError, responseError, answerError])
+    if (error) throw new Error(error.message);
   const events = ((invites ?? []) as unknown as Array<{ events: EventRow }>)
     .map((i) => i.events)
     .sort((a, b) => a.sort_order - b.sort_order);
@@ -186,36 +237,50 @@ export async function getDetail(scope: WeddingScope, id: string): Promise<Househ
   };
 }
 
-export async function byInviteCode(scope: WeddingScope, code: string): Promise<HouseholdRow | null> {
+export async function byInviteCode(
+  scope: WeddingScope,
+  code: string,
+): Promise<HouseholdRow | null> {
   const normalized = normalizeInviteCode(code);
   if (!normalized) return null;
 
-  const { data } = await scope.db
+  const { data, error } = await scope.db
     .from("households")
     .select(HOUSEHOLD_COLS)
     .eq("wedding_id", scope.weddingId)
     .ilike("invite_code", normalized)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as HouseholdRow) ?? null;
 }
 
-export async function byId(scope: WeddingScope, id: string): Promise<HouseholdRow | null> {
-  const { data } = await scope.db
+export async function byId(
+  scope: WeddingScope,
+  id: string,
+): Promise<HouseholdRow | null> {
+  const { data, error } = await scope.db
     .from("households")
     .select(HOUSEHOLD_COLS)
     .eq("wedding_id", scope.weddingId)
     .eq("id", id)
+    .is("archived_at", null)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as HouseholdRow) ?? null;
 }
 
-export async function byAccessToken(scope: WeddingScope, token: string): Promise<HouseholdRow | null> {
-  const { data } = await scope.db
+export async function byAccessToken(
+  scope: WeddingScope,
+  token: string,
+): Promise<HouseholdRow | null> {
+  const { data, error } = await scope.db
     .from("households")
     .select(HOUSEHOLD_COLS)
     .eq("wedding_id", scope.weddingId)
     .eq("access_token", token)
+    .is("archived_at", null)
     .maybeSingle();
+  if (error) throw new Error(error.message);
   return (data as HouseholdRow) ?? null;
 }
 
@@ -229,7 +294,12 @@ export async function fuzzyFind(
   scope: WeddingScope,
   name: string,
   email: string,
-): Promise<{ id: string; email: string; access_token: string; preferred_locale: string } | null> {
+): Promise<{
+  id: string;
+  email: string;
+  access_token: string;
+  preferred_locale: string;
+} | null> {
   const all = await list(scope);
   const n = name.trim().toLowerCase();
   const e = email.trim().toLowerCase();
@@ -245,7 +315,12 @@ export async function fuzzyFind(
   });
 
   return match && match.email
-    ? { id: match.id, email: match.email, access_token: match.access_token, preferred_locale: match.preferred_locale }
+    ? {
+        id: match.id,
+        email: match.email,
+        access_token: match.access_token,
+        preferred_locale: match.preferred_locale,
+      }
     : null;
 }
 
@@ -255,6 +330,7 @@ export async function update(
   patch: Partial<
     Pick<
       HouseholdRow,
+      | "primary_contact_name"
       | "display_name"
       | "primary_contact_name"
       | "email"
@@ -300,6 +376,10 @@ export async function createWithGuests(
   scope: WeddingScope,
   input: {
     displayName: string;
+    operationId?: string;
+    maxPartySize?: number;
+    plusOneSlots?: number;
+    primaryContactName?: string;
     email?: string | null;
     phone?: string | null;
     mailingAddress?: Record<string, string> | null;
@@ -310,93 +390,69 @@ export async function createWithGuests(
   },
   actorId?: string,
 ): Promise<{ id: string }> {
-  const { data: household, error } = await scope.db
-    .from("households")
-    .insert({
-      wedding_id: scope.weddingId,
-      display_name: input.displayName,
-      primary_contact_name: input.displayName,
-      email: input.email ?? null,
-      phone: input.phone ?? null,
-      mailing_address: input.mailingAddress ?? null,
-      preferred_locale: input.preferredLocale ?? "en",
-      internal_notes: input.internalNotes ?? null,
-      rsvp_status: input.rsvpStatus ?? "pending",
-      invite_code: newInviteCode(),
-      access_token: newAccessToken(),
-      max_party_size: Math.max(1, input.guests.length),
-      plus_one_slots: 0,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
-
-  if (input.guests.length) {
-    const { error: guestErr } = await scope.db.from("guests").insert(
-      input.guests.map((g) => ({
-        wedding_id: scope.weddingId,
-        household_id: household.id,
-        first_name: g.firstName,
-        last_name: g.lastName || "—",
-        origin: "named" as const,
-      })),
-    );
-    if (guestErr) throw new Error(guestErr.message);
-  }
-
-  const { data: openEvents, error: eventErr } = await scope.db
-    .from("events")
-    .select("id")
-    .eq("wedding_id", scope.weddingId)
-    .eq("visibility", "all");
-  if (eventErr) throw new Error(eventErr.message);
-
-  if (openEvents?.length) {
-    const { error: inviteErr } = await scope.db.from("household_event_invites").upsert(
-      openEvents.map((e) => ({
-        household_id: household.id,
-        event_id: e.id,
-        wedding_id: scope.weddingId,
-      })),
-    );
-    if (inviteErr) throw new Error(inviteErr.message);
-  }
-
-  invalidateMetrics(scope);
-  await activity.log(scope, {
-    householdId: household.id,
-    actorType: "admin",
-    actorId,
-    action: "household.created",
-    payload: { source: "save_the_date", events: openEvents?.length ?? 0 },
+  const { data, error } = await scope.db.rpc("create_household_atomic", {
+    p_wedding_id: scope.weddingId,
+    p_input: input,
+    p_actor_id: actorId,
+    p_operation_id: input.operationId ?? crypto.randomUUID(),
   });
-
-  return { id: household.id };
+  if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
+  return { id: data as string };
 }
 
-export async function remove(scope: WeddingScope, id: string, actorId?: string): Promise<void> {
+export async function remove(
+  scope: WeddingScope,
+  id: string,
+  actorId?: string,
+): Promise<void> {
   const { data, error } = await scope.db
     .from("households")
-    .delete()
+    .update({ archived_at: new Date().toISOString() })
     .eq("wedding_id", scope.weddingId)
     .eq("id", id)
     .select("display_name")
     .single();
   if (error) throw new Error(error.message);
   invalidateMetrics(scope);
-  // Wedding-level log: the household's own activity rows cascade away with it.
+  // Soft archive retains linked guests, replies, seats, and activity for restoration.
   await activity.log(scope, {
     actorType: "admin",
     actorId,
-    action: "household.removed",
+    action: "household.archived",
     payload: { name: data.display_name },
   });
 }
 
-export async function setPreferredLocale(scope: WeddingScope, id: string, locale: string): Promise<void> {
-  await scope.db
+export async function setPreferredLocale(
+  scope: WeddingScope,
+  id: string,
+  locale: string,
+): Promise<void> {
+  const { error } = await scope.db
     .from("households")
     .update({ preferred_locale: locale })
     .eq("wedding_id", scope.weddingId)
     .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function restore(
+  scope: WeddingScope,
+  id: string,
+  actorId?: string,
+) {
+  const { error } = await scope.db
+    .from("households")
+    .update({ archived_at: null })
+    .eq("wedding_id", scope.weddingId)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  invalidateMetrics(scope);
+  await activity.log(scope, {
+    householdId: id,
+    actorType: "admin",
+    actorId,
+    action: "household.restored",
+  });
 }

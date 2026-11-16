@@ -1,3 +1,4 @@
+import { readAll } from "./query";
 import type { WeddingScope } from "./scope";
 import type { SeatingTableRow, SeatAssignmentRow } from "@/lib/types";
 import * as activity from "./activity";
@@ -21,7 +22,10 @@ function invalidateMetrics(scope: WeddingScope): void {
 }
 
 /** Confirms a table belongs to this wedding before any write touches it. */
-async function requireTable(scope: WeddingScope, id: string): Promise<SeatingTableRow> {
+async function requireTable(
+  scope: WeddingScope,
+  id: string,
+): Promise<SeatingTableRow> {
   const { data, error } = await scope.db
     .from("seating_tables")
     .select(TABLE_COLS)
@@ -34,7 +38,10 @@ async function requireTable(scope: WeddingScope, id: string): Promise<SeatingTab
 }
 
 /** Confirms an event belongs to this wedding before a table is attached to it. */
-async function requireEventId(scope: WeddingScope, eventId: string): Promise<void> {
+async function requireEventId(
+  scope: WeddingScope,
+  eventId: string,
+): Promise<void> {
   const { data, error } = await scope.db
     .from("events")
     .select("id")
@@ -45,25 +52,18 @@ async function requireEventId(scope: WeddingScope, eventId: string): Promise<voi
   if (!data) throw new Error("Event not found in this wedding");
 }
 
-export async function listTables(scope: WeddingScope, eventId: string): Promise<SeatingTableRow[]> {
-  const { data, error } = await scope.db
-    .from("seating_tables")
-    .select("id, event_id, name, capacity, shape, pos_x, pos_y")
-    .eq("wedding_id", scope.weddingId)
-    .eq("event_id", eventId)
-    .order("name");
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SeatingTableRow[];
+export async function listTables(
+  scope: WeddingScope,
+  eventId: string,
+): Promise<SeatingTableRow[]> {
+  return readAll<SeatingTableRow>(() => scope.db.from("seating_tables").select(TABLE_COLS).eq("wedding_id",scope.weddingId).eq("event_id",eventId).order("name").order("id"));
 }
 
-export async function listAssignments(scope: WeddingScope, eventId: string): Promise<SeatAssignmentRow[]> {
-  const { data, error } = await scope.db
-    .from("seat_assignments")
-    .select("guest_id, event_id, table_id, seat_number")
-    .eq("wedding_id", scope.weddingId)
-    .eq("event_id", eventId);
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SeatAssignmentRow[];
+export async function listAssignments(
+  scope: WeddingScope,
+  eventId: string,
+): Promise<SeatAssignmentRow[]> {
+  return readAll<SeatAssignmentRow>(() => scope.db.from("seat_assignments").select("guest_id,event_id,table_id,seat_number").eq("wedding_id",scope.weddingId).eq("event_id",eventId).order("guest_id"));
 }
 
 /**
@@ -78,13 +78,29 @@ export async function listAssignments(scope: WeddingScope, eventId: string): Pro
  */
 export async function upsertTable(
   scope: WeddingScope,
-  t: { id?: string; eventId: string; name: string; capacity: number; shape?: "round" | "rect" | "banquet"; posX?: number; posY?: number },
+  t: {
+    id?: string;
+    eventId: string;
+    name: string;
+    capacity: number;
+    shape?: "round" | "rect" | "banquet";
+    posX?: number;
+    posY?: number;
+  },
 ): Promise<SeatingTableRow> {
+  if (
+    !t.name.trim() ||
+    t.name.length > 120 ||
+    !Number.isInteger(t.capacity) ||
+    t.capacity < 1 ||
+    t.capacity > 1000
+  )
+    throw new Error("Enter a table name and capacity between 1 and 1000.");
   await requireEventId(scope, t.eventId);
 
   const fields = {
     event_id: t.eventId,
-    name: t.name,
+    name: t.name.trim(),
     capacity: t.capacity,
     ...(t.shape ? { shape: t.shape } : {}),
     ...(t.posX !== undefined ? { pos_x: t.posX } : {}),
@@ -115,7 +131,14 @@ export async function upsertTable(
   return data as SeatingTableRow;
 }
 
-export async function moveTable(scope: WeddingScope, tableId: string, posX: number, posY: number): Promise<void> {
+export async function moveTable(
+  scope: WeddingScope,
+  tableId: string,
+  posX: number,
+  posY: number,
+): Promise<void> {
+  if (!Number.isFinite(posX) || !Number.isFinite(posY))
+    throw new Error("Invalid table position");
   const { error } = await scope.db
     .from("seating_tables")
     .update({ pos_x: posX, pos_y: posY })
@@ -124,7 +147,45 @@ export async function moveTable(scope: WeddingScope, tableId: string, posX: numb
   if (error) throw new Error(error.message);
 }
 
-export async function deleteTable(scope: WeddingScope, tableId: string): Promise<void> {
+/**
+ * Saves a table's turn, in degrees, from the 3D venue editor.
+ *
+ * `rotation` arrives with migration 0020. Until that runs, the column is
+ * missing and the write reports `persisted: false` instead of failing, so the
+ * editor keeps working and simply does not remember turns.
+ */
+export async function turnTable(
+  scope: WeddingScope,
+  tableId: string,
+  rotation: number,
+): Promise<{ persisted: boolean }> {
+  if (!Number.isFinite(rotation)) throw new Error("Invalid table turn");
+  await requireTable(scope, tableId);
+  const degrees = ((Math.round(rotation) % 360) + 360) % 360;
+  const { error } = await scope.db
+    .from("seating_tables")
+    .update({ rotation: degrees })
+    .eq("wedding_id", scope.weddingId)
+    .eq("id", tableId);
+  if (error) {
+    if (isMissingRotation(error)) return { persisted: false };
+    throw new Error(error.message);
+  }
+  return { persisted: true };
+}
+
+/** PostgREST (PGRST204) or Postgres (42703) saying the column is not there yet. */
+export function isMissingRotation(error: { code?: string; message?: string }): boolean {
+  return (
+    (error.code === "PGRST204" || error.code === "42703") &&
+    /rotation/i.test(error.message ?? "")
+  );
+}
+
+export async function deleteTable(
+  scope: WeddingScope,
+  tableId: string,
+): Promise<void> {
   const { error } = await scope.db
     .from("seating_tables")
     .delete()
@@ -151,7 +212,8 @@ export async function assign(
   actorId?: string,
 ): Promise<void> {
   const table = await requireTable(scope, tableId);
-  if (table.event_id !== eventId) throw new Error("Table does not belong to this event");
+  if (table.event_id !== eventId)
+    throw new Error("Table does not belong to this event");
 
   const { data: guest, error: guestError } = await scope.db
     .from("guests")
@@ -162,26 +224,33 @@ export async function assign(
   if (guestError) throw new Error(guestError.message);
   if (!guest) throw new Error("Guest not found in this wedding");
 
-  const { error } = await scope.db.from("seat_assignments").upsert({
-    guest_id: guestId,
-    event_id: eventId,
-    wedding_id: scope.weddingId,
-    table_id: tableId,
+  await assignGroup(scope, [guestId], eventId, tableId, actorId);
+}
+
+/** One SQL transaction validates and seats the entire group. */
+export async function assignGroup(
+  scope: WeddingScope,
+  guestIds: string[],
+  eventId: string,
+  tableId: string,
+  actorId?: string,
+): Promise<void> {
+  const { error } = await scope.db.rpc("assign_seating_group", {
+    p_wedding_id: scope.weddingId,
+    p_event_id: eventId,
+    p_table_id: tableId,
+    p_guest_ids: [...new Set(guestIds)],
+    p_actor_id: actorId ?? null,
   });
   if (error) throw new Error(error.message);
   invalidateMetrics(scope);
-
-  await activity.log(scope, {
-    householdId: guest.household_id,
-    guestId,
-    actorType: "admin",
-    actorId,
-    action: "table.assigned",
-    payload: { tableId, eventId },
-  });
 }
 
-export async function unassign(scope: WeddingScope, guestId: string, eventId: string): Promise<void> {
+export async function unassign(
+  scope: WeddingScope,
+  guestId: string,
+  eventId: string,
+): Promise<void> {
   const { error } = await scope.db
     .from("seat_assignments")
     .delete()
@@ -192,18 +261,19 @@ export async function unassign(scope: WeddingScope, guestId: string, eventId: st
   invalidateMetrics(scope);
 }
 
-export async function setPublished(scope: WeddingScope, eventId: string, published: boolean): Promise<void> {
-  const { error } = await scope.db
-    .from("events")
-    .update({ seating_published_at: published ? new Date().toISOString() : null })
-    .eq("wedding_id", scope.weddingId)
-    .eq("id", eventId);
-  if (error) throw new Error(error.message);
-  await activity.log(scope, {
-    actorType: "admin",
-    action: published ? "seating.published" : "seating.unpublished",
-    payload: { eventId },
+export async function setPublished(
+  scope: WeddingScope,
+  eventId: string,
+  published: boolean,
+  actorId?: string,
+): Promise<void> {
+  const { error } = await scope.db.rpc("publish_seating", {
+    p_wedding_id: scope.weddingId,
+    p_event_id: eventId,
+    p_published: published,
+    p_actor_id: actorId ?? null,
   });
+  if (error) throw new Error(error.message);
 }
 
 /** Guest-facing: the table + tablemates for one guest at one event (only if published). */
@@ -211,44 +281,18 @@ export async function guestTable(
   scope: WeddingScope,
   guestId: string,
   eventId: string,
-): Promise<{ tableName: string; mates: Array<{ first_name: string; last_name: string }> } | null> {
-  const { data: event } = await scope.db
-    .from("events")
-    .select("seating_published_at")
-    .eq("wedding_id", scope.weddingId)
-    .eq("id", eventId)
-    .maybeSingle();
-  if (!event?.seating_published_at) return null;
-
-  const { data: seat } = await scope.db
-    .from("seat_assignments")
-    .select("table_id")
-    .eq("wedding_id", scope.weddingId)
-    .eq("guest_id", guestId)
-    .eq("event_id", eventId)
-    .maybeSingle();
-  if (!seat) return null;
-
-  const [{ data: table }, { data: mates }] = await Promise.all([
-    scope.db
-      .from("seating_tables")
-      .select("name")
-      .eq("wedding_id", scope.weddingId)
-      .eq("id", seat.table_id)
-      .maybeSingle(),
-    scope.db
-      .from("seat_assignments")
-      .select("guest_id, guests(first_name, last_name)")
-      .eq("wedding_id", scope.weddingId)
-      .eq("table_id", seat.table_id)
-      .eq("event_id", eventId)
-      .neq("guest_id", guestId),
-  ]);
-
-  return {
-    tableName: table?.name ?? "",
-    mates: ((mates ?? []) as unknown as Array<{ guests: { first_name: string; last_name: string } }>).map(
-      (m) => m.guests,
-    ),
-  };
+): Promise<{
+  tableName: string;
+  mates: Array<{ first_name: string; last_name: string }>;
+} | null> {
+  const { data, error } = await scope.db.rpc("guest_table_info", {
+    p_wedding_id: scope.weddingId,
+    p_guest_id: guestId,
+    p_event_id: eventId,
+  });
+  if (error) throw new Error(error.message);
+  return data as {
+    tableName: string;
+    mates: Array<{ first_name: string; last_name: string }>;
+  } | null;
 }

@@ -1,0 +1,52 @@
+/*
+ * Print layout for the Reports page.
+ *
+ * The dashboard shell clips its content (`overflow-hidden` on a flex row), and
+ * a clipped flex container prints only its first page. These rules undo that
+ * for printing, and only while a report is on the page — every selector is
+ * scoped with `:has([data-report-root])`, so no other admin page changes.
+ */
+@media print {
+  body:has([data-report-root]) {
+    background: #fff;
+  }
+
+  body:has([data-report-root]) .watercolor-bg {
+    display: block;
+    min-height: 0;
+    overflow: visible;
+    background: #fff;
+  }
+
+  /* The decorative film backdrop. */
+  body:has([data-report-root]) .watercolor-bg > [aria-hidden] {
+    display: none;
+  }
+
+  body:has([data-report-root]) main {
+    padding: 0;
+  }
+
+  [data-report-root] table {
+    font-size: 11px;
+  }
+
+  /* Repeat the column names on every printed page. */
+  [data-report-root] thead {
+    display: table-header-group;
+  }
+
+  [data-report-root] tr {
+    break-inside: avoid;
+  }
+
+  /* Never leave a group title alone at the bottom of a page. */
+  [data-report-root] tr[data-group-row] {
+    break-after: avoid;
+  }
+
+  [data-report-root] a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
