@@ -3,7 +3,7 @@
 
 insert into weddings (id, slug, couple_names, wedding_date, timezone, default_locale, rsvp_deadline, theme)
 values ('11111111-1111-1111-1111-111111111111', 'juliet-juan', 'Juliet & Juan',
-        '2027-06-12', 'America/Los_Angeles', 'en', '2027-04-12T23:59:00-07:00',
+        '2027-06-12', 'America/Los_Angeles', 'en', '2027-07-01T23:59:00-07:00',
         '{"video": "/video/hero-v5.mp4", "poster": "/video/hero-v5-poster.jpg"}');
 
 insert into events (id, wedding_id, name, starts_at, venue_name, sort_order) values
