@@ -3,12 +3,12 @@
 
 insert into weddings (id, slug, couple_names, wedding_date, timezone, default_locale, rsvp_deadline, theme)
 values ('11111111-1111-1111-1111-111111111111', 'juliet-juan', 'Juliet & Juan',
-        '2027-06-12', 'America/Los_Angeles', 'en', '2027-07-01T23:59:00-07:00',
+        '2027-09-18', 'America/Los_Angeles', 'en', '2027-07-01T23:59:00-07:00',
         '{"video": "/video/hero-v5.mp4", "poster": "/video/hero-v5-poster.jpg"}');
 
 insert into events (id, wedding_id, name, starts_at, venue_name, sort_order) values
-  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'Ceremony',  '2027-06-12T16:00:00-07:00', 'Eden Benavento', 0),
-  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', 'Reception', '2027-06-12T17:30:00-07:00', 'Eden Benavento', 1);
+  ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111111', 'Ceremony',  '2027-09-18T16:00:00-07:00', 'Eden Benavento', 0),
+  ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111111', 'Reception', '2027-09-18T17:30:00-07:00', 'Eden Benavento', 1);
 
 -- Kids Meal is hidden from guests for now (is_active = false), as in migration 0021.
 insert into meal_options (id, wedding_id, name, is_kids_meal, sort_order, is_active, name_i18n) values

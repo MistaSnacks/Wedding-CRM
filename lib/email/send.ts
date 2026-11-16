@@ -73,7 +73,7 @@ ${
     : ""
 }
 </table>
-<table role="presentation" width="520"><tr><td align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8a8f86;padding-top:16px;">June 12, 2027 · Guadalajara, México</td></tr></table>
+<table role="presentation" width="520"><tr><td align="center" style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#8a8f86;padding-top:16px;">September 18, 2027 · Guadalajara, México</td></tr></table>
 </td></tr></table></body></html>`;
 }
 
